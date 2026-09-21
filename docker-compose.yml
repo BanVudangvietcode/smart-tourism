@@ -1,0 +1,22 @@
+services:
+  database:
+    image: postgis/postgis:17-3.5
+    container_name: tourism-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tourism_db}
+      POSTGRES_USER: ${POSTGRES_USER:-tourism_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tourism_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgis_data:

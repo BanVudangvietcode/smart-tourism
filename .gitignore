@@ -1,0 +1,22 @@
+# Environment / secrets
+.env
+!.env.example
+backend/src/main/resources/application-local.properties
+
+# Java
+backend/target/
+*.class
+*.log
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+frontend/*.tsbuildinfo
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
