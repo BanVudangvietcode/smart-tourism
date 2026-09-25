@@ -1,131 +1,52 @@
 @import "tailwindcss";
 
-:root {
-  color-scheme: light;
-  --background: #f1f2ed;
-  --foreground: #17201d;
-  --panel: #fafbf7;
-  --muted: #626d68;
-  --quiet: #8c9691;
-  --line: #d3d9d4;
-  --panel-line: #dce1dd;
-  --accent: #0a7564;
-  --accent-hover: #086657;
-  --accent-contrast: #f5fffb;
-  --success: #08775d;
-  --success-soft: rgb(8 119 93 / 12%);
-  --warning: #a65b09;
-  --danger: #b33a3a;
-  --danger-soft: rgb(179 58 58 / 11%);
-  --radius-sm: 7px;
-  --radius-lg: 18px;
-  --panel-shadow: 0 24px 65px rgb(30 43 38 / 10%);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    color-scheme: dark;
-    --background: #101512;
-    --foreground: #eef3ef;
-    --panel: #171e1a;
-    --muted: #a1ada7;
-    --quiet: #707d76;
-    --line: #2b352f;
-    --panel-line: #303a34;
-    --accent: #70d7b9;
-    --accent-hover: #8ae3c7;
-    --accent-contrast: #09251d;
-    --success: #74dbba;
-    --success-soft: rgb(116 219 186 / 12%);
-    --warning: #e2a957;
-    --danger: #f08b8b;
-    --danger-soft: rgb(240 139 139 / 12%);
-    --panel-shadow: 0 28px 75px rgb(0 0 0 / 28%);
+    --bg-base: #F9F9F8;
+    --bg-surface: #FFFFFF;
+    --text-primary: #171717;
+    --text-secondary: #737373;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --brand-accent: #E04F33; /* Warm food/travel accent */
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'SF Pro Display', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  background: var(--background);
-  font-family: var(--font-geist-sans), sans-serif;
-  text-rendering: optimizeLegibility;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button {
-  font: inherit;
-}
-
-.font-mono {
-  font-family: var(--font-geist-mono), monospace;
-}
-
-::selection {
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
-
-.status-grid {
-  background-image:
-    linear-gradient(to right, var(--panel-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--panel-line) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(to bottom left, black, transparent 58%);
-}
-
-.status-loading {
-  animation: status-pulse 1.6s ease-in-out infinite;
-}
-
-.status-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--panel-line) 20%,
-    var(--line) 50%,
-    var(--panel-line) 80%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shift 1.5s linear infinite;
-}
-
-@keyframes status-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
+@layer utilities {
+  .animate-stagger-1 { animation-delay: 50ms; }
+  .animate-stagger-2 { animation-delay: 150ms; }
+  .animate-stagger-3 { animation-delay: 250ms; }
+  .animate-stagger-4 { animation-delay: 350ms; }
+  
+  .animate-in {
+    animation-name: fadeInUp;
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
   }
-  50% {
-    opacity: 1;
+  
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--border-subtle);
   }
 }
 
-@keyframes skeleton-shift {
+@keyframes fadeInUp {
   from {
-    background-position: 200% 0;
+    opacity: 0;
+    transform: translateY(24px);
   }
   to {
-    background-position: -200% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    opacity: 1;
+    transform: translateY(0);
   }
 }
