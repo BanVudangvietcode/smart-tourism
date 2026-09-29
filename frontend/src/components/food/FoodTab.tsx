@@ -13,12 +13,13 @@ interface FoodItem {
   address: string;
   price: string;
   time: string;
-  rating: string;
+  rating: number;
+  reviewsCount: number;
   category: string;
-  badge?: string;
-  emoji: string;
+  image: string;
   desc: string;
   poiId?: string;
+  tags: string[];
 }
 
 export default function FoodTab({ onOpenMap }: FoodTabProps) {
@@ -28,104 +29,104 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
   const foodList: FoodItem[] = [
     {
       id: 'food-1',
-      name: 'Ốc Oanh - Phố Ốc Vĩnh Khánh',
-      dish: 'Ốc hương rang muối tuyết, càng ghẹ cháy tỏi',
+      name: 'Ốc Oanh',
+      dish: 'Ốc hương rang muối tuyết & Hải sản tươi sống',
       address: '534 Vĩnh Khánh, Phường 8, Quận 4',
-      price: '50.000đ - 180.000đ',
-      time: '14:00 - 24:00',
-      rating: '4.8 ★',
-      category: 'Ốc & Hải sản',
-      badge: 'Nổi tiếng nhất',
-      emoji: '🐚',
-      desc: 'Quán ốc huyền thoại lâu đời bậc nhất Vĩnh Khánh với nước chấm kẹo chua ngọt và hải sản tươi sống nhảy tanh tách.',
+      price: '60.000đ - 180.000đ',
+      time: '14:00 - 23:30',
+      rating: 4.8,
+      reviewsCount: 1420,
+      category: 'Hải sản & Ốc',
+      image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=800&q=80',
+      desc: 'Quán ốc nổi tiếng nhất trục đường Vĩnh Khánh. Hải sản phong phú, chế biến đậm vị theo phong cách miền Nam.',
       poiId: 'vinh-khanh',
+      tags: ['Đông khách', 'Ăn tối', 'Nhóm bạn'],
     },
     {
       id: 'food-2',
       name: 'Phá Lấu Bò Cô Thảo',
-      dish: 'Phá lấu nước cốt dừa, phá lấu chiên giòn',
+      dish: 'Phá lấu nước cốt dừa kèm bánh mì giòn',
       address: '243/29 Tôn Đản, Phường 15, Quận 4',
-      price: '30.000đ - 50.000đ',
+      price: '35.000đ - 55.000đ',
       time: '13:30 - 22:00',
-      rating: '4.7 ★',
-      category: 'Phá lấu & Ăn vặt',
-      badge: 'Đặc sản Quận 4',
-      emoji: '🍲',
-      desc: 'Nước dùng sóng sánh thơm nồng mùi nước cốt dừa, chấm bánh mì giòn tan ăn kèm nước mắm tắc chua ngọt đậm đà.',
+      rating: 4.7,
+      reviewsCount: 890,
+      category: 'Món ăn vặt',
+      image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
+      desc: 'Món ăn vặt trứ danh của cư dân Quận 4. Nước dùng béo thơm mùi dừa xiêm, chấm kèm nước mắm tắc pha ớt cay nồng.',
       poiId: 'cho-200',
+      tags: ['Lâu đời', 'Bình dân'],
     },
     {
       id: 'food-3',
       name: 'Mì Ốc Hến Dì Lan',
-      dish: 'Mì tôm ốc hến, hủ tiếu hến chua cay',
+      dish: 'Mì gói xào ốc hến & Hủ tiếu chua cay',
       address: '20/23 Ngô Văn Sở, Phường 13, Quận 4',
-      price: '25.000đ - 45.000đ',
+      price: '30.000đ - 45.000đ',
       time: '07:00 - 19:00',
-      rating: '4.6 ★',
-      category: 'Mì & Hủ tiếu',
-      badge: 'Ăn vặt thần thánh',
-      emoji: '🍜',
-      desc: 'Tô mì tràn ngập ruột ốc giòn sần sật và hến tươi, hòa quyện với vị nước lèo chua cay xé lưỡi kiểu Thái.',
+      rating: 4.6,
+      reviewsCount: 650,
+      category: 'Món sợi',
+      image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+      desc: 'Tô mì tràn ngập ruột ốc giòn và thịt hến tươi ngọt. Vị cay nồng kích thích vị giác đặc trưng khu Xóm Chiếu.',
       poiId: 'cho-200',
+      tags: ['Ăn sáng / Trưa', 'Đặc sản'],
     },
     {
       id: 'food-4',
       name: 'Bánh Tráng Cuốn Bà Bắc',
-      dish: 'Bánh tráng cuốn bơ sốt me chua cay',
+      dish: 'Bánh tráng cuốn bơ sốt me chua ngọt',
       address: '40 Đường số 11, Phường 4, Quận 4',
-      price: '15.000đ - 35.000đ',
-      time: '10:00 - 21:30',
-      rating: '4.9 ★',
-      category: 'Phá lấu & Ăn vặt',
-      badge: 'Bestseller sinh viên',
-      emoji: '🌯',
-      desc: 'Bánh tráng dẻo cuốn đẫm ruốc khô, trứng cút, hành phi giòn béo ngập trong sốt me bơ ngậy gây thương nhớ.',
+      price: '20.000đ - 35.000đ',
+      time: '10:00 - 21:00',
+      rating: 4.9,
+      reviewsCount: 520,
+      category: 'Món ăn vặt',
+      image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=800&q=80',
+      desc: 'Quán ăn vặt quen thuộc của học sinh, sinh viên Quận 4 với nước sốt me bơ độc quyền sánh mịn, đậm đà.',
       poiId: 'cho-200',
+      tags: ['Ăn vặt', 'Bình dân'],
     },
     {
       id: 'food-5',
-      name: 'Quán Ốc Vũ Vĩnh Khánh',
-      dish: 'Sò điệp nướng trứng cút, ốc móng tay xào rau muống',
+      name: 'Quán Ốc Vũ',
+      dish: 'Càng ghẹ rang muối & Sò điệp nướng mỡ hành',
       address: '37 Vĩnh Khánh, Phường 9, Quận 4',
-      price: '40.000đ - 120.000đ',
-      time: '15:00 - 01:00 sáng',
-      rating: '4.7 ★',
-      category: 'Ốc & Hải sản',
-      emoji: '🦪',
-      desc: 'Không gian mở nhộn nhịp, mồi nhắm phong phú với giá cả bình dân cho các buổi tụ họp bạn bè thâu đêm.',
+      price: '50.000đ - 150.000đ',
+      time: '15:00 - 00:30',
+      rating: 4.7,
+      reviewsCount: 780,
+      category: 'Hải sản & Ốc',
+      image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=800&q=80',
+      desc: 'Không gian mở thoáng đãng, phục vụ nhanh. Phù hợp tụ họp bạn bè thưởng thức ẩm thực đêm Sài Gòn.',
       poiId: 'vinh-khanh',
+      tags: ['Về đêm', 'Bia & Nhắm'],
     },
     {
       id: 'food-6',
-      name: 'Hủ Tiếu Mực Quê Nhà',
-      dish: 'Hủ tiếu mực tươi ngọt nước',
-      address: 'Bến Vân Đồn, Quận 4',
-      price: '45.000đ - 70.000đ',
-      time: '06:30 - 22:00',
-      rating: '4.5 ★',
-      category: 'Mì & Hủ tiếu',
-      emoji: '🦑',
-      desc: 'Từng con mực ống dày cơm, giòn ngọt tự nhiên kết hợp nước lèo nấu từ củ cải và tôm khô thanh mát.',
-      poiId: 'ben-van-don',
-    },
-    {
-      id: 'food-7',
-      name: 'Chè Hà Ký Chợ Xóm Chiếu',
-      dish: 'Chè mè đen, chè sâm bổ lượng, quy linh cao',
-      address: 'Khu ẩm thực Chợ 200 Xóm Chiếu, Quận 4',
-      price: '15.000đ - 30.000đ',
+      name: 'Chè Hà Ký Xóm Chiếu',
+      dish: 'Chè mè đen, quy linh cao & sâm bổ lượng',
+      address: 'Khu ẩm thực Chợ Xóm Chiếu, Quận 4',
+      price: '20.000đ - 35.000đ',
       time: '16:00 - 22:30',
-      rating: '4.8 ★',
+      rating: 4.8,
+      reviewsCount: 430,
       category: 'Tráng miệng',
-      badge: 'Giải nhiệt đêm hè',
-      emoji: '🍨',
-      desc: 'Điểm kết thúc ngọt ngào cho chuyến food tour Quận 4 với những chén chè thanh mát chuẩn vị người Hoa.',
+      image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=800&q=80',
+      desc: 'Món chè truyền thống nấu thanh ngọt, mát lành, là điểm dừng chân lý tưởng sau chuyến dạo chơi ẩm thực.',
       poiId: 'cho-200',
+      tags: ['Ngọt mát', 'Truyền thống'],
     },
   ];
 
   const categories = useMemo(() => {
-    return ['all', 'Ốc & Hải sản', 'Phá lấu & Ăn vặt', 'Mì & Hủ tiếu', 'Tráng miệng'];
+    return [
+      { id: 'all', label: 'Tất cả' },
+      { id: 'Hải sản & Ốc', label: 'Hải sản & Ốc' },
+      { id: 'Món ăn vặt', label: 'Món ăn vặt' },
+      { id: 'Món sợi', label: 'Mì & Hủ tiếu' },
+      { id: 'Tráng miệng', label: 'Tráng miệng' },
+    ];
   }, []);
 
   const filteredFood = useMemo(() => {
@@ -133,7 +134,7 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
       const matchSearch =
         item.name.toLowerCase().includes(search.toLowerCase()) ||
         item.dish.toLowerCase().includes(search.toLowerCase()) ||
-        item.desc.toLowerCase().includes(search.toLowerCase());
+        item.address.toLowerCase().includes(search.toLowerCase());
       const matchCategory =
         selectedCategory === 'all' || item.category === selectedCategory;
       return matchSearch && matchCategory;
@@ -141,141 +142,178 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
   }, [search, selectedCategory, foodList]);
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-[#F8FAFC] pb-28 lg:pb-12 pt-16">
-      {/* ─── Hero Food Banner ─────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white px-4 sm:px-8 py-8 shadow-sm relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="max-w-5xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md mb-2">
-            <span>🔥</span> Thiên đường ẩm thực đường phố Sài Gòn
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Ẩm Thực Quận 4: Ăn Là Ghiền!
-          </h1>
-          <p className="text-xs sm:text-sm text-orange-100 mt-1 max-w-xl">
-            Khám phá phố ốc Vĩnh Khánh nức tiếng, phá lấu xóm Chiếu béo ngậy và hàng trăm món ăn vặt đường phố độc đáo.
-          </p>
-
-          {/* Ô tìm kiếm món ăn */}
-          <div className="mt-5 max-w-md relative">
-            <input
-              type="text"
-              placeholder="Tìm quán ốc, phá lấu, mì hến, bánh tráng..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg"
-            />
-            <svg
-              className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Category Filter Pills ────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-3 sticky top-0 z-20 shadow-xs">
-        <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-orange-600 text-white shadow-md shadow-orange-500/20'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200/80 hover:text-gray-900'
-              }`}
-            >
-              {cat === 'all' ? '🍽️ Tất cả món' : cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ─── Grid món ăn ──────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Gợi ý {filteredFood.length} địa chỉ ăn uống đỉnh chóp
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredFood.map((food) => (
-            <div
-              key={food.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-xs hover:shadow-lg transition p-4 sm:p-5 flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-2xl border border-amber-100 shrink-0 group-hover:scale-110 transition">
-                      {food.emoji}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-extrabold text-gray-900 text-base leading-tight group-hover:text-orange-600 transition">
-                          {food.name}
-                        </h3>
-                        {food.badge && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                            {food.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-orange-600 mt-0.5">
-                        {food.dish}
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-lg shrink-0">
-                    {food.rating}
-                  </span>
-                </div>
-
-                <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-                  {food.desc}
-                </p>
-
-                {/* Thông tin phụ: Giờ mở cửa, Giá, Địa chỉ */}
-                <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-[11px] text-gray-600">
-                  <div className="flex items-center gap-1.5">
-                    <span>💵</span>
-                    <span className="font-semibold text-gray-800">{food.price}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span>⏰</span>
-                    <span>{food.time}</span>
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1.5 text-gray-500 truncate">
-                    <span>📍</span>
-                    <span className="truncate">{food.address}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Nút chỉ đường */}
-              <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-end">
-                <button
-                  onClick={() => onOpenMap(food.poiId)}
-                  className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>Chỉ đường tới quán</span>
-                </button>
-              </div>
+    <div className="w-full h-full overflow-y-auto bg-slate-50 pb-28 lg:pb-12 pt-16">
+      {/* ─── Modern Clean Header ──────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Cẩm nang ẩm thực địa phương
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Quán Ăn & Đặc Sản Quận 4
+              </h1>
+              <p className="text-sm text-slate-600 mt-1 max-w-xl">
+                Khám phá bản đồ hương vị đậm chất Sài Gòn từ các phố ốc đêm nhộn nhịp đến những quán ăn vặt lâu năm trong ngõ hẻm.
+              </p>
             </div>
-          ))}
+
+            {/* Clean minimal Search Bar */}
+            <div className="relative w-full md:w-80">
+              <input
+                type="text"
+                placeholder="Tìm món ăn, quán ăn, tên đường..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 focus:outline-none transition"
+              />
+              <svg
+                className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Minimalist Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-6 no-scrollbar">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-4 py-2 rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap ${
+                  selectedCategory === cat.id
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* ─── Grid danh sách món ăn ────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8">
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-xs font-semibold text-slate-500">
+            {filteredFood.length} địa điểm ẩm thực được tuyển chọn
+          </span>
+        </div>
+
+        {filteredFood.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto">
+            <p className="text-sm font-semibold text-slate-800">Không tìm thấy địa điểm phù hợp</p>
+            <p className="text-xs text-slate-500 mt-1">Vui lòng thử tìm kiếm theo từ khóa hoặc thể loại khác.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredFood.map((food) => (
+              <div
+                key={food.id}
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition duration-200 flex flex-col justify-between overflow-hidden group"
+              >
+                <div>
+                  {/* Ảnh đại diện sang xịn */}
+                  <div className="h-44 w-full relative overflow-hidden bg-slate-100">
+                    <img
+                      src={food.image}
+                      alt={food.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+
+                    {/* Tag thể loại */}
+                    <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs text-slate-800 text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-xs">
+                      {food.category}
+                    </span>
+
+                    {/* Điểm đánh giá */}
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-white">
+                      <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xs px-2 py-0.5 rounded-md text-xs font-bold">
+                        <span className="text-amber-400">★</span>
+                        <span>{food.rating}</span>
+                        <span className="text-white/60 font-normal text-[10px]">({food.reviewsCount})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chi tiết nội dung */}
+                  <div className="p-5">
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition">
+                      {food.name}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-700 mt-0.5">
+                      {food.dish}
+                    </p>
+
+                    <p className="text-xs text-slate-500 mt-2.5 line-clamp-2 leading-relaxed">
+                      {food.desc}
+                    </p>
+
+                    {/* Tags nhỏ */}
+                    <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                      {food.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md font-medium"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Metadata: Giờ & Giá */}
+                    <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                      <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span>{food.price}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+                        </svg>
+                        <span>{food.time}</span>
+                      </div>
+                    </div>
+
+                    {/* Địa chỉ */}
+                    <div className="flex items-start gap-1.5 text-[11px] text-slate-500 mt-2">
+                      <svg className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="truncate">{food.address}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Action Button */}
+                <div className="p-5 pt-0">
+                  <button
+                    onClick={() => onOpenMap(food.poiId)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-800 bg-white hover:bg-slate-900 text-slate-800 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <span>Xem vị trí & chỉ đường</span>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

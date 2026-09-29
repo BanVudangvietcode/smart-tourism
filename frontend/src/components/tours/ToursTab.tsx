@@ -7,215 +7,244 @@ interface ToursTabProps {
 }
 
 interface TourStep {
-  name: string;
+  title: string;
   desc: string;
-  timeSpent: string;
+  duration: string;
   poiId: string;
+  address?: string;
 }
 
 interface TourItem {
   id: string;
   title: string;
   tagline: string;
-  desc: string;
-  badge: string;
-  color: string;
-  accentBg: string;
+  category: string;
+  image: string;
   totalTime: string;
   distance: string;
-  cost: string;
-  emoji: string;
+  estimatedCost: string;
+  suitableFor: string;
   steps: TourStep[];
 }
 
 export default function ToursTab({ onOpenMap }: ToursTabProps) {
   const toursList: TourItem[] = [
     {
-      id: 'tour-history',
-      title: 'Hành trình Di Sản & Ký Ức Sài Gòn',
-      tagline: 'Từ thương cảng thế kỷ 19 đến dấu ấn lịch sử hào hùng',
-      desc: 'Tour đi bộ hoặc xe máy qua các công trình trăm tuổi, tìm hiểu về ngày Bác Hồ ra đi tìm đường cứu nước và kiến trúc tôn giáo độc đáo.',
-      badge: 'Lịch sử & Văn hóa',
-      color: 'from-amber-600 to-rose-600',
-      accentBg: 'bg-amber-50 text-amber-700 border-amber-200',
-      totalTime: '2 - 3 giờ',
-      distance: '2.5 km',
-      cost: 'Miễn phí / Vé bảo tàng 30k',
-      emoji: '🏛️',
+      id: 'tour-heritage',
+      title: 'Dấu ấn Di sản & Ký ức Sài Gòn',
+      tagline: 'Khám phá các công trình thế kỷ bên bờ sông Sài Gòn và kiến trúc thuộc địa.',
+      category: 'Lịch sử & Kiến trúc',
+      image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1200&q=80',
+      totalTime: 'Khoảng 2.5 giờ',
+      distance: '2.4 km',
+      estimatedCost: 'Miễn phí (vé bảo tàng 30.000đ)',
+      suitableFor: 'Đi bộ hoặc xe máy, gia đình, người yêu lịch sử',
       steps: [
         {
-          name: 'Bến Nhà Rồng (Bảo tàng Hồ Chí Minh)',
-          desc: 'Chiêm ngưỡng kiến trúc Pháp cổ kính bên sông Sài Gòn và tìm hiểu dấu ấn lịch sử năm 1911.',
-          timeSpent: '60 phút',
+          title: 'Bến Nhà Rồng (Bảo tàng Hồ Chí Minh)',
+          desc: 'Công trình xây dựng năm 1863 mang dấu ấn kiến trúc Đông Dương, nơi lưu giữ tư liệu về hành trình tìm đường cứu nước.',
+          duration: '60 phút',
           poiId: 'ben-nha-rong',
+          address: '01 Nguyễn Tất Thành, Phường 12',
         },
         {
-          name: 'Cầu Mống lịch sử',
-          desc: 'Cây cầu thép mạ xanh cổ kính do kỹ sư người Pháp thiết kế, nối liền Quận 1 và Quận 4.',
-          timeSpent: '30 phút',
+          title: 'Cầu Mống lịch sử',
+          desc: 'Cây cầu đi bộ bằng thép cổ nhất thành phố nối Quận 1 và Quận 4, xây dựng cuối thế kỷ 19 bởi kỹ sư Gustave Eiffel.',
+          duration: '30 phút',
           poiId: 'cau-mong',
+          address: 'Bến Vân Đồn, giáp Kênh Bến Nghé',
         },
         {
-          name: 'Nhà thờ Xóm Chiếu',
-          desc: 'Trung tâm sinh hoạt tôn giáo lâu đời của người dân bản xứ với nét đẹp uy nghiêm trầm mặc.',
-          timeSpent: '45 phút',
+          title: 'Nhà thờ Xóm Chiếu',
+          desc: 'Ngôi thánh đường cổ kính giữa khu dân cư lâu đời của Quận 4 với kiến trúc thanh bình và cổ kính.',
+          duration: '45 phút',
           poiId: 'xom-chieu',
+          address: 'Nguyễn Tất Thành, Phường 13',
         },
       ],
     },
     {
-      id: 'tour-food',
-      title: 'Food Tour "Ăn sập Quận 4" về đêm',
-      tagline: 'Thiên đường ẩm thực đường phố: Phá lấu, Mì hến & Phố Ốc',
-      desc: 'Tuyến tour ẩm thực được thiết kế cho các tín đồ mê ăn vặt từ xế chiều tới đêm muộn, thưởng thức đủ các món đặc sản trứ danh.',
-      badge: 'Ẩm thực & Trải nghiệm',
-      color: 'from-rose-500 to-orange-600',
-      accentBg: 'bg-rose-50 text-rose-700 border-rose-200',
-      totalTime: '3 giờ',
+      id: 'tour-food-trail',
+      title: 'Hành trình Ẩm thực Đường phố Chiều Tối',
+      tagline: 'Oanh tạc các món ăn vặt trứ danh từ Chợ Xóm Chiếu đến Phố Ốc Vĩnh Khánh.',
+      category: 'Ẩm thực & Đời sống',
+      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+      totalTime: 'Khoảng 3 giờ',
       distance: '1.8 km',
-      cost: '100.000đ - 250.000đ / người',
-      emoji: '🍲',
+      estimatedCost: '100.000đ - 200.000đ / người',
+      suitableFor: 'Nhóm bạn, các tín đồ ẩm thực đường phố',
       steps: [
         {
-          name: 'Khu ẩm thực Chợ Xóm Chiếu (Chợ 200)',
-          desc: 'Khởi động với phá lấu bò nóng hổi chấm bánh mì và tô mì ốc hến chua cay đậm vị.',
-          timeSpent: '45 phút',
+          title: 'Khu ẩm thực Chợ Xóm Chiếu (Chợ 200)',
+          desc: 'Khởi động buổi xế chiều với món phá lấu bò nước dừa nóng hổi và tô mì ốc hến chua cay đậm vị.',
+          duration: '45 phút',
           poiId: 'cho-200',
+          address: 'Hẻm 200 Xóm Chiếu',
         },
         {
-          name: 'Phố Ốc Vĩnh Khánh xuyên đêm',
-          desc: 'Ngập tràn tiếng xèo xèo của chảo ốc mỡ hành tỏi ớt, nhâm nhi các món hải sản tươi sống.',
-          timeSpent: '90 phút',
+          title: 'Phố Ốc Vĩnh Khánh',
+          desc: 'Thưởng thức hải sản tươi sống và không khí ẩm thực đêm nhộn nhịp đặc trưng bậc nhất thành phố.',
+          duration: '90 phút',
           poiId: 'vinh-khanh',
+          address: 'Trục đường Vĩnh Khánh',
         },
         {
-          name: 'Tráng miệng Chè Hà Ký & Nước mía sầu riêng',
-          desc: 'Giải nhiệt với bát chè thanh mát hoặc ly nước mía thơm béo trước khi kết thúc tour.',
-          timeSpent: '30 phút',
+          title: 'Tráng miệng chè & ngắm phố đêm',
+          desc: 'Kết thúc chuyến dạo chơi với chén chè thanh mát hoặc ly nước mía sầu riêng mát lạnh.',
+          duration: '30 phút',
           poiId: 'cho-200',
+          address: 'Khu ẩm thực đêm Xóm Chiếu',
         },
       ],
     },
     {
-      id: 'tour-sunset',
-      title: 'Ngắm Hoàng Hôn Ven Kênh Bến Nghé',
-      tagline: 'Lộng gió chiều tà, ngắm nhìn skyline Quận 1 lung linh',
-      desc: 'Tuyến đi dạo hoặc đạp xe thư giãn nhất Quận 4, hít thở gió sông trong lành và ngắm thành phố lên đèn.',
-      badge: 'Thư giãn & Check-in',
-      color: 'from-blue-600 to-teal-500',
-      accentBg: 'bg-blue-50 text-blue-700 border-blue-200',
-      totalTime: '1.5 giờ',
-      distance: '3.2 km',
-      cost: 'Chi phí cà phê (30k - 50k)',
-      emoji: '🌅',
+      id: 'tour-sunset-walk',
+      title: 'Tản bộ Chiều Hoàng hôn Ven Kênh Bến Nghé',
+      tagline: 'Đón gió sông trong lành và ngắm nhìn toàn cảnh trung tâm thành phố lên đèn.',
+      category: 'Thư giãn & Dạo mát',
+      image: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
+      totalTime: 'Khoảng 1.5 giờ',
+      distance: '3.0 km',
+      estimatedCost: 'Chi phí tự do (cà phê bờ sông)',
+      suitableFor: 'Cặp đôi, đi dạo một mình, chụp ảnh phong cảnh',
       steps: [
         {
-          name: 'Dạo mát Bến Vân Đồn',
-          desc: 'Tuyến đường ven sông rợp bóng cây xanh nhìn thẳng sang tháp tài chính Bitexco.',
-          timeSpent: '40 phút',
+          title: 'Công viên ven sông Bến Vân Đồn',
+          desc: 'Đi dạo dưới hàng cây xanh mát dọc kênh Bến Nghé, ngắm các tòa cao ốc trung tâm phía bờ Quận 1.',
+          duration: '45 phút',
           poiId: 'ben-van-don',
+          address: 'Tuyến Bến Vân Đồn',
         },
         {
-          name: 'Check-in đón hoàng hôn trên Cầu Mống',
-          desc: 'Điểm chụp ảnh sống ảo "quốc dân" của giới trẻ Sài Gòn mỗi buổi chiều tà.',
-          timeSpent: '35 phút',
+          title: 'Ngắm hoàng hôn từ Cầu Mống',
+          desc: 'Thời khắc thành phố lên đèn phản chiếu trên mặt nước là góc ảnh check-in được yêu thích nhất.',
+          duration: '45 phút',
           poiId: 'cau-mong',
+          address: 'Cầu Mống nối Q1 - Q4',
         },
       ],
     },
   ];
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-[#F8FAFC] pb-28 lg:pb-12 pt-16">
-      {/* ─── Hero Section ────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-8 py-8 shadow-sm relative overflow-hidden">
-        <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="max-w-4xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md mb-2">
-            <span>🗺️</span> Lịch trình gợi ý có sẵn
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+    <div className="w-full h-full overflow-y-auto bg-slate-50 pb-28 lg:pb-12 pt-16">
+      {/* ─── Clean Header ────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-8">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            Lịch trình được tuyển chọn
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Tuyến Tour Khám Phá Quận 4
           </h1>
-          <p className="text-xs sm:text-sm text-indigo-100 mt-1 max-w-xl">
-            Lịch trình được tối ưu hóa theo thứ tự vị trí địa lý, giúp bạn tiết kiệm thời gian di chuyển và trải nghiệm trọn vẹn nhất.
+          <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+            Các lộ trình tham quan được sắp xếp logic theo thứ tự địa lý, giúp bạn tối ưu thời gian di chuyển và trải nghiệm trọn vẹn nét văn hóa bản địa.
           </p>
         </div>
       </div>
 
-      {/* ─── Danh sách các Tour ───────────────────────────────── */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 space-y-8">
-        {toursList.map((tour, tourIndex) => (
+      {/* ─── Danh sách Tour ──────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+        {toursList.map((tour, index) => (
           <div
             key={tour.id}
-            className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition duration-300 overflow-hidden"
+            className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition duration-200 overflow-hidden"
           >
-            {/* Header của Tour */}
-            <div className={`p-6 sm:p-7 bg-gradient-to-r ${tour.color} text-white relative`}>
-              <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/20">
-                  {tour.badge}
+            {/* Tour Header Banner with Real Photo */}
+            <div className="relative h-60 sm:h-72 w-full overflow-hidden bg-slate-900">
+              <img
+                src={tour.image}
+                alt={tour.title}
+                className="w-full h-full object-cover opacity-85 hover:scale-102 transition duration-500"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent pointer-events-none" />
+
+              {/* Tag & Index Badge */}
+              <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                <span className="bg-white/95 backdrop-blur-xs text-slate-900 text-xs font-semibold px-3 py-1 rounded-md shadow-xs">
+                  {tour.category}
                 </span>
-                <span className="text-xs font-bold text-white/90">Tour #{tourIndex + 1}</span>
+                <span className="bg-black/40 backdrop-blur-xs text-white text-xs font-medium px-2.5 py-1 rounded-md">
+                  Lộ trình #{index + 1}
+                </span>
               </div>
 
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-3xl sm:text-4xl">{tour.emoji}</span>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black leading-tight">{tour.title}</h2>
-                  <p className="text-xs sm:text-sm text-white/80 mt-1 font-medium">{tour.tagline}</p>
-                </div>
-              </div>
-
-              {/* Thông số nhanh */}
-              <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-white/15 text-center text-xs">
-                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2">
-                  <p className="text-[10px] text-white/70">Thời gian</p>
-                  <p className="font-extrabold text-sm mt-0.5">{tour.totalTime}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2">
-                  <p className="text-[10px] text-white/70">Quãng đường</p>
-                  <p className="font-extrabold text-sm mt-0.5">{tour.distance}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2">
-                  <p className="text-[10px] text-white/70">Chi phí dự kiến</p>
-                  <p className="font-extrabold text-xs sm:text-sm mt-0.5 truncate">{tour.cost}</p>
-                </div>
+              {/* Title & Tagline in banner */}
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+                  {tour.title}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-200 mt-1 line-clamp-1">
+                  {tour.tagline}
+                </p>
               </div>
             </div>
 
-            {/* Thân thẻ: Danh sách các chặng dừng */}
-            <div className="p-6 sm:p-7">
-              <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-5">
-                Lịch trình chi tiết từng điểm dừng
+            {/* Tour Overview Stats Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 bg-slate-50/70 border-b border-slate-100 text-xs text-slate-600">
+              <div>
+                <span className="text-[11px] text-slate-400 block font-medium">Thời gian</span>
+                <span className="font-semibold text-slate-800 text-sm mt-0.5 block">{tour.totalTime}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block font-medium">Quãng đường</span>
+                <span className="font-semibold text-slate-800 text-sm mt-0.5 block">{tour.distance}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block font-medium">Dự trù chi phí</span>
+                <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate">{tour.estimatedCost}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block font-medium">Phù hợp</span>
+                <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate">{tour.suitableFor}</span>
+              </div>
+            </div>
+
+            {/* Tour Steps Timeline */}
+            <div className="p-6 sm:p-8">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
+                Các điểm dừng trên tuyến ({tour.steps.length} điểm)
               </h3>
 
-              <div className="space-y-6 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-gray-200">
+              <div className="space-y-6 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200">
                 {tour.steps.map((step, sIdx) => (
                   <div key={sIdx} className="relative flex items-start gap-4">
-                    {/* Số thứ tự tròn */}
-                    <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 z-10 shadow-md shadow-blue-500/30">
+                    {/* Circle Node */}
+                    <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0 z-10 shadow-xs">
                       {sIdx + 1}
                     </div>
 
-                    {/* Nội dung điểm đến */}
-                    <div className="flex-1 bg-gray-50 hover:bg-blue-50/50 rounded-2xl p-4 border border-gray-100 transition">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <h4 className="font-bold text-gray-900 text-sm">{step.name}</h4>
-                        <span className="text-[11px] font-semibold text-blue-600 bg-white px-2 py-0.5 rounded-lg border border-blue-100">
-                          ⏱️ {step.timeSpent}
+                    {/* Step Card */}
+                    <div className="flex-1 bg-white border border-slate-200/80 rounded-xl p-4 hover:border-slate-300 transition">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          {step.title}
+                        </h4>
+                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded self-start sm:self-auto">
+                          Dừng chân {step.duration}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{step.desc}</p>
 
-                      <div className="mt-2.5 flex justify-end">
+                      {step.address && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {step.address}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                        {step.desc}
+                      </p>
+
+                      <div className="mt-3 flex justify-end">
                         <button
                           onClick={() => onOpenMap(step.poiId)}
-                          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                         >
-                          <span>Xem vị trí này trên bản đồ</span>
-                          <span>→</span>
+                          <span>Xem vị trí này</span>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -223,17 +252,19 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
                 ))}
               </div>
 
-              {/* Nút bấm Khám phá Tour */}
-              <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between gap-4">
-                <p className="text-xs text-gray-400 hidden sm:block">
-                  Bản đồ sẽ tự động định vị điểm dừng đầu tiên
+              {/* Bottom Actions */}
+              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-slate-500">
+                  Nhấn bắt đầu để mở bản đồ và tự động định vị chặng dừng đầu tiên.
                 </p>
                 <button
                   onClick={() => onOpenMap(tour.steps[0].poiId)}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm py-3 px-6 rounded-2xl shadow-lg shadow-blue-500/25 transition-all hover:scale-102 active:scale-98 flex items-center justify-center gap-2 cursor-pointer ml-auto"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>🚀</span>
-                  <span>Bắt đầu khám phá tour này</span>
+                  <span>Bắt đầu lộ trình</span>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </button>
               </div>
             </div>

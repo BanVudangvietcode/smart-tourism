@@ -8,17 +8,25 @@ interface PlacesTabProps {
   onOpenMap: (poiId?: string) => void;
 }
 
+// Hình ảnh thực tế chất lượng cao cho từng điểm đến
+const POI_IMAGES: Record<string, string> = {
+  'ben-nha-rong': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=800&q=80',
+  'vinh-khanh': 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=800&q=80',
+  'cho-200': 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80',
+  'xom-chieu': 'https://images.unsplash.com/photo-1548625361-16a75f10b2bb?auto=format&fit=crop&w=800&q=80',
+  'cau-mong': 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=800&q=80',
+  'ben-van-don': 'https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=800&q=80',
+};
+
 export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Lấy danh sách thể loại duy nhất
   const categories = useMemo(() => {
     const set = new Set(POI_LIST.map((p) => p.category));
     return ['all', ...Array.from(set)];
   }, []);
 
-  // Lọc danh sách điểm đến
   const filteredPlaces = useMemo(() => {
     return POI_LIST.filter((p) => {
       const matchSearch =
@@ -31,140 +39,133 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
   }, [search, selectedCategory]);
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-[#F8FAFC] pb-28 lg:pb-12 pt-16">
-      {/* ─── Header & Search ────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-6 shadow-sm">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="w-full h-full overflow-y-auto bg-slate-50 pb-28 lg:pb-12 pt-16">
+      {/* ─── Clean Header ────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 mb-2">
-                <span>📍</span> Điểm đến Quận 4
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                Danh sách Địa điểm du lịch
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Khám phá Quận 4
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Địa Điểm Du Lịch & Di Tích
               </h1>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                Khám phá các di tích lịch sử, cảnh quan ven sông và điểm đến nổi tiếng
+              <p className="text-sm text-slate-600 mt-1 max-w-xl">
+                Tổng hợp các di tích lịch sử, công trình kiến trúc tôn giáo và địa điểm check-in ven sông nổi bật.
               </p>
             </div>
 
-            {/* Ô tìm kiếm */}
-            <div className="relative w-full md:w-72">
+            {/* Clean Search Input */}
+            <div className="relative w-full md:w-80">
               <input
                 type="text"
                 placeholder="Tìm tên địa điểm, di tích..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 focus:outline-none transition"
               />
               <svg
-                className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
+                className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
                 fill="none"
                 stroke="currentColor"
+                strokeWidth="2"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
           </div>
 
-          {/* Thanh phân loại (Category Pills) */}
-          <div className="flex items-center gap-2 overflow-x-auto pt-5 pb-1 no-scrollbar">
+          {/* Clean Category Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-6 no-scrollbar">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                className={`px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200/80 hover:text-gray-900'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
-                {cat === 'all' ? '✨ Tất cả' : cat}
+                {cat === 'all' ? 'Tất cả' : cat}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ─── Grid danh sách địa điểm ───────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Hiển thị {filteredPlaces.length} địa điểm
-          </p>
+      {/* ─── Places Grid ──────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8">
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-xs font-semibold text-slate-500">
+            {filteredPlaces.length} điểm đến được hiển thị
+          </span>
         </div>
 
         {filteredPlaces.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
-            <span className="text-4xl">🔍</span>
-            <p className="font-bold text-gray-700 mt-3 text-base">Không tìm thấy địa điểm nào</p>
-            <p className="text-xs text-gray-400 mt-1">Hãy thử tìm kiếm với từ khóa khác xem sao nhé!</p>
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-md mx-auto">
+            <p className="text-sm font-semibold text-slate-800">Không tìm thấy địa điểm nào</p>
+            <p className="text-xs text-slate-500 mt-1">Vui lòng thử lại với từ khóa khác.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPlaces.map((poi: MapPOI) => (
               <div
                 key={poi.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200 overflow-hidden flex flex-col justify-between group"
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition duration-200 overflow-hidden flex flex-col justify-between group"
               >
-                {/* Phần trên card */}
                 <div>
-                  {/* Header màu sắc theo danh mục */}
-                  <div
-                    className="h-28 relative flex items-center justify-center p-4 transition"
-                    style={{
-                      background: `linear-gradient(135deg, ${poi.color}25 0%, ${poi.color}10 100%)`,
-                    }}
-                  >
-                    <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-md border-2 border-white group-hover:scale-110 transition"
-                      style={{ backgroundColor: poi.color }}
-                    >
-                      {poi.emoji}
-                    </div>
+                  {/* Photo Container */}
+                  <div className="h-44 w-full relative overflow-hidden bg-slate-100">
+                    <img
+                      src={POI_IMAGES[poi.id] || 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=800&q=80'}
+                      alt={poi.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
-                    <span className="absolute top-3 right-3 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-gray-700 shadow-sm border border-gray-100">
+                    {/* Category Tag */}
+                    <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs text-slate-800 text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-xs">
                       {poi.category}
                     </span>
                   </div>
 
-                  {/* Nội dung chi tiết */}
+                  {/* Card Content */}
                   <div className="p-5">
-                    <h3 className="font-extrabold text-gray-900 text-base leading-snug group-hover:text-blue-600 transition">
+                    <h3 className="font-bold text-slate-900 text-base leading-snug group-hover:text-blue-600 transition">
                       {poi.name}
                     </h3>
-                    <p className="text-xs text-gray-500 mt-2 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
                       {poi.desc}
                     </p>
                   </div>
                 </div>
 
-                {/* Footer Action */}
-                <div className="px-5 pb-5 pt-0">
-                  <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
+                {/* Card Action */}
+                <div className="p-5 pt-0">
+                  <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                     <button
                       onClick={() => onOpenMap(poi.id)}
-                      className="flex-1 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-800 bg-white hover:bg-slate-900 text-slate-800 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <svg className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span>Xem trên bản đồ</span>
                     </button>
 
                     <button
                       onClick={() => onOpenMap(poi.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1 shadow-md shadow-blue-500/25 cursor-pointer"
-                      title="Chỉ đường đến đây"
+                      className="py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center cursor-pointer shadow-2xs"
+                      title="Chỉ đường tới đây"
                     >
-                      <span>🚀</span>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
                     </button>
                   </div>
                 </div>
