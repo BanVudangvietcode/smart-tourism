@@ -62,36 +62,6 @@ export const loginWithGoogle = async (idToken: string): Promise<AuthV1Response> 
   return res.json();
 };
 
-export const registerAccount = async (
-  email: string,
-  password: string,
-  displayName?: string,
-): Promise<AuthV1Response> => {
-  const res = await fetch(`${API_V1}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, displayName }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Lỗi đăng ký');
-  }
-  return res.json();
-};
-
-export const loginAccount = async (email: string, password: string): Promise<AuthV1Response> => {
-  const res = await fetch(`${API_V1}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Lỗi đăng nhập');
-  }
-  return res.json();
-};
-
 export const getMyProfile = async (token: string): Promise<UserProfile> => {
   const res = await fetch(`${API_V1}/users/me`, {
     headers: { Authorization: `Bearer ${token}` },

@@ -36,33 +36,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * Đăng ký tài khoản thành viên để lưu lịch sử, quán yêu thích và viết bình luận.
-     */
-    @PostMapping("/api/v1/auth/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        try {
-            AuthResponse response = authService.register(
-                    request.getEmail(), request.getPassword(), request.getDisplayName());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Đăng nhập tài khoản thành viên.
-     */
-    @PostMapping("/api/v1/auth/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        try {
-            AuthResponse response = authService.login(
-                    request.getEmail(), request.getPassword());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
 
     /**
      * Đăng nhập 1-chạm bằng tài khoản Google.
@@ -70,7 +43,7 @@ public class AuthController {
     @PostMapping("/api/v1/auth/oauth2/google")
     public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleOAuth2Request request) {
         try {
-            AuthResponse response = authService.loginWithGoogle(request.getIdToken());
+            AuthResponse response = authService.loginWithGoogle(request.getIdToken(), request.getDeviceId());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

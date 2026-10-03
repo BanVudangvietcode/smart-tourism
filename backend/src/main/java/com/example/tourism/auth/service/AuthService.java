@@ -10,8 +10,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.util.Collections;
 import java.util.Map;
@@ -25,10 +25,11 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
     private final GuestDeviceRepository guestDeviceRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Value("${google.oauth2.client-id:}")
     private String googleClientId;
+
+    private GoogleIdTokenVerifier googleVerifier;
 
     // Lưu trữ tạm thời mã OTP. Trong thực tế nên dùng Redis và set thời gian hết hạn (TTL).
     private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
@@ -39,6 +40,14 @@ public class AuthService {
         this.jwtUtils = jwtUtils;
         this.userRepository = userRepository;
         this.guestDeviceRepository = guestDeviceRepository;
+    }
+
+    @PostConstruct
+    public void initGoogleVerifier() {
+        this.googleVerifier = new GoogleIdTokenVerifier.Builder(
+                new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                .setAudience(Collections.singletonList(googleClientId))
+                .build();
     }
 
     // ──────────────────────────────────────────────
@@ -87,55 +96,6 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────
-    // Email/Password Register & Login
-    // ──────────────────────────────────────────────
-
-    /**
-     * Đăng ký tài khoản thành viên mới.
-     */
-    public AuthResponse register(String email, String password, String displayName) {
-        if (email == null || email.isBlank()) {
-            throw new RuntimeException("Email là bắt buộc.");
-        }
-        if (password == null || password.length() < 6) {
-            throw new RuntimeException("Mật khẩu phải có ít nhất 6 ký tự.");
-        }
-
-        // Check if email already exists
-        if (userRepository.findByEmail(email).isPresent()) {
-            throw new RuntimeException("Email đã được sử dụng.");
-        }
-
-        User user = new User();
-        user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(password));
-        user.setDisplayName(displayName != null ? displayName : email.split("@")[0]);
-        user.setProvider("local");
-        user.setRole("USER");
-        user = userRepository.save(user);
-
-        String token = jwtUtils.generateToken(user.getId(), user.getRole(), null);
-        return new AuthResponse(token, user.getId(), user.getEmail(),
-                user.getDisplayName(), user.getRole());
-    }
-
-    /**
-     * Đăng nhập bằng email và mật khẩu.
-     */
-    public AuthResponse login(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email hoặc mật khẩu không đúng."));
-
-        if (user.getPasswordHash() == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new RuntimeException("Email hoặc mật khẩu không đúng.");
-        }
-
-        String token = jwtUtils.generateToken(user.getId(), user.getRole(), null);
-        return new AuthResponse(token, user.getId(), user.getEmail(),
-                user.getDisplayName(), user.getRole());
-    }
-
-    // ──────────────────────────────────────────────
     // Google OAuth2
     // ──────────────────────────────────────────────
 
@@ -143,7 +103,7 @@ public class AuthService {
      * Đăng nhập 1-chạm bằng tài khoản Google.
      * Xác minh idToken với Google, tạo hoặc đăng nhập user.
      */
-    public AuthResponse loginWithGoogle(String idTokenString) {
+    public AuthResponse loginWithGoogle(String idTokenString, String deviceId) {
         GoogleIdToken.Payload payload = verifyGoogleToken(idTokenString);
 
         String googleSub = payload.getSubject();
@@ -157,7 +117,12 @@ public class AuthService {
                     // Check if a local account with same email exists -> link it
                     User existingByEmail = userRepository.findByEmail(email).orElse(null);
                     if (existingByEmail != null) {
-                        return existingByEmail;
+                        existingByEmail.setProvider("google");
+                        existingByEmail.setProviderId(googleSub);
+                        if (existingByEmail.getAvatarUrl() == null) {
+                            existingByEmail.setAvatarUrl(pictureUrl);
+                        }
+                        return userRepository.save(existingByEmail);
                     }
 
                     // Create new user
@@ -171,6 +136,17 @@ public class AuthService {
                     return userRepository.save(newUser);
                 });
 
+        // Migrate guest device data to Google user if deviceId is provided
+        if (deviceId != null && !deviceId.isBlank()) {
+            Long guestUserId = guestDeviceRepository.findUserIdByDeviceId(deviceId);
+            if (guestUserId != null && !guestUserId.equals(user.getId())) {
+                // Here you would migrate guest data (e.g. listening history, tours) to the new user.
+                // After migration, you can re-link the device to the new user:
+                // guestDeviceRepository.save(deviceId, "unknown", user.getId()); 
+                // For now, we leave the hook ready.
+            }
+        }
+
         String token = jwtUtils.generateToken(user.getId(), user.getRole(), null);
         return new AuthResponse(token, user.getId(), user.getEmail(),
                 user.getDisplayName(), user.getRole());
@@ -178,14 +154,9 @@ public class AuthService {
 
     private GoogleIdToken.Payload verifyGoogleToken(String idTokenString) {
         try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
-                    .setAudience(Collections.singletonList(googleClientId))
-                    .build();
-
-            GoogleIdToken idToken = verifier.verify(idTokenString);
+            GoogleIdToken idToken = this.googleVerifier.verify(idTokenString);
             if (idToken == null) {
-                throw new RuntimeException("Google ID Token không hợp lệ.");
+                throw new RuntimeException("Google ID Token không hợp lệ hoặc đã hết hạn.");
             }
             return idToken.getPayload();
         } catch (RuntimeException e) {

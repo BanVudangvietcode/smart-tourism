@@ -23,7 +23,7 @@ public class UserRepository {
         User user = new User();
         user.setId(rs.getLong("id"));
         user.setEmail(rs.getString("email"));
-        user.setPasswordHash(rs.getString("password_hash"));
+
         user.setDisplayName(rs.getString("display_name"));
         user.setAvatarUrl(rs.getString("avatar_url"));
         user.setProvider(rs.getString("provider"));
@@ -68,23 +68,22 @@ public class UserRepository {
     }
 
     private User insert(User user) {
-        String sql = "INSERT INTO users (email, password_hash, display_name, avatar_url, " +
+        String sql = "INSERT INTO users (email, display_name, avatar_url, " +
                      "provider, provider_id, spicy, vegetarian, no_seafood, role) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at, updated_at";
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at, updated_at";
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, user.getEmail());
-            ps.setString(2, user.getPasswordHash());
-            ps.setString(3, user.getDisplayName());
-            ps.setString(4, user.getAvatarUrl());
-            ps.setString(5, user.getProvider() != null ? user.getProvider() : "local");
-            ps.setString(6, user.getProviderId());
-            ps.setBoolean(7, user.isSpicy());
-            ps.setBoolean(8, user.isVegetarian());
-            ps.setBoolean(9, user.isNoSeafood());
-            ps.setString(10, user.getRole() != null ? user.getRole() : "USER");
+            ps.setString(2, user.getDisplayName());
+            ps.setString(3, user.getAvatarUrl());
+            ps.setString(4, user.getProvider() != null ? user.getProvider() : "local");
+            ps.setString(5, user.getProviderId());
+            ps.setBoolean(6, user.isSpicy());
+            ps.setBoolean(7, user.isVegetarian());
+            ps.setBoolean(8, user.isNoSeafood());
+            ps.setString(9, user.getRole() != null ? user.getRole() : "USER");
             return ps;
         }, keyHolder);
 
