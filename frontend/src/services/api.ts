@@ -1,6 +1,9 @@
-import { HealthStatus, AuthResponse, POI } from '@/types';
+import { HealthStatus, AuthResponse, AuthV1Response, UserProfile, POI } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : 'http://localhost:8080/api';
+const API_V1 = process.env.NEXT_PUBLIC_API_BASE_URL
+  ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`
+  : 'http://localhost:8080/api/v1';
 
 export const checkHealth = async (): Promise<HealthStatus> => {
   try {
@@ -43,3 +46,58 @@ export const verifyOtpAndLogin = async (phone: string, otp: string): Promise<Aut
   return { token: data.token, user: { id: 'user-id', phone: data.phone } };
 };
 
+
+// ─── V1 Auth API ─────────────────────────────────────
+
+export const loginWithGoogle = async (idToken: string): Promise<AuthV1Response> => {
+  const res = await fetch(`${API_V1}/auth/oauth2/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi đăng nhập Google');
+  }
+  return res.json();
+};
+
+export const registerAccount = async (
+  email: string,
+  password: string,
+  displayName?: string,
+): Promise<AuthV1Response> => {
+  const res = await fetch(`${API_V1}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, displayName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi đăng ký');
+  }
+  return res.json();
+};
+
+export const loginAccount = async (email: string, password: string): Promise<AuthV1Response> => {
+  const res = await fetch(`${API_V1}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi đăng nhập');
+  }
+  return res.json();
+};
+
+export const getMyProfile = async (token: string): Promise<UserProfile> => {
+  const res = await fetch(`${API_V1}/users/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error('Lỗi lấy hồ sơ');
+  }
+  return res.json();
+};

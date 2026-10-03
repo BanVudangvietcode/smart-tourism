@@ -1,8 +1,6 @@
 package com.example.tourism.auth.controller;
 
-import com.example.tourism.auth.dto.AuthResponse;
-import com.example.tourism.auth.dto.OtpRequest;
-import com.example.tourism.auth.dto.OtpVerifyRequest;
+import com.example.tourism.auth.dto.*;
 import com.example.tourism.auth.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,8 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // Cho phép frontend gọi API này
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
@@ -20,7 +17,71 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/request-otp")
+    // ──────────────────────────────────────────────
+    // V1 API: Guest / Register / Login / OAuth2
+    // ──────────────────────────────────────────────
+
+    /**
+     * Cấp JWT Token vô danh cho khách vừa mở app mà chưa cần đăng nhập.
+     * Giúp gán các sự kiện nghe audio, vị trí bước đi vào đúng thiết bị này.
+     */
+    @PostMapping("/api/v1/auth/guest-session")
+    public ResponseEntity<?> createGuestSession(@RequestBody GuestSessionRequest request) {
+        try {
+            AuthResponse response = authService.createGuestSession(
+                    request.getDeviceId(), request.getOs());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Đăng ký tài khoản thành viên để lưu lịch sử, quán yêu thích và viết bình luận.
+     */
+    @PostMapping("/api/v1/auth/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        try {
+            AuthResponse response = authService.register(
+                    request.getEmail(), request.getPassword(), request.getDisplayName());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Đăng nhập tài khoản thành viên.
+     */
+    @PostMapping("/api/v1/auth/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            AuthResponse response = authService.login(
+                    request.getEmail(), request.getPassword());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Đăng nhập 1-chạm bằng tài khoản Google.
+     */
+    @PostMapping("/api/v1/auth/oauth2/google")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleOAuth2Request request) {
+        try {
+            AuthResponse response = authService.loginWithGoogle(request.getIdToken());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // Legacy OTP API (kept for backward compatibility)
+    // ──────────────────────────────────────────────
+
+    @PostMapping("/api/auth/request-otp")
     public ResponseEntity<?> requestOtp(@RequestBody OtpRequest request) {
         try {
             authService.generateAndSendOtp(request.getPhone());
@@ -30,7 +91,7 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/verify-otp")
+    @PostMapping("/api/auth/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody OtpVerifyRequest request) {
         try {
             AuthResponse response = authService.verifyOtp(request.getPhone(), request.getOtp());

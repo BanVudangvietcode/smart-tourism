@@ -6,6 +6,7 @@ import HomePage from '@/components/home/HomePage';
 import PlacesTab from '@/components/places/PlacesTab';
 import FoodTab from '@/components/food/FoodTab';
 import ToursTab from '@/components/tours/ToursTab';
+import UserMenu from '@/components/auth/UserMenu';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -59,12 +60,15 @@ function MainApp() {
               </div>
             </div>
 
-            {/* Nút 3 gạch (Hamburger Menu) */}
-            <button className="bg-white/95 backdrop-blur-md p-2.5 rounded-2xl shadow-lg border border-white/60 text-gray-700 hover:bg-white transition cursor-pointer">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {/* Nút Đăng nhập / Avatar + Menu */}
+            <div className="flex items-center gap-2">
+              <UserMenu />
+              <button className="bg-white/95 backdrop-blur-md p-2.5 rounded-2xl shadow-lg border border-white/60 text-gray-700 hover:bg-white transition cursor-pointer">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
