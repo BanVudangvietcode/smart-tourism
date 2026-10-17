@@ -59,5 +59,46 @@ public class AudioController {
                         .body(bytes))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    /**
+     * POST /api/v1/audio/generate-from-text
+     * Body JSON: { poiId, title, transcript, voice?, zone? }
+     * Tự động chuyển nội dung văn bản kịch bản thành tệp âm thanh MP3 (Text-To-Speech) và lưu vào hệ thống.
+     */
+    @PostMapping("/generate-from-text")
+    public ResponseEntity<com.example.tourism.audio.dto.AudioCreateResponse> generateFromText(
+            @RequestBody com.example.tourism.audio.dto.AudioTextGenerateRequest request) {
+        com.example.tourism.audio.dto.AudioCreateResponse res = audioService.generateAudioFromText(request);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * POST /api/v1/audio/upload
+     * Multipart Form Data: file (MP3), poiId, title, transcript, voice?, zone?
+     * Cho phép quản trị viên hoặc người dùng tự tải lên tệp âm thanh MP3 tùy chỉnh.
+     */
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<com.example.tourism.audio.dto.AudioCreateResponse> uploadCustomAudio(
+            @RequestParam("poiId") Long poiId,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam("transcript") String transcript,
+            @RequestParam(value = "voice", required = false) String voice,
+            @RequestParam(value = "zone", required = false, defaultValue = "quan4") String zone,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) throws Exception {
+        com.example.tourism.audio.dto.AudioCreateResponse res = audioService.uploadCustomAudio(
+                poiId, title, transcript, voice, zone, file
+        );
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * POST /api/v1/audio
+     * Unified JSON endpoint: mặc định tạo âm thanh từ text
+     */
+    @PostMapping
+    public ResponseEntity<com.example.tourism.audio.dto.AudioCreateResponse> createAudio(
+            @RequestBody com.example.tourism.audio.dto.AudioTextGenerateRequest request) {
+        return generateFromText(request);
+    }
 }
 

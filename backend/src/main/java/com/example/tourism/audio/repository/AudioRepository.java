@@ -71,5 +71,37 @@ public class AudioRepository {
             return Optional.empty();
         }
     }
+
+    /**
+     * Thêm mới hoặc cập nhật bản ghi audio cho một POI (UPSERT dựa trên poi_id UNIQUE).
+     */
+    public Long upsertAudio(PoiAudio audio) {
+        String sql = """
+                INSERT INTO poi_audios (poi_id, title, file_name, duration_seconds, file_size_bytes, voice, language, zone, transcript, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+                ON CONFLICT (poi_id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    file_name = EXCLUDED.file_name,
+                    duration_seconds = EXCLUDED.duration_seconds,
+                    file_size_bytes = EXCLUDED.file_size_bytes,
+                    voice = EXCLUDED.voice,
+                    language = EXCLUDED.language,
+                    zone = EXCLUDED.zone,
+                    transcript = EXCLUDED.transcript,
+                    updated_at = now()
+                RETURNING id
+                """;
+        return jdbcTemplate.queryForObject(sql, Long.class,
+                audio.getPoiId(),
+                audio.getTitle(),
+                audio.getFileName(),
+                audio.getDurationSeconds(),
+                audio.getFileSizeBytes(),
+                audio.getVoice() != null ? audio.getVoice() : "Nữ miền Nam (Truyền cảm)",
+                audio.getLanguage() != null ? audio.getLanguage() : "vi",
+                audio.getZone() != null ? audio.getZone() : "quan4",
+                audio.getTranscript()
+        );
+    }
 }
 

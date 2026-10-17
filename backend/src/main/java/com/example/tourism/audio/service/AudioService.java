@@ -13,13 +13,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -35,13 +38,23 @@ public class AudioService {
     private static final Duration AUDIO_META_CACHE_TTL = Duration.ofHours(1);
 
     private final AudioRepository audioRepository;
+    private final TtsService ttsService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
 
     public AudioService(AudioRepository audioRepository,
                         RedisTemplate<String, Object> redisTemplate,
                         ObjectMapper objectMapper) {
+        this(audioRepository, new TtsService(), redisTemplate, objectMapper);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AudioService(AudioRepository audioRepository,
+                        TtsService ttsService,
+                        RedisTemplate<String, Object> redisTemplate,
+                        ObjectMapper objectMapper) {
         this.audioRepository = audioRepository;
+        this.ttsService = ttsService != null ? ttsService : new TtsService();
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
     }
@@ -330,6 +343,198 @@ public class AudioService {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
         return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
+    }
+
+    /**
+     * Tùy chọn 1: Tự động tạo file âm thanh MP3 từ văn bản kịch bản (Text-To-Speech).
+     */
+    public AudioCreateResponse generateAudioFromText(AudioTextGenerateRequest request) {
+        if (request == null || request.getPoiId() == null) {
+            throw new IllegalArgumentException("poiId không được để trống.");
+        }
+        if (request.getTranscript() == null || request.getTranscript().trim().isBlank()) {
+            throw new IllegalArgumentException("transcript không được để trống.");
+        }
+
+        String poiName = audioRepository.findPoiNameById(request.getPoiId())
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy địa điểm với ID: " + request.getPoiId()));
+
+        String title = (request.getTitle() != null && !request.getTitle().trim().isBlank())
+                ? request.getTitle().trim()
+                : "Thuyết minh " + poiName;
+
+        String transcript = request.getTranscript().trim();
+        String voice = (request.getVoice() != null && !request.getVoice().isBlank())
+                ? request.getVoice().trim()
+                : "Nữ miền Nam (Truyền cảm)";
+        String zone = (request.getZone() != null && !request.getZone().isBlank())
+                ? request.getZone().trim()
+                : "quan4";
+
+        // 1. Sinh âm thanh MP3 từ TTS
+        byte[] audioBytes = ttsService.generateSpeech(transcript, "vi");
+        String fileName = "poi_" + request.getPoiId() + ".mp3";
+
+        // 2. Lưu file vào ổ đĩa hệ thống
+        saveAudioBytes(fileName, audioBytes);
+
+        // 3. Đo đạc độ dài
+        int durationSeconds = ttsService.estimateDurationSeconds(transcript);
+        long fileSizeBytes = audioBytes.length;
+
+        // 4. Lưu vào Database (UPSERT)
+        PoiAudio audio = new PoiAudio();
+        audio.setPoiId(request.getPoiId());
+        audio.setTitle(title);
+        audio.setFileName(fileName);
+        audio.setDurationSeconds(durationSeconds);
+        audio.setFileSizeBytes(fileSizeBytes);
+        audio.setVoice(voice);
+        audio.setLanguage("vi");
+        audio.setZone(zone);
+        audio.setTranscript(transcript);
+
+        Long savedId = audioRepository.upsertAudio(audio);
+        audio.setId(savedId);
+
+        // 5. Xóa Redis cache để lấy metadata mới nhất
+        try {
+            redisTemplate.delete(AUDIO_META_CACHE_PREFIX + request.getPoiId());
+        } catch (Exception e) {
+            log.warn("Failed to evict Redis cache for audio {}", request.getPoiId());
+        }
+
+        List<SubtitleCue> cues = generateSubtitleCues(transcript, durationSeconds);
+
+        return new AudioCreateResponse(
+                savedId,
+                request.getPoiId(),
+                poiName,
+                title,
+                fileName,
+                durationSeconds,
+                formatDuration(durationSeconds),
+                fileSizeBytes,
+                formatFileSize(fileSizeBytes),
+                voice,
+                "vi",
+                zone,
+                transcript,
+                "/api/v1/audio/stream/" + request.getPoiId(),
+                "TEXT_TO_SPEECH",
+                cues
+        );
+    }
+
+    /**
+     * Tùy chọn 2: Người dùng tự tải lên file MP3 tùy chỉnh (Custom MP3 Upload).
+     */
+    public AudioCreateResponse uploadCustomAudio(Long poiId, String title, String transcript,
+                                                 String voice, String zone, MultipartFile file) throws IOException {
+        if (poiId == null) {
+            throw new IllegalArgumentException("poiId không được để trống.");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File âm thanh MP3 không được để trống.");
+        }
+        if (transcript == null || transcript.trim().isBlank()) {
+            throw new IllegalArgumentException("transcript không được để trống (dùng để hiện phụ đề và cho AI).");
+        }
+
+        String poiName = audioRepository.findPoiNameById(poiId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy địa điểm với ID: " + poiId));
+
+        String finalTitle = (title != null && !title.trim().isBlank())
+                ? title.trim()
+                : "Thuyết minh " + poiName;
+
+        String finalVoice = (voice != null && !voice.isBlank())
+                ? voice.trim()
+                : "Tự tải lên (Custom Audio)";
+
+        String finalZone = (zone != null && !zone.isBlank())
+                ? zone.trim()
+                : "quan4";
+
+        String cleanTranscript = transcript.trim();
+        byte[] audioBytes = file.getBytes();
+        String fileName = "poi_" + poiId + ".mp3";
+
+        // 1. Lưu file vào ổ đĩa hệ thống
+        saveAudioBytes(fileName, audioBytes);
+
+        // 2. Tính toán độ dài & dung lượng
+        int durationSeconds = Math.max(5, (int) Math.round((double) audioBytes.length / (128000.0 / 8.0)));
+        if (durationSeconds <= 5) {
+            durationSeconds = ttsService.estimateDurationSeconds(cleanTranscript);
+        }
+        long fileSizeBytes = audioBytes.length;
+
+        // 3. Lưu vào Database (UPSERT)
+        PoiAudio audio = new PoiAudio();
+        audio.setPoiId(poiId);
+        audio.setTitle(finalTitle);
+        audio.setFileName(fileName);
+        audio.setDurationSeconds(durationSeconds);
+        audio.setFileSizeBytes(fileSizeBytes);
+        audio.setVoice(finalVoice);
+        audio.setLanguage("vi");
+        audio.setZone(finalZone);
+        audio.setTranscript(cleanTranscript);
+
+        Long savedId = audioRepository.upsertAudio(audio);
+        audio.setId(savedId);
+
+        // 4. Xóa Redis cache
+        try {
+            redisTemplate.delete(AUDIO_META_CACHE_PREFIX + poiId);
+        } catch (Exception e) {
+            log.warn("Failed to evict Redis cache for audio {}", poiId);
+        }
+
+        List<SubtitleCue> cues = generateSubtitleCues(cleanTranscript, durationSeconds);
+
+        return new AudioCreateResponse(
+                savedId,
+                poiId,
+                poiName,
+                finalTitle,
+                fileName,
+                durationSeconds,
+                formatDuration(durationSeconds),
+                fileSizeBytes,
+                formatFileSize(fileSizeBytes),
+                finalVoice,
+                "vi",
+                finalZone,
+                cleanTranscript,
+                "/api/v1/audio/stream/" + poiId,
+                "DIRECT_UPLOAD",
+                cues
+        );
+    }
+
+    /**
+     * Lưu dữ liệu âm thanh nhị phân vào đĩa cứng (cả thư mục resources và target classes để server nhận ngay).
+     */
+    public void saveAudioBytes(String fileName, byte[] bytes) {
+        List<Path> targets = List.of(
+                Paths.get("backend/src/main/resources/audio/" + fileName),
+                Paths.get("backend/target/classes/audio/" + fileName),
+                Paths.get("src/main/resources/audio/" + fileName),
+                Paths.get("target/classes/audio/" + fileName)
+        );
+
+        for (Path path : targets) {
+            try {
+                Path parent = path.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+                Files.write(path, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                log.info("Saved audio file to {}", path.toAbsolutePath());
+            } catch (Exception ignored) {}
+        }
     }
 }
 

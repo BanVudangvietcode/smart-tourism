@@ -21,6 +21,7 @@ public class Poi {
     private String audioUrl;
     private String thumbnailUrl;
     private Long categoryId;
+    private String poiType;
     private double longitude;
     private double latitude;
     private LocalDateTime createdAt;
@@ -78,6 +79,9 @@ public class Poi {
 
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public String getPoiType() { return poiType != null ? poiType : "FOOD"; }
+    public void setPoiType(String poiType) { this.poiType = poiType; }
 
     public double getLongitude() { return longitude; }
     public void setLongitude(double longitude) { this.longitude = longitude; }

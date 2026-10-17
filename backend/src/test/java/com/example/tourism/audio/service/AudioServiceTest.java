@@ -179,5 +179,59 @@ class AudioServiceTest {
         Optional<byte[]> zipBytesOpt = audioService.generateOfflinePack("unknown_zone");
         assertThat(zipBytesOpt).isEmpty();
     }
+
+    @Test
+    void generateAudioFromText_savesAudioAndReturnsResponse() {
+        Long poiId = 3L;
+        when(audioRepository.findPoiNameById(poiId)).thenReturn(Optional.of("Bến Nhà Rồng"));
+        when(audioRepository.upsertAudio(any(PoiAudio.class))).thenReturn(15L);
+
+        com.example.tourism.audio.dto.AudioTextGenerateRequest request =
+                new com.example.tourism.audio.dto.AudioTextGenerateRequest(
+                        poiId, "Thuyết minh Bến Nhà Rồng",
+                        "Chào mừng quý khách đến với di tích lịch sử Bến Nhà Rồng nổi tiếng Quận 4.",
+                        "Nữ miền Nam (Trang trọng)", "quan4"
+                );
+
+        com.example.tourism.audio.dto.AudioCreateResponse res = audioService.generateAudioFromText(request);
+
+        assertThat(res).isNotNull();
+        assertThat(res.poiId()).isEqualTo(poiId);
+        assertThat(res.poiName()).isEqualTo("Bến Nhà Rồng");
+        assertThat(res.title()).isEqualTo("Thuyết minh Bến Nhà Rồng");
+        assertThat(res.creationMode()).isEqualTo("TEXT_TO_SPEECH");
+        assertThat(res.streamUrl()).isEqualTo("/api/v1/audio/stream/3");
+        assertThat(res.durationSeconds()).isGreaterThan(0);
+        assertThat(res.cues()).isNotEmpty();
+
+        verify(audioRepository, times(1)).upsertAudio(any(PoiAudio.class));
+    }
+
+    @Test
+    void uploadCustomAudio_savesFileAndReturnsResponse() throws Exception {
+        Long poiId = 4L;
+        when(audioRepository.findPoiNameById(poiId)).thenReturn(Optional.of("Nhà thờ Xóm Chiếu"));
+        when(audioRepository.upsertAudio(any(PoiAudio.class))).thenReturn(16L);
+
+        org.springframework.mock.web.MockMultipartFile mockFile =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "file", "custom.mp3", "audio/mpeg", new byte[16000]
+                );
+
+        com.example.tourism.audio.dto.AudioCreateResponse res = audioService.uploadCustomAudio(
+                poiId, "Thuyết minh Nhà thờ Xóm Chiếu",
+                "Nhà thờ Xóm Chiếu có lịch sử hơn 160 năm.",
+                "Tự thu âm", "quan4", mockFile
+        );
+
+        assertThat(res).isNotNull();
+        assertThat(res.poiId()).isEqualTo(poiId);
+        assertThat(res.poiName()).isEqualTo("Nhà thờ Xóm Chiếu");
+        assertThat(res.creationMode()).isEqualTo("DIRECT_UPLOAD");
+        assertThat(res.streamUrl()).isEqualTo("/api/v1/audio/stream/4");
+        assertThat(res.cues()).isNotEmpty();
+
+        verify(audioRepository, times(1)).upsertAudio(any(PoiAudio.class));
+    }
 }
 

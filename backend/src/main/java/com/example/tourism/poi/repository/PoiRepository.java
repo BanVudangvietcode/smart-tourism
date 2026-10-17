@@ -40,6 +40,7 @@ public class PoiRepository {
         p.setAudioUrl(rs.getString("audio_url"));
         p.setThumbnailUrl(rs.getString("thumbnail_url"));
         p.setCategoryId((Long) rs.getObject("category_id"));
+        p.setPoiType(rs.getString("poi_type") != null ? rs.getString("poi_type") : "FOOD");
         p.setLongitude(rs.getDouble("lng"));
         p.setLatitude(rs.getDouble("lat"));
         p.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
@@ -68,7 +69,7 @@ public class PoiRepository {
                 SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
-                       p.category_id, p.created_at, p.updated_at,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
                        ST_X(p.location::geometry) AS lng,
                        ST_Y(p.location::geometry) AS lat
                 FROM pois p
@@ -90,7 +91,7 @@ public class PoiRepository {
                 SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
-                       p.category_id, p.created_at, p.updated_at,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
                        ST_X(p.location::geometry) AS lng,
                        ST_Y(p.location::geometry) AS lat,
                        ST_Distance(p.location, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS distance_meters
@@ -125,7 +126,7 @@ public class PoiRepository {
                 SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
-                       p.category_id, p.created_at, p.updated_at,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
                        ST_X(p.location::geometry) AS lng,
                        ST_Y(p.location::geometry) AS lat
                 FROM pois p
@@ -166,7 +167,7 @@ public class PoiRepository {
                 SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
-                       p.category_id, p.created_at, p.updated_at,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
                        ST_X(p.location::geometry) AS lng,
                        ST_Y(p.location::geometry) AS lat
                 """);

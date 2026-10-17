@@ -89,5 +89,74 @@ class AudioControllerTest {
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audio_pack_quan4.zip\""))
                 .andExpect(content().bytes(dummyZip));
     }
+
+    @Test
+    void generateFromText_returnsCreatedAudio() throws Exception {
+        Long poiId = 3L;
+        com.example.tourism.audio.dto.AudioCreateResponse res =
+                new com.example.tourism.audio.dto.AudioCreateResponse(
+                        10L, poiId, "Bến Nhà Rồng", "Thuyết minh Bến Nhà Rồng",
+                        "poi_3.mp3", 85, "01:25", 510000, "498.05 KB",
+                        "Nữ miền Nam", "vi", "quan4",
+                        "Nội dung thuyết minh Bến Nhà Rồng",
+                        "/api/v1/audio/stream/3", "TEXT_TO_SPEECH", List.of()
+                );
+
+        when(audioService.generateAudioFromText(org.mockito.ArgumentMatchers.any())).thenReturn(res);
+
+        String jsonBody = """
+                {
+                    "poiId": 3,
+                    "title": "Thuyết minh Bến Nhà Rồng",
+                    "transcript": "Nội dung thuyết minh Bến Nhà Rồng",
+                    "voice": "Nữ miền Nam",
+                    "zone": "quan4"
+                }
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/audio/generate-from-text")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(jsonBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.poiId").value(poiId))
+                .andExpect(jsonPath("$.poiName").value("Bến Nhà Rồng"))
+                .andExpect(jsonPath("$.creationMode").value("TEXT_TO_SPEECH"))
+                .andExpect(jsonPath("$.streamUrl").value("/api/v1/audio/stream/3"));
+    }
+
+    @Test
+    void uploadCustomAudio_returnsCreatedAudio() throws Exception {
+        Long poiId = 4L;
+        com.example.tourism.audio.dto.AudioCreateResponse res =
+                new com.example.tourism.audio.dto.AudioCreateResponse(
+                        11L, poiId, "Nhà thờ Xóm Chiếu", "Thuyết minh Nhà thờ Xóm Chiếu",
+                        "poi_4.mp3", 75, "01:15", 450000, "439.45 KB",
+                        "Tự thu âm", "vi", "quan4",
+                        "Nội dung thuyết minh Nhà thờ Xóm Chiếu",
+                        "/api/v1/audio/stream/4", "DIRECT_UPLOAD", List.of()
+                );
+
+        when(audioService.uploadCustomAudio(
+                org.mockito.ArgumentMatchers.eq(poiId),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(res);
+
+        org.springframework.mock.web.MockMultipartFile file =
+                new org.springframework.mock.web.MockMultipartFile("file", "xomchieu.mp3", "audio/mpeg", new byte[1000]);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/audio/upload")
+                        .file(file)
+                        .param("poiId", "4")
+                        .param("title", "Thuyết minh Nhà thờ Xóm Chiếu")
+                        .param("transcript", "Nội dung thuyết minh Nhà thờ Xóm Chiếu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.poiId").value(poiId))
+                .andExpect(jsonPath("$.poiName").value("Nhà thờ Xóm Chiếu"))
+                .andExpect(jsonPath("$.creationMode").value("DIRECT_UPLOAD"));
+    }
 }
 

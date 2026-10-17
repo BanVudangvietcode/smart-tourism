@@ -138,6 +138,7 @@ public class PoiService {
         props.put("priceRangeMin", p.getPriceRangeMin());
         props.put("priceRangeMax", p.getPriceRangeMax());
         props.put("categoryName", categoryName);
+        props.put("poiType", p.getPoiType());
         if (distanceMeters != null) {
             props.put("distanceMeters", Math.round(distanceMeters * 100.0) / 100.0);
         }
@@ -153,6 +154,7 @@ public class PoiService {
                 p.getId(), p.getName(), p.getSlug(), p.getAddress(),
                 p.getThumbnailUrl(), p.getAvgRating(), p.getReviewCount(),
                 p.getPriceRangeMin(), p.getPriceRangeMax(), categoryName,
+                p.getPoiType(),
                 p.getLongitude(), p.getLatitude(),
                 distanceMeters != null ? Math.round(distanceMeters * 100.0) / 100.0 : null
         );
@@ -169,6 +171,7 @@ public class PoiService {
                 p.getOpeningHours(), p.getPriceRangeMin(), p.getPriceRangeMax(),
                 p.getAvgRating(), p.getReviewCount(), p.getPopularity(),
                 p.getAudioUrl(), p.getThumbnailUrl(), categoryName,
+                p.getPoiType(),
                 p.getLongitude(), p.getLatitude(), imageResponses
         );
     }

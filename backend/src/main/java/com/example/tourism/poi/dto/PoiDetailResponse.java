@@ -24,6 +24,7 @@ public record PoiDetailResponse(
         String audioUrl,
         String thumbnailUrl,
         String categoryName,
+        String poiType,
         double longitude,
         double latitude,
         List<PoiImageResponse> images

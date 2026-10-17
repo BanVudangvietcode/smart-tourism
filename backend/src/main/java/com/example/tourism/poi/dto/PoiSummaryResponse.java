@@ -16,6 +16,7 @@ public record PoiSummaryResponse(
         Integer priceRangeMin,
         Integer priceRangeMax,
         String categoryName,
+        String poiType,
         double longitude,
         double latitude,
         Double distanceMeters

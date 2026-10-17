@@ -90,6 +90,47 @@ public class AiService {
 
     private String buildAskSystemPrompt(AiContextRepository.PoiDetailContext poi, Double distanceMeters) {
         StringBuilder sb = new StringBuilder();
+        boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
+                || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
+                || "LANDMARK".equalsIgnoreCase(poi.poiType);
+
+        if (isLandmark) {
+            sb.append("Bạn là Hướng Dẫn Viên Du Lịch Văn Hóa & Lịch Sử Uyên Bác của Quận 4, TP.HCM.\n");
+            sb.append("Phong cách: Trang trọng, nhiệt tình, am hiểu sâu sắc về lịch sử, kiến trúc và văn hóa bản địa.\n");
+            sb.append("Dưới đây là dữ liệu thực tế đã được xác thực về địa điểm tham quan / danh lam này:\n");
+            sb.append("- Tên địa điểm: ").append(poi.name).append(" (Loại: ").append(poi.poiType).append(")\n");
+            sb.append("- Địa chỉ: ").append(poi.address).append("\n");
+            sb.append("- Giờ mở cửa tham quan: ").append(poi.openingHours).append("\n");
+            if (poi.priceMin != null && poi.priceMin > 0) {
+                sb.append(String.format(" - Giá vé tham quan: %,d đ\n", poi.priceMin));
+            } else {
+                sb.append("- Giá vé: Miễn phí vào cổng (Free entry)\n");
+            }
+            sb.append("- Đánh giá: ").append(poi.rating).append(" sao\n");
+
+            if (distanceMeters != null) {
+                sb.append(String.format(Locale.US, "- Khoảng cách hiện tại của du khách: %.0f mét\n", distanceMeters));
+            }
+
+            if (poi.audioTranscript != null && !poi.audioTranscript.isBlank()) {
+                sb.append("- Thuyết minh lịch sử & văn hóa chi tiết:\n").append(poi.audioTranscript).append("\n");
+            }
+
+            if (poi.dishes != null && !poi.dishes.isEmpty()) {
+                sb.append("- Món ăn / Đồ chay phục vụ tại đây:\n");
+                for (AiContextRepository.DishSummary d : poi.dishes) {
+                    sb.append(String.format("  * %s (Giá: %,d %s)\n", d.name, d.price, d.unit));
+                }
+            }
+
+            sb.append("\nQuy tắc trả lời:\n");
+            sb.append("1. Trả lời trực tiếp vào câu hỏi, nêu bật giá trị lịch sử, kiến trúc hoặc nét đẹp văn hóa.\n");
+            sb.append("2. Nếu khách hỏi về viếng thăm, hãy nhắc nhở trang phục lịch sự (quần dài, áo có tay) và giữ trang nghiêm khi vào chùa/nhà thờ.\n");
+            sb.append("3. Gợi ý các góc chụp ảnh đẹp, thời điểm ngắm hoàng hôn hoặc mẹo tham quan hữu ích nếu phù hợp.\n");
+            return sb.toString();
+        }
+
+        // Ẩm thực đường phố
         sb.append("Bạn là Trợ lý Ảo Du Lịch & Ẩm Thực Thông Minh của Phố Ẩm Thực Quận 4, TP.HCM.\n");
         sb.append("Phong cách: Thân thiện, hào sảng, hiếu khách đúng chất người Sài Gòn, am hiểu ẩm thực sâu sắc và trả lời cô đọng, hữu ích.\n");
         sb.append("Dưới đây là dữ liệu thực tế đã được xác thực về quán ăn:\n");
@@ -124,6 +165,27 @@ public class AiService {
 
     private String generateFallbackAnswer(AiContextRepository.PoiDetailContext poi, String question, Double distanceMeters) {
         String qLower = question.toLowerCase(Locale.ROOT);
+        boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
+                || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
+                || "LANDMARK".equalsIgnoreCase(poi.poiType);
+
+        if (isLandmark) {
+            if (qLower.contains("mở cửa") || qLower.contains("giờ")) {
+                return String.format("%s mở cửa vào khung giờ: %s. Bạn nên sắp xếp thời gian đến vào ban ngày để có ánh sáng đẹp nhất nhé!",
+                        poi.name, poi.openingHours);
+            }
+            if (qLower.contains("trang phục") || qLower.contains("mặc gì") || qLower.contains("quy định")) {
+                return String.format("Khi tham quan %s, bạn vui lòng mặc trang phục lịch sự (quần dài hoặc váy dài quá gối, áo có tay), tháo nón và giữ gìn trật tự trang nghiêm nơi tôn nghiêm nhé!",
+                        poi.name);
+            }
+            if (qLower.contains("lịch sử") || qLower.contains("kiến trúc") || qLower.contains("xây dựng") || qLower.contains("năm nào")) {
+                if (poi.audioTranscript != null && !poi.audioTranscript.isBlank()) {
+                    return poi.audioTranscript;
+                }
+            }
+            return String.format("Chào bạn! %s là địa điểm văn hóa nổi bật tại %s. %s Chúc bạn có một chuyến tham quan đầy ý nghĩa!",
+                    poi.name, poi.address, (poi.description != null ? poi.description : ""));
+        }
 
         if (qLower.contains("mở cửa") || qLower.contains("giờ")) {
             return String.format("%s mở cửa vào khung giờ: %s. Bạn nên đến sớm một chút vào buổi tối để chọn được chỗ ngồi ưng ý nhé!",
@@ -151,7 +213,18 @@ public class AiService {
     }
 
     private List<String> generateFollowUps(AiContextRepository.PoiDetailContext poi) {
+        boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
+                || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
+                || "LANDMARK".equalsIgnoreCase(poi.poiType);
+
         List<String> list = new ArrayList<>();
+        if (isLandmark) {
+            list.add("Địa điểm này có quy định trang phục gì không?");
+            list.add("Thời điểm lý tưởng nhất trong ngày để ghé thăm?");
+            list.add("Ý nghĩa lịch sử và nét kiến trúc nơi đây có gì đặc biệt?");
+            return list;
+        }
+
         list.add("Món nào là Best-seller nên thử nhất?");
         list.add("Quán mở cửa đến mấy giờ?");
         list.add("Có món nào không cay cho người không ăn được cay?");

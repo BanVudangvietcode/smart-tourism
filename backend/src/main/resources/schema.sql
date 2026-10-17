@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS pois (
     audio_url       TEXT,
     thumbnail_url   TEXT,
     category_id     BIGINT REFERENCES categories(id),
+    poi_type        VARCHAR(20) NOT NULL DEFAULT 'FOOD', -- 'FOOD', 'LANDMARK', 'RELIGIOUS', 'HISTORICAL'
     location        GEOGRAPHY(Point, 4326) NOT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     updated_at      TIMESTAMP NOT NULL DEFAULT now()
@@ -80,16 +81,22 @@ CREATE INDEX IF NOT EXISTS idx_pois_name_fts ON pois USING GIN (to_tsvector('sim
 -- Category filter
 CREATE INDEX IF NOT EXISTS idx_pois_category ON pois(category_id);
 
+-- POI Type filter
+CREATE INDEX IF NOT EXISTS idx_pois_type ON pois(poi_type);
+
 -- District/ward filter
 CREATE INDEX IF NOT EXISTS idx_pois_district_ward ON pois(district, ward);
 
 -- Seed categories
-INSERT INTO categories (name, slug, sort_order) VALUES
-    ('Ốc & Hải sản',       'oc-hai-san',        1),
-    ('Ăn vặt chợ 200',     'an-vat-cho-200',     2),
-    ('Phá lấu',            'pha-lau',            3),
-    ('Món nước',            'mon-nuoc',           4),
-    ('Cà phê hoài niệm',   'ca-phe-hoai-niem',   5)
+INSERT INTO categories (id, name, slug, sort_order) VALUES
+    (1, 'Ốc & Hải sản',        'oc-hai-san',        1),
+    (2, 'Ăn vặt chợ 200',      'an-vat-cho-200',     2),
+    (3, 'Phá lấu',             'pha-lau',            3),
+    (4, 'Món nước',             'mon-nuoc',           4),
+    (5, 'Cà phê hoài niệm',    'ca-phe-hoai-niem',   5),
+    (6, 'Di tích & Lịch sử',   'di-tich-lich-su',   6),
+    (7, 'Chùa & Nhà thờ',      'chua-nha-tho',      7),
+    (8, 'Cảnh quan & Check-in', 'canh-quan-checkin', 8)
 ON CONFLICT (slug) DO NOTHING;
 
 -- ============================================================
@@ -141,21 +148,45 @@ CREATE INDEX IF NOT EXISTS idx_dishes_category ON dishes(menu_category_id);
 CREATE INDEX IF NOT EXISTS idx_dishes_signature ON dishes(is_signature);
 CREATE INDEX IF NOT EXISTS idx_dish_images_dish ON dish_images(dish_id);
 
--- Seed POIs (Quán Ốc Oanh, Phá Lấu Cô Thảo)
-INSERT INTO pois (id, name, slug, description, address, district, ward, phone, opening_hours, price_range_min, price_range_max, avg_rating, review_count, popularity, audio_url, thumbnail_url, category_id, location)
+-- Seed POIs (Ẩm thực & Danh lam thắng cảnh Quận 4)
+INSERT INTO pois (id, name, slug, poi_type, description, address, district, ward, phone, opening_hours, price_range_min, price_range_max, avg_rating, review_count, popularity, audio_url, thumbnail_url, category_id, location)
 VALUES
-    (1, 'Quán Ốc Oanh', 'quan-oc-oanh',
+    (1, 'Quán Ốc Oanh', 'quan-oc-oanh', 'FOOD',
      'Quán ốc nức tiếng phố ẩm thực Vĩnh Khánh với đa dạng các món ốc chảo thơm lừng, sốt trứng muối và bơ tỏi đặc trưng.',
      '534 Vĩnh Khánh', 'Quận 4', 'Phường 8', '0903123456', '15:00 - 23:00', 50000, 200000, 4.6, 320, 95,
      'https://cdn.example.com/audio/oc-oanh-guide.mp3',
      'https://images.unsplash.com/photo-1544025162-d76694265947?w=800', 1,
      ST_SetSRID(ST_MakePoint(106.7025, 10.7612), 4326)::geography),
-    (2, 'Phá Lấu Bò Cô Thảo', 'pha-lau-bo-co-thao',
+    (2, 'Phá Lấu Bò Cô Thảo', 'pha-lau-bo-co-thao', 'FOOD',
      'Phá lấu nước dừa béo thơm đậm đà, nước chấm tắc me ớt chua cay chuẩn vị chợ 200 truyền thống.',
      '243/29 Tôn Đản', 'Quận 4', 'Phường 15', '0908765432', '12:00 - 20:00', 30000, 70000, 4.8, 540, 98,
      'https://cdn.example.com/audio/pha-lau-co-thao.mp3',
      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800', 3,
-     ST_SetSRID(ST_MakePoint(106.7042, 10.7588), 4326)::geography)
+     ST_SetSRID(ST_MakePoint(106.7042, 10.7588), 4326)::geography),
+    (3, 'Bảo tàng Hồ Chí Minh - Bến Nhà Rồng', 'ben-nha-rong', 'HISTORICAL',
+     'Di tích lịch sử cấp quốc gia đặc biệt, nơi người thanh niên yêu nước Nguyễn Tất Thành ra đi tìm đường cứu nước vào ngày 5/6/1911. Tòa nhà mang kiến trúc Pháp cổ kính bên ngã ba sông Sài Gòn.',
+     '01 Nguyễn Tất Thành', 'Quận 4', 'Phường 12', '02839401053', '07:30 - 11:30, 13:30 - 17:00 (Thứ 3 - CN)', 30000, 30000, 4.8, 1250, 99,
+     'https://cdn.example.com/audio/ben-nha-rong.mp3',
+     'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800', 6,
+     ST_SetSRID(ST_MakePoint(106.7068, 10.7682), 4326)::geography),
+    (4, 'Nhà thờ Xóm Chiếu', 'nha-tho-xom-chieu', 'RELIGIOUS',
+     'Một trong những giáo xứ lâu đời nhất tại Sài Gòn với lịch sử hơn 160 năm. Ngôi thánh đường mang phong cách Gothic giao thoa kiến trúc bản địa, không gian linh thiêng giữa xóm đạo Quận 4.',
+     '200 Lê Quốc Hưng', 'Quận 4', 'Phường 12', '02839400264', '05:00 - 19:30', 0, 0, 4.7, 480, 92,
+     'https://cdn.example.com/audio/nha-tho-xom-chieu.mp3',
+     'https://images.unsplash.com/photo-1548625361-195fe57876a4?w=800', 7,
+     ST_SetSRID(ST_MakePoint(106.7080, 10.7590), 4326)::geography),
+    (5, 'Cầu Mống', 'cau-mong', 'LANDMARK',
+     'Cây cầu thép cổ xưa nhất Sài Gòn nối liền Quận 1 và Quận 4, bắc qua dòng kênh Bến Nghé. Điểm check-in ngắm hoàng hôn và bình minh tuyệt đẹp của giới trẻ thành phố.',
+     'Bến Vân Đồn - Bến Chương Dương', 'Quận 4', 'Phường 12', NULL, 'Mở cửa cả ngày (24/7)', 0, 0, 4.6, 680, 90,
+     'https://cdn.example.com/audio/cau-mong.mp3',
+     'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800', 8,
+     ST_SetSRID(ST_MakePoint(106.7037, 10.7695), 4326)::geography),
+    (6, 'Chùa Giác Nguyên', 'chua-giac-nguyen', 'RELIGIOUS',
+     'Ngôi cổ tự thanh tịnh nằm sâu trong hẻm Bến Vân Đồn, đối diện kênh Bến Nghé. Nơi lưu giữ nét văn hóa tâm linh Phật giáo truyền thống và nhiều hoạt động thiện nguyện giàu ý nghĩa.',
+     '129F/95 Bến Vân Đồn', 'Quận 4', 'Phường 8', '02838261234', '06:00 - 20:00', 0, 0, 4.6, 210, 88,
+     'https://cdn.example.com/audio/chua-giac-nguyen.mp3',
+     'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800', 7,
+     ST_SetSRID(ST_MakePoint(106.6985, 10.7582), 4326)::geography)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Seed Menu Categories for Quán Ốc Oanh (poi_id = 1)
@@ -309,5 +340,14 @@ VALUES
      'Chào mừng quý khách đến với phố ẩm thực Vĩnh Khánh, quận 4 – thiên đường ốc đêm sôi động bậc nhất Sài Gòn. Ngay trước mắt bạn là Quán Ốc Oanh, địa chỉ quen thuộc của giới sành ăn hơn 15 năm qua. Điểm đặc biệt làm nên tên tuổi của Ốc Oanh chính là đĩa ốc hương sốt trứng muối vàng ươm, nước sốt béo ngậy được nêm nếm đậm đà ăn kèm bánh mì nóng giòn. Ngoài ra, càng ghẹ rang muối ớt khô giòn cay nồng hay sò điệp nướng mỡ hành phô mai kéo sợi cũng là những món bạn nhất định phải thử. Tiếng xèo xèo của chảo ốc trên lửa lớn cùng mùi thơm nồng của bơ tỏi sẽ mang đến cho bạn một trải nghiệm ẩm thực đường phố đậm chất phương Nam khó quên.'),
     (2, 'Thuyết minh Chợ 200 & Phá Lấu Bò Cô Thảo', 'poi_2_pha_lau_co_thao.mp3', 64, 383232,
      'Nữ miền Nam (Ấm áp)', 'vi', 'quan4',
-     'Bạn đang dừng chân tại con hẻm 243 Tôn Đản, bước vào khu ẩm thực Chợ 200 nức tiếng của Quận 4. Quán Phá lấu bò Cô Thảo đã đỏ lửa hơn 20 năm tại góc hẻm này. Từng miếng lá xách, tổ ong, gan, phèo được làm sạch kỹ lưỡng, ninh mềm trong nước cốt dừa tươi béo ngậy cùng hoa hồi và quế thơm phức. Khi thưởng thức, bạn hãy dùng xiên tre gắp một miếng phá lấu giòn sần sật, chấm ngập vào chén nước mắm tắc me ớt chua cay độc quyền, rồi cắn thêm miếng bánh mì giòn rụm. Hương vị béo ngậy quyện vị chua ngọt hài hòa sẽ lý giải vì sao người Sài Gòn lại say mê món ăn này đến thế.')
+     'Bạn đang dừng chân tại con hẻm 243 Tôn Đản, bước vào khu ẩm thực Chợ 200 nức tiếng của Quận 4. Quán Phá lấu bò Cô Thảo đã đỏ lửa hơn 20 năm tại góc hẻm này. Từng miếng lá xách, tổ ong, gan, phèo được làm sạch kỹ lưỡng, ninh mềm trong nước cốt dừa tươi béo ngậy cùng hoa hồi và quế thơm phức. Khi thưởng thức, bạn hãy dùng xiên tre gắp một miếng phá lấu giòn sần sật, chấm ngập vào chén nước mắm tắc me ớt chua cay độc quyền, rồi cắn thêm miếng bánh mì giòn rụm. Hương vị béo ngậy quyện vị chua ngọt hài hòa sẽ lý giải vì sao người Sài Gòn lại say mê món ăn này đến thế.'),
+    (3, 'Thuyết minh Di tích Lịch sử Bến Nhà Rồng', 'poi_3_ben_nha_rong.mp3', 85, 510000,
+     'Nữ miền Nam (Trang trọng)', 'vi', 'quan4',
+     'Chào mừng bạn đến với Bến Nhà Rồng, nay là Bảo tàng Hồ Chí Minh chi nhánh Thành phố Hồ Chí Minh. Tòa nhà được xây dựng từ năm 1863 bởi Công ty Vận tải đường biển Pháp Messageries Maritimes. Điểm đặc trưng nhất là trên nóc tòa nhà có hình đôi rồng chầu mặt trăng theo phong cách lưỡng long triều nguyệt. Chính tại nơi đây, vào ngày 5 tháng 6 năm 1911, người thanh niên yêu nước Nguyễn Tất Thành khi ấy 21 tuổi đã bước lên con tàu Amiral Latouche-Tréville, bắt đầu hành trình bôn ba 30 năm tìm đường cứu nước cho dân tộc. Khi tham quan bảo tàng, quý khách vui lòng giữ trang nghiêm và tuân thủ quy định trang phục lịch sự.'),
+    (4, 'Thuyết minh Nhà thờ Giáo xứ Xóm Chiếu', 'poi_4_nha_tho_xom_chieu.mp3', 75, 450000,
+     'Nữ miền Nam (Ấm áp)', 'vi', 'quan4',
+     'Bạn đang đứng trước Nhà thờ Xóm Chiếu, trung tâm sinh hoạt tôn giáo của một trong những giáo xứ cổ kính nhất Sài Gòn với hơn 160 năm lịch sử hình thành. Tên gọi Xóm Chiếu bắt nguồn từ nghề dệt chiếu lát truyền thống của cư dân nơi đây từ thế kỷ 19. Ngôi thánh đường mang những đường nét kiến trúc Gothic thanh thoát với tháp chuông uy nghiêm và các khung cửa vòm kính màu tuyệt đẹp. Tiếng chuông nhà thờ hòa cùng nhịp sống bình dị của xóm đạo Quận 4 đã tạo nên một nét đẹp văn hóa độc đáo. Xin lưu ý giữ im lặng khi vào bên trong thánh đường.'),
+    (5, 'Thuyết minh Cầu Mống - Chứng nhân lịch sử', 'poi_5_cau_mong.mp3', 60, 360000,
+     'Nữ miền Nam (Truyền cảm)', 'vi', 'quan4',
+     'Chào mừng bạn đến với Cầu Mống, một trong những cây cầu thép cổ xưa nhất của Thành phố Hồ Chí Minh. Cây cầu được xây dựng từ cuối thế kỷ 19 bởi công ty xây dựng Levallois Perret của Pháp. Cầu có dáng cong hình cầu vồng nên người dân quen gọi là Cầu Mống. Nối liền Quận 1 và Quận 4 qua dòng kênh Bến Nghé thơ mộng, ngày nay Cầu Mống là cầu đi bộ ngắm cảnh, điểm hẹn quen thuộc của giới trẻ và du khách để chiêm ngưỡng vẻ đẹp lung linh của thành phố lúc hoàng hôn buông xuống.')
 ON CONFLICT (poi_id) DO NOTHING;
