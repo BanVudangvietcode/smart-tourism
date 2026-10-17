@@ -1,5 +1,7 @@
 package com.example.tourism.poi.controller;
 
+import com.example.tourism.dish.dto.PoiMenuResponse;
+import com.example.tourism.dish.service.DishService;
 import com.example.tourism.poi.dto.GeoJsonFeatureCollection;
 import com.example.tourism.poi.dto.PoiDetailResponse;
 import com.example.tourism.poi.dto.PoiSummaryResponse;
@@ -15,9 +17,11 @@ import java.util.List;
 public class PoiController {
 
     private final PoiService poiService;
+    private final DishService dishService;
 
-    public PoiController(PoiService poiService) {
+    public PoiController(PoiService poiService, DishService dishService) {
         this.poiService = poiService;
+        this.dishService = dishService;
     }
 
     /**
@@ -78,4 +82,18 @@ public class PoiController {
         List<PoiSummaryResponse> results = poiService.search(q, categoryId, districtWard, sortBy, lat, lng);
         return ResponseEntity.ok(results);
     }
+
+    /**
+     * GET /api/v1/pois/{poiId}/menu
+     * Returns restaurant menu grouped by category (Món ăn chơi, Món chính, Đồ uống),
+     * with Best-seller (is_signature) flag.
+     * Cached on Redis with 15-minute TTL.
+     */
+    @GetMapping("/{poiId}/menu")
+    public ResponseEntity<PoiMenuResponse> getMenu(@PathVariable Long poiId) {
+        return dishService.getMenuByPoiId(poiId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
+
