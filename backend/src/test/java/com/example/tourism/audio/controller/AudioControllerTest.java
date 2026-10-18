@@ -27,7 +27,9 @@ class AudioControllerTest {
     void setUp() {
         audioService = mock(AudioService.class);
         AudioController controller = new AudioController(audioService);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new com.example.tourism.common.exception.GlobalExceptionHandler())
+                .build();
     }
 
     @Test

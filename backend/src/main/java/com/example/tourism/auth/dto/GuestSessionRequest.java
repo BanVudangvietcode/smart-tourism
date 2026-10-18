@@ -1,6 +1,9 @@
 package com.example.tourism.auth.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class GuestSessionRequest {
+    @NotBlank(message = "deviceId không được để trống.")
     private String deviceId;
     private String os; // "ios", "android", "web"
 

@@ -2,6 +2,7 @@ package com.example.tourism.auth.controller;
 
 import com.example.tourism.auth.dto.*;
 import com.example.tourism.auth.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,28 +27,18 @@ public class AuthController {
      * Giúp gán các sự kiện nghe audio, vị trí bước đi vào đúng thiết bị này.
      */
     @PostMapping("/api/v1/auth/guest-session")
-    public ResponseEntity<?> createGuestSession(@RequestBody GuestSessionRequest request) {
-        try {
-            AuthResponse response = authService.createGuestSession(
-                    request.getDeviceId(), request.getOs());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<AuthResponse> createGuestSession(@Valid @RequestBody GuestSessionRequest request) {
+        AuthResponse response = authService.createGuestSession(request.getDeviceId(), request.getOs());
+        return ResponseEntity.ok(response);
     }
-
 
     /**
      * Đăng nhập 1-chạm bằng tài khoản Google.
      */
     @PostMapping("/api/v1/auth/oauth2/google")
-    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleOAuth2Request request) {
-        try {
-            AuthResponse response = authService.loginWithGoogle(request.getIdToken(), request.getDeviceId());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleOAuth2Request request) {
+        AuthResponse response = authService.loginWithGoogle(request.getIdToken(), request.getDeviceId());
+        return ResponseEntity.ok(response);
     }
 
     // ──────────────────────────────────────────────
@@ -55,22 +46,14 @@ public class AuthController {
     // ──────────────────────────────────────────────
 
     @PostMapping("/api/auth/request-otp")
-    public ResponseEntity<?> requestOtp(@RequestBody OtpRequest request) {
-        try {
-            authService.generateAndSendOtp(request.getPhone());
-            return ResponseEntity.ok(Map.of("message", "OTP đã được gửi thành công qua Telegram!"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Map<String, String>> requestOtp(@Valid @RequestBody OtpRequest request) {
+        authService.generateAndSendOtp(request.getPhone());
+        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi thành công qua Telegram!"));
     }
 
     @PostMapping("/api/auth/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody OtpVerifyRequest request) {
-        try {
-            AuthResponse response = authService.verifyOtp(request.getPhone(), request.getOtp());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
+        AuthResponse response = authService.verifyOtp(request.getPhone(), request.getOtp());
+        return ResponseEntity.ok(response);
     }
 }

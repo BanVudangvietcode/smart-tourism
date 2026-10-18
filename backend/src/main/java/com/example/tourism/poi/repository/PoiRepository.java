@@ -43,6 +43,11 @@ public class PoiRepository {
         p.setPoiType(rs.getString("poi_type") != null ? rs.getString("poi_type") : "FOOD");
         p.setLongitude(rs.getDouble("lng"));
         p.setLatitude(rs.getDouble("lat"));
+        try {
+            p.setActive(rs.getObject("is_active") != null ? rs.getBoolean("is_active") : true);
+        } catch (Exception ignored) {
+            p.setActive(true);
+        }
         p.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         p.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
         return p;
@@ -141,6 +146,94 @@ public class PoiRepository {
                 "SELECT id, poi_id, url, caption, sort_order FROM poi_images WHERE poi_id = ? ORDER BY sort_order",
                 imageRowMapper, poiId
         );
+    }
+
+    public List<Poi> findAll() {
+        String sql = """
+                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                       p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
+                       p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
+                       ST_X(p.location::geometry) AS lng,
+                       ST_Y(p.location::geometry) AS lat
+                FROM pois p
+                ORDER BY p.popularity DESC
+                """;
+        return jdbcTemplate.query(sql, poiRowMapper);
+    }
+
+    public List<Poi> findCandidates(List<Long> categoryIds, List<String> poiTypes) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                       p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
+                       p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
+                       ST_X(p.location::geometry) AS lng,
+                       ST_Y(p.location::geometry) AS lat
+                FROM pois p
+                WHERE 1=1
+                """);
+        List<Object> params = new ArrayList<>();
+
+        boolean hasCategories = categoryIds != null && !categoryIds.isEmpty();
+        boolean hasPoiTypes = poiTypes != null && !poiTypes.isEmpty();
+
+        if (hasCategories && hasPoiTypes) {
+            sql.append(" AND (p.category_id IN (");
+            for (int i = 0; i < categoryIds.size(); i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+                params.add(categoryIds.get(i));
+            }
+            sql.append(") OR p.poi_type IN (");
+            for (int i = 0; i < poiTypes.size(); i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+                params.add(poiTypes.get(i).toUpperCase());
+            }
+            sql.append("))\n");
+        } else if (hasCategories) {
+            sql.append(" AND p.category_id IN (");
+            for (int i = 0; i < categoryIds.size(); i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+                params.add(categoryIds.get(i));
+            }
+            sql.append(")\n");
+        } else if (hasPoiTypes) {
+            sql.append(" AND p.poi_type IN (");
+            for (int i = 0; i < poiTypes.size(); i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+                params.add(poiTypes.get(i).toUpperCase());
+            }
+            sql.append(")\n");
+        }
+
+        sql.append(" ORDER BY p.popularity DESC\n");
+        return jdbcTemplate.query(sql.toString(), poiRowMapper, params.toArray());
+    }
+
+    public List<Poi> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        StringBuilder sql = new StringBuilder("""
+                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                       p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
+                       p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
+                       p.category_id, p.poi_type, p.created_at, p.updated_at,
+                       ST_X(p.location::geometry) AS lng,
+                       ST_Y(p.location::geometry) AS lat
+                FROM pois p
+                WHERE p.id IN (
+                """);
+        List<Object> params = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("?");
+            params.add(ids.get(i));
+        }
+        sql.append(")\n");
+        return jdbcTemplate.query(sql.toString(), poiRowMapper, params.toArray());
     }
 
     public String findCategoryNameById(Long categoryId) {

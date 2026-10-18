@@ -2,13 +2,20 @@ package com.example.tourism.ai.service;
 
 import com.example.tourism.ai.dto.*;
 import com.example.tourism.ai.repository.AiContextRepository;
+import com.example.tourism.audio.service.TtsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,11 +26,22 @@ public class AiService {
     private final AiContextRepository contextRepository;
     private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
+    private final TtsService ttsService;
+    private final Map<String, byte[]> voiceReplyCache = new ConcurrentHashMap<>();
 
     public AiService(AiContextRepository contextRepository, GeminiClient geminiClient, ObjectMapper objectMapper) {
+        this(contextRepository, geminiClient, objectMapper, new TtsService());
+    }
+
+    @Autowired
+    public AiService(AiContextRepository contextRepository,
+                     GeminiClient geminiClient,
+                     ObjectMapper objectMapper,
+                     TtsService ttsService) {
         this.contextRepository = contextRepository;
         this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
+        this.ttsService = ttsService != null ? ttsService : new TtsService();
     }
 
     public AiAskResponse askPoi(AiAskRequest request) {
@@ -56,6 +74,91 @@ public class AiService {
         List<String> followUps = generateFollowUps(poi);
 
         return new AiAskResponse(answer, poi.id, poi.name, conversationId, distanceMeters, followUps);
+    }
+
+    /**
+     * Handles Push-to-Talk voice questions while listening to audio guide.
+     * 1. Transcribes spoken audio via Gemini Multimodal STT.
+     * 2. Queries RAG engine with contextual POI data (history, dishes, rules).
+     * 3. Optionally synthesizes spoken voice reply via TTS for hands-free listening.
+     */
+    public AiVoiceAskResponse askVoice(Long poiId, byte[] audioBytes, String mimeType,
+                                       Double userLat, Double userLng,
+                                       String conversationId, Integer playbackSeconds,
+                                       boolean returnAudio) {
+        if (poiId == null) {
+            throw new IllegalArgumentException("poiId không được để trống.");
+        }
+        if (audioBytes == null || audioBytes.length == 0) {
+            throw new IllegalArgumentException("File âm thanh ghi âm không được để trống.");
+        }
+
+        AiContextRepository.PoiDetailContext poi = contextRepository
+                .findPoiContext(poiId, userLat, userLng)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy địa điểm với ID: " + poiId));
+
+        // 1. Transcribe audio using Gemini STT
+        String transcribed = geminiClient.transcribeAudio(audioBytes, mimeType)
+                .filter(t -> !t.isBlank())
+                .orElseGet(() -> {
+                    if (playbackSeconds != null && playbackSeconds > 0) {
+                        return "Du khách hỏi về nội dung thuyết minh tại giây thứ " + playbackSeconds + " của " + poi.name;
+                    }
+                    return "Du khách hỏi thông tin chi tiết và nét đặc sắc tại " + poi.name;
+                });
+
+        // 2. Query AI with full RAG context
+        AiAskRequest askRequest = new AiAskRequest(poiId, transcribed, userLat, userLng, conversationId);
+        AiAskResponse askResponse = askPoi(askRequest);
+
+        // 3. Optional Voice Reply Synthesis (TTS)
+        String audioUrl = null;
+        if (returnAudio && askResponse.getAnswer() != null && !askResponse.getAnswer().isBlank()) {
+            String token = UUID.randomUUID().toString().substring(0, 8);
+            String fileName = "reply_" + token + ".mp3";
+            byte[] voiceBytes = ttsService.generateSpeech(askResponse.getAnswer(), "vi");
+            if (voiceBytes != null && voiceBytes.length > 0) {
+                voiceReplyCache.put(fileName, voiceBytes);
+                saveVoiceReplyFile(fileName, voiceBytes);
+                audioUrl = "/api/v1/ai/voice-reply/" + fileName;
+            }
+        }
+
+        return new AiVoiceAskResponse(
+                poi.id,
+                poi.name,
+                transcribed,
+                askResponse.getAnswer(),
+                audioUrl,
+                askResponse.getConversationId(),
+                askResponse.getDistanceMeters(),
+                askResponse.getSuggestedFollowUps()
+        );
+    }
+
+    public Optional<byte[]> getVoiceReplyAudio(String fileName) {
+        if (fileName == null || fileName.isBlank()) return Optional.empty();
+        byte[] cached = voiceReplyCache.get(fileName);
+        if (cached != null) {
+            return Optional.of(cached);
+        }
+        Path path = Paths.get("target/classes/audio/replies/" + fileName);
+        if (Files.exists(path)) {
+            try {
+                return Optional.of(Files.readAllBytes(path));
+            } catch (IOException ignored) {}
+        }
+        return Optional.empty();
+    }
+
+    private void saveVoiceReplyFile(String fileName, byte[] data) {
+        try {
+            Path targetDir = Paths.get("target/classes/audio/replies");
+            Files.createDirectories(targetDir);
+            Files.write(targetDir.resolve(fileName), data);
+        } catch (Exception e) {
+            log.debug("Could not write voice reply file to disk, cached in memory only: {}", e.getMessage());
+        }
     }
 
     public AiRecommendDishResponse recommendDishes(AiRecommendDishRequest request) {

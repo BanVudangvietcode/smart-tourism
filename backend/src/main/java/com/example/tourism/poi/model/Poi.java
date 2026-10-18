@@ -24,6 +24,7 @@ public class Poi {
     private String poiType;
     private double longitude;
     private double latitude;
+    private boolean active = true;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -88,6 +89,9 @@ public class Poi {
 
     public double getLatitude() { return latitude; }
     public void setLatitude(double latitude) { this.latitude = latitude; }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

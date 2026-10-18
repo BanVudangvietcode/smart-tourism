@@ -1,12 +1,19 @@
 package com.example.tourism.audio.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 /**
  * Yêu cầu sinh âm thanh tự động từ văn bản kịch bản (Text-To-Speech).
  */
 public class AudioTextGenerateRequest {
 
+    @NotNull(message = "POI ID là bắt buộc.")
     private Long poiId;
+
     private String title;
+
+    @NotBlank(message = "Nội dung thuyết minh (transcript) không được để trống.")
     private String transcript;
     private String voice = "Nữ miền Nam (Truyền cảm)";
     private String zone = "quan4";

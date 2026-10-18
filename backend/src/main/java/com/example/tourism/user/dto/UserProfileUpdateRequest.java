@@ -1,10 +1,13 @@
 package com.example.tourism.user.dto;
 
+import jakarta.validation.constraints.Size;
+
 /**
  * DTO for PUT /api/v1/users/me.
  * Allows updating display name, avatar, and food preferences.
  */
 public class UserProfileUpdateRequest {
+    @Size(max = 100, message = "Tên hiển thị tối đa 100 ký tự.")
     private String displayName;
     private String avatarUrl;
     private Boolean spicy;

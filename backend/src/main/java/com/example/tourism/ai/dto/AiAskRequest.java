@@ -1,8 +1,14 @@
 package com.example.tourism.ai.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class AiAskRequest {
 
+    @NotNull(message = "poiId không được để trống.")
     private Long poiId;
+
+    @NotBlank(message = "Nội dung câu hỏi không được để trống.")
     private String question;
     private Double userLat;
     private Double userLng;

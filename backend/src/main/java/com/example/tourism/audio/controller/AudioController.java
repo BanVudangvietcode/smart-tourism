@@ -67,7 +67,7 @@ public class AudioController {
      */
     @PostMapping("/generate-from-text")
     public ResponseEntity<com.example.tourism.audio.dto.AudioCreateResponse> generateFromText(
-            @RequestBody com.example.tourism.audio.dto.AudioTextGenerateRequest request) {
+            @jakarta.validation.Valid @RequestBody com.example.tourism.audio.dto.AudioTextGenerateRequest request) {
         com.example.tourism.audio.dto.AudioCreateResponse res = audioService.generateAudioFromText(request);
         return ResponseEntity.ok(res);
     }

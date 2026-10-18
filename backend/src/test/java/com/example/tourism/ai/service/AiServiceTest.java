@@ -30,13 +30,16 @@ class AiServiceTest {
     @Mock
     private GeminiClient geminiClient;
 
+    @Mock
+    private com.example.tourism.audio.service.TtsService ttsService;
+
     private ObjectMapper objectMapper;
     private AiService aiService;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        aiService = new AiService(contextRepository, geminiClient, objectMapper);
+        aiService = new AiService(contextRepository, geminiClient, objectMapper, ttsService);
     }
 
     private AiContextRepository.PoiDetailContext createMockPoi(Long id, String name) {
@@ -195,6 +198,54 @@ class AiServiceTest {
         assertNotNull(resp);
         assertFalse(resp.getDishes().isEmpty());
         assertTrue(resp.getTotalEstimatedPrice() > 0);
+    }
+
+    @Test
+    @DisplayName("askVoice: should transcribe audio and answer via RAG")
+    void askVoice_transcribesAndAnswers() {
+        AiContextRepository.PoiDetailContext poi = createMockPoi(1L, "Quán Ốc Oanh");
+        when(contextRepository.findPoiContext(eq(1L), any(), any())).thenReturn(Optional.of(poi));
+
+        byte[] audioBytes = new byte[]{1, 2, 3, 4};
+        when(geminiClient.transcribeAudio(eq(audioBytes), eq("audio/webm")))
+                .thenReturn(Optional.of("Quán có món gì ngon nhất vậy?"));
+        when(geminiClient.generateText(anyString(), anyString()))
+                .thenReturn(Optional.of("Chào bạn, quán có món ốc hương trứng muối rất ngon!"));
+
+        var response = aiService.askVoice(1L, audioBytes, "audio/webm", 10.76, 106.70, "conv-voice", 30, false);
+
+        assertNotNull(response);
+        assertEquals(1L, response.poiId());
+        assertEquals("Quán có món gì ngon nhất vậy?", response.transcribedQuestion());
+        assertTrue(response.answer().contains("ốc hương trứng muối"));
+        assertNull(response.audioResponseUrl());
+    }
+
+    @Test
+    @DisplayName("askVoice: should generate TTS audio response when returnAudio is true")
+    void askVoice_withReturnAudio_synthesizesSpeech() {
+        AiContextRepository.PoiDetailContext poi = createMockPoi(1L, "Quán Ốc Oanh");
+        when(contextRepository.findPoiContext(eq(1L), any(), any())).thenReturn(Optional.of(poi));
+
+        byte[] audioBytes = new byte[]{10, 20, 30};
+        when(geminiClient.transcribeAudio(any(), any()))
+                .thenReturn(Optional.of("Bến Nhà Rồng có mở cửa không?"));
+        when(geminiClient.generateText(anyString(), anyString()))
+                .thenReturn(Optional.of("Bảo tàng mở cửa từ 7h30 sáng bạn nhé!"));
+        when(ttsService.generateSpeech(anyString(), eq("vi")))
+                .thenReturn(new byte[]{(byte) 0xFF, (byte) 0xFB, 0x10, 0x20}); // Fake MP3 frames
+
+        var response = aiService.askVoice(1L, audioBytes, "audio/wav", 10.76, 106.70, null, null, true);
+
+        assertNotNull(response);
+        assertNotNull(response.audioResponseUrl());
+        assertTrue(response.audioResponseUrl().startsWith("/api/v1/ai/voice-reply/"));
+
+        // Verify retrieval
+        String fileName = response.audioResponseUrl().replace("/api/v1/ai/voice-reply/", "");
+        Optional<byte[]> cachedAudio = aiService.getVoiceReplyAudio(fileName);
+        assertTrue(cachedAudio.isPresent());
+        assertEquals(4, cachedAudio.get().length);
     }
 }
 

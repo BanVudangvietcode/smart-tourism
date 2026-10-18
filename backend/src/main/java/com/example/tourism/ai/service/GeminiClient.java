@@ -9,7 +9,6 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
 import java.util.*;
 
 @Component
@@ -30,14 +29,37 @@ public class GeminiClient {
     }
 
     public Optional<String> generateText(String systemInstruction, String userPrompt) {
-        return callGemini(systemInstruction, userPrompt, false);
+        return callGemini(systemInstruction, userPrompt, null, null, false);
     }
 
     public Optional<String> generateJson(String systemInstruction, String userPrompt) {
-        return callGemini(systemInstruction, userPrompt, true);
+        return callGemini(systemInstruction, userPrompt, null, null, true);
     }
 
-    private Optional<String> callGemini(String systemInstruction, String userPrompt, boolean jsonMode) {
+    public Optional<String> generateWithAudio(String systemInstruction, String userPrompt, byte[] audioBytes, String mimeType, boolean jsonMode) {
+        return callGemini(systemInstruction, userPrompt, audioBytes, mimeType, jsonMode);
+    }
+
+    public Optional<String> generateWithImage(String systemInstruction, String userPrompt, byte[] imageBytes, String mimeType, boolean jsonMode) {
+        return callGemini(systemInstruction, userPrompt, imageBytes, mimeType, jsonMode);
+    }
+
+    /**
+     * Transcribes spoken Vietnamese audio to text using Gemini Multimodal Audio capability.
+     */
+    public Optional<String> transcribeAudio(byte[] audioBytes, String mimeType) {
+        if (audioBytes == null || audioBytes.length == 0) {
+            return Optional.empty();
+        }
+        String systemInstruction = "Bạn là bộ nhận diện giọng nói tiếng Việt (Speech-to-Text). " +
+                "Hãy nghe đoạn âm thanh câu hỏi từ du khách và chuyển thành câu hỏi dạng văn bản tiếng Việt chính xác. " +
+                "Chỉ trả về câu hỏi văn bản thuần túy, không có lời chào, không dấu ngoặc kép, không giải thích.";
+        String prompt = "Hãy chép lại chính xác nội dung câu nói trong đoạn âm thanh sau:";
+        return callGemini(systemInstruction, prompt, audioBytes, mimeType, false)
+                .map(text -> text.trim().replaceAll("^\"|\"$", "").replaceAll("^'|'$", ""));
+    }
+
+    private Optional<String> callGemini(String systemInstruction, String userPrompt, byte[] audioBytes, String mimeType, boolean jsonMode) {
         String apiKey = apiKeyConfig.getGeminiKey();
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("Gemini API key is not configured. Falling back to local responder.");
@@ -56,11 +78,27 @@ public class GeminiClient {
                 ));
             }
 
+            List<Map<String, Object>> parts = new ArrayList<>();
+            if (userPrompt != null && !userPrompt.isBlank()) {
+                parts.add(Map.of("text", userPrompt));
+            }
+
+            if (audioBytes != null && audioBytes.length > 0) {
+                String base64 = Base64.getEncoder().encodeToString(audioBytes);
+                String safeMime = (mimeType != null && !mimeType.isBlank()) ? mimeType.split(";")[0].trim() : "audio/webm";
+                parts.add(Map.of(
+                        "inline_data", Map.of(
+                                "mime_type", safeMime,
+                                "data", base64
+                        )
+                ));
+            }
+
             // User content
             requestBody.put("contents", List.of(
                     Map.of(
                             "role", "user",
-                            "parts", List.of(Map.of("text", userPrompt))
+                            "parts", parts
                     )
             ));
 
@@ -83,9 +121,9 @@ public class GeminiClient {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 JsonNode candidates = root.path("candidates");
                 if (candidates.isArray() && !candidates.isEmpty()) {
-                    JsonNode parts = candidates.get(0).path("content").path("parts");
-                    if (parts.isArray() && !parts.isEmpty()) {
-                        String text = parts.get(0).path("text").asText();
+                    JsonNode respParts = candidates.get(0).path("content").path("parts");
+                    if (respParts.isArray() && !respParts.isEmpty()) {
+                        String text = respParts.get(0).path("text").asText();
                         return Optional.ofNullable(text);
                     }
                 }
@@ -97,4 +135,3 @@ public class GeminiClient {
         return Optional.empty();
     }
 }
-

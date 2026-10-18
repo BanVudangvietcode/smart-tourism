@@ -49,6 +49,11 @@ public class DishRepository {
         d.setHasPeanuts(rs.getBoolean("has_peanuts"));
         d.setHasSeafood(rs.getBoolean("has_seafood"));
         d.setHasGluten(rs.getBoolean("has_gluten"));
+        try {
+            d.setAvailable(rs.getObject("is_available") != null ? rs.getBoolean("is_available") : true);
+        } catch (Exception ignored) {
+            d.setAvailable(true);
+        }
         d.setSortOrder(rs.getInt("sort_order"));
         d.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         d.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());

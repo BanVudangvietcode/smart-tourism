@@ -1,6 +1,9 @@
 package com.example.tourism.auth.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class GoogleOAuth2Request {
+    @NotBlank(message = "idToken không được để trống.")
     private String idToken;
     private String deviceId;
 

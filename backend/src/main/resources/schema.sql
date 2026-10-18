@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS pois (
     category_id     BIGINT REFERENCES categories(id),
     poi_type        VARCHAR(20) NOT NULL DEFAULT 'FOOD', -- 'FOOD', 'LANDMARK', 'RELIGIOUS', 'HISTORICAL'
     location        GEOGRAPHY(Point, 4326) NOT NULL,
+    is_active       BOOLEAN NOT NULL DEFAULT true,
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     updated_at      TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -128,6 +129,7 @@ CREATE TABLE IF NOT EXISTS dishes (
     has_peanuts      BOOLEAN NOT NULL DEFAULT false,-- cảnh báo dị ứng đậu phộng
     has_seafood      BOOLEAN NOT NULL DEFAULT false,-- cảnh báo dị ứng hải sản
     has_gluten       BOOLEAN NOT NULL DEFAULT false,-- cảnh báo dị ứng gluten
+    is_available     BOOLEAN NOT NULL DEFAULT true, -- trạng thái còn hàng / ẩn món
     sort_order       INT NOT NULL DEFAULT 0,
     created_at       TIMESTAMP NOT NULL DEFAULT now(),
     updated_at       TIMESTAMP NOT NULL DEFAULT now()
@@ -351,3 +353,238 @@ VALUES
      'Nữ miền Nam (Truyền cảm)', 'vi', 'quan4',
      'Chào mừng bạn đến với Cầu Mống, một trong những cây cầu thép cổ xưa nhất của Thành phố Hồ Chí Minh. Cây cầu được xây dựng từ cuối thế kỷ 19 bởi công ty xây dựng Levallois Perret của Pháp. Cầu có dáng cong hình cầu vồng nên người dân quen gọi là Cầu Mống. Nối liền Quận 1 và Quận 4 qua dòng kênh Bến Nghé thơ mộng, ngày nay Cầu Mống là cầu đi bộ ngắm cảnh, điểm hẹn quen thuộc của giới trẻ và du khách để chiêm ngưỡng vẻ đẹp lung linh của thành phố lúc hoàng hôn buông xuống.')
 ON CONFLICT (poi_id) DO NOTHING;
+
+-- ============================================================
+-- Curated & Custom Tours tables
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tours (
+    id                         BIGSERIAL PRIMARY KEY,
+    name                       VARCHAR(255) NOT NULL,
+    slug                       VARCHAR(255) NOT NULL UNIQUE,
+    description                TEXT,
+    theme                      VARCHAR(50) NOT NULL DEFAULT 'FOOD',
+    estimated_duration_minutes INT NOT NULL DEFAULT 60,
+    estimated_cost             INT NOT NULL DEFAULT 0,
+    total_distance_meters      INT NOT NULL DEFAULT 0,
+    thumbnail_url              TEXT,
+    is_public                  BOOLEAN NOT NULL DEFAULT true,
+    creator_id                 BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    creator_role               VARCHAR(50) NOT NULL DEFAULT 'ADMIN',
+    creator_name               VARCHAR(100) NOT NULL DEFAULT 'Hệ thống Smart Tourism',
+    created_at                 TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at                 TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tour_stops (
+    id                           BIGSERIAL PRIMARY KEY,
+    tour_id                      BIGINT NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+    poi_id                       BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    stop_order                   INT NOT NULL,
+    estimated_duration_minutes   INT NOT NULL DEFAULT 30,
+    recommended_dish_or_activity TEXT,
+    note                         TEXT,
+    created_at                   TIMESTAMP NOT NULL DEFAULT now(),
+    CONSTRAINT uq_tour_stop_order UNIQUE (tour_id, stop_order)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tours_is_public ON tours(is_public);
+CREATE INDEX IF NOT EXISTS idx_tours_theme ON tours(theme);
+CREATE INDEX IF NOT EXISTS idx_tours_creator ON tours(creator_id);
+CREATE INDEX IF NOT EXISTS idx_tour_stops_tour ON tour_stops(tour_id);
+CREATE INDEX IF NOT EXISTS idx_tour_stops_poi ON tour_stops(poi_id);
+
+-- Seed Initial Curated Tours
+INSERT INTO tours (id, name, slug, description, theme, estimated_duration_minutes, estimated_cost, total_distance_meters, thumbnail_url, is_public, creator_id, creator_role, creator_name)
+VALUES
+    (1, 'Foodtour Đêm Phố Ốc Vĩnh Khánh', 'foodtour-dem-pho-oc-vinh-khanh',
+     'Khám phá trọn vẹn nét văn hóa ẩm thực đêm rực lửa của Quận 4: thưởng thức các món ốc chảo thơm lừng sốt trứng muối và phá lấu bò gia truyền.',
+     'FOOD', 120, 250000, 1200,
+     'https://images.unsplash.com/photo-1544025162-d76694265947?w=800', true, NULL, 'ADMIN', 'Hệ thống Smart Tourism'),
+    (2, 'Khám Phá Ẩm Thực Chợ 200 & Phá Lấu Cô Thảo', 'kham-pha-am-thuc-cho-200',
+     'Hành trình len lỏi vào thiên đường ăn vặt hẻm 243 Tôn Đản, thưởng thức phá lấu nước cốt dừa chấm mắm tắc và trà đào thanh mát.',
+     'FOOD', 75, 120000, 800,
+     'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800', true, NULL, 'ADMIN', 'Hệ thống Smart Tourism'),
+    (3, 'Dấu Ấn Lịch Sử & Kiến Trúc Cổ Bến Vân Đồn', 'dau-an-lich-su-kien-truc-co',
+     'Ngược dòng thời gian qua hơn một thế kỷ: chiêm ngưỡng thương cảng Bến Nhà Rồng huyền thoại, thánh đường Gothic Xóm Chiếu và cây cầu thép Cầu Mống.',
+     'CULTURE', 150, 30000, 2600,
+     'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800', true, NULL, 'ADMIN', 'Hệ thống Smart Tourism'),
+    (4, 'Quận 4 Trọn Vẹn: Di Tích Sáng & Ẩm Thực Chiều', 'quan-4-tron-ven-di-tich-va-am-thuc',
+     'Tour toàn diện kết hợp viếng cảnh tâm linh - lịch sử buổi sáng và bùng nổ vị giác với hải sản phố đêm Vĩnh Khánh buổi tối.',
+     'MIXED', 210, 280000, 3400,
+     'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=800', true, NULL, 'ADMIN', 'Hệ thống Smart Tourism')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Tour Stops
+INSERT INTO tour_stops (tour_id, poi_id, stop_order, estimated_duration_minutes, recommended_dish_or_activity, note)
+VALUES
+    -- Tour 1: Foodtour Phố Ốc Vĩnh Khánh
+    (1, 1, 1, 60, 'Ốc hương sốt trứng muối vàng óng, Càng ghẹ rang muối tuyết', 'Nên gọi thêm bánh mì nóng để chấm trọn nước sốt trứng muối béo ngậy'),
+    (1, 2, 2, 45, 'Phá lấu bò thập cẩm chén đá, Nước mía sầu riêng', 'Đi bộ từ Vĩnh Khánh rẽ vào hẻm Tôn Đản chừng 450m'),
+
+    -- Tour 2: Khám Phá Chợ 200
+    (2, 2, 1, 45, 'Phá lấu bò lá xách giòn sần sật kèm nước mắm tắc chua cay', 'Ghé quán lúc 16h30 khi nước phá lấu vừa tới, thơm béo nhất'),
+    (2, 1, 2, 30, 'Tráng miệng ốc mỡ xào me cay ngọt', 'Điểm kết thúc tuyệt vời cho một buổi chiều khám phá chợ'),
+
+    -- Tour 3: Di Tích & Lịch Sử
+    (3, 3, 1, 60, 'Tham quan bảo tàng, chụp ảnh tượng đài và đôi rồng chầu nguyệt', 'Vé vào cổng 30.000đ/người lớn. Chú ý trang phục lịch sự, kín đáo'),
+    (3, 5, 2, 30, 'Đi bộ ngắm hoàng hôn kênh Bến Nghé, check-in view tòa tháp Bitexco', 'Thời điểm chụp ảnh đẹp nhất là lúc 17h15 - 17h45'),
+    (3, 4, 3, 45, 'Chiêm ngưỡng kiến trúc Gothic cổ kính và tìm hiểu xóm nghề dệt chiếu lát xưa', 'Giữ yên lặng nơi tôn nghiêm, không quay phim khi đang cử hành phụng vụ'),
+
+    -- Tour 4: Quận 4 Trọn Vẹn
+    (4, 3, 1, 60, 'Tìm hiểu hành trình 30 năm cứu nước của Bác Hồ tại Bến Nhà Rồng', 'Nên đến đầu giờ sáng để đón nắng đẹp trên bến cảng'),
+    (4, 6, 2, 35, 'Thắp hương chiêm bái tại Chùa Giác Nguyên thanh tịnh', 'Trang phục trang nghiêm, tháo giày trước khi vào chánh điện'),
+    (4, 2, 3, 45, 'Nạp năng lượng xế chiều với món phá lấu bò Cô Thảo trứ danh', 'Nên thử cả phá lấu chiên giòn và phá lấu nước cốt dừa'),
+    (4, 1, 4, 60, 'Đại tiệc ốc đêm sôi động tại Quán Ốc Oanh', 'Tận hưởng không khí nhộn nhịp đặc trưng của phố ẩm thực đêm Quận 4')
+ON CONFLICT (tour_id, stop_order) DO NOTHING;
+
+-- ============================================================
+-- Community & Engagement tables: Reviews, Favorites, Check-ins, Badges
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id              BIGSERIAL PRIMARY KEY,
+    poi_id          BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating          INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment         TEXT NOT NULL,
+    images          TEXT[] DEFAULT '{}',
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reviews_poi_id ON reviews(poi_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS favorites (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    poi_id          BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    UNIQUE(user_id, poi_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_poi_id ON favorites(poi_id);
+
+CREATE TABLE IF NOT EXISTS checkins (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    poi_id          BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    checkin_lat     DOUBLE PRECISION NOT NULL,
+    checkin_lng     DOUBLE PRECISION NOT NULL,
+    distance_meters DOUBLE PRECISION NOT NULL,
+    verified        BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkins_user_id ON checkins(user_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_poi_id ON checkins(poi_id);
+
+CREATE TABLE IF NOT EXISTS user_badges (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_code      VARCHAR(50) NOT NULL,
+    badge_name      VARCHAR(100) NOT NULL,
+    badge_description TEXT,
+    badge_icon_url  VARCHAR(255),
+    unlocked_at     TIMESTAMP NOT NULL DEFAULT now(),
+    UNIQUE(user_id, badge_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id);
+
+-- Seed Community Reviews
+INSERT INTO reviews (id, poi_id, user_id, rating, comment, images, created_at)
+VALUES
+    (1, 1, 1, 5, 'Ốc hương trứng muối béo ngậy thơm lừng, chấm bánh mì siêu ngon! Quán lúc nào cũng đông đúc vui vẻ.', ARRAY['https://images.unsplash.com/photo-1544025162-d76694265947?w=800'], now() - interval '2 days'),
+    (2, 2, 1, 5, 'Phá lấu Cô Thảo ngon nhất Quận 4, nước dùng dừa ngọt thanh không bị ngấy, chén mắm tắc đậm đà.', ARRAY['https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'], now() - interval '1 day'),
+    (3, 3, 1, 5, 'Bến Nhà Rồng rất uy nghiêm và đẹp, ngắm hoàng hôn bên sông Sài Gòn cực kỳ thư thái.', ARRAY['https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800'], now() - interval '5 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Favorites
+INSERT INTO favorites (user_id, poi_id, created_at)
+VALUES
+    (1, 1, now() - interval '3 days'),
+    (1, 3, now() - interval '2 days')
+ON CONFLICT (user_id, poi_id) DO NOTHING;
+
+-- Seed Checkins & First Badges
+INSERT INTO checkins (id, user_id, poi_id, checkin_lat, checkin_lng, distance_meters, verified, created_at)
+VALUES
+    (1, 1, 1, 10.76125, 106.70252, 6.2, true, now() - interval '2 days')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO user_badges (user_id, badge_code, badge_name, badge_description, badge_icon_url, unlocked_at)
+VALUES
+    (1, 'FIRST_CHECKIN', 'Bước Chân Đầu Tiên', 'Thực hiện lượt check-in đầu tiên tại Quận 4', 'https://cdn-icons-png.flaticon.com/512/3176/3176366.png', now() - interval '2 days'),
+    (1, 'FOODIE_OC', 'Thổ Địa Phố Ốc', 'Khám phá và check-in các điểm ẩm thực ốc trứ danh Quận 4', 'https://cdn-icons-png.flaticon.com/512/2921/2921822.png', now() - interval '2 days')
+ON CONFLICT (user_id, badge_code) DO NOTHING;
+
+-- Synchronize sequences for autoincrement PKs
+SELECT setval('reviews_id_seq', (SELECT COALESCE(MAX(id), 1) FROM reviews));
+SELECT setval('checkins_id_seq', (SELECT COALESCE(MAX(id), 1) FROM checkins));
+SELECT setval('user_badges_id_seq', (SELECT COALESCE(MAX(id), 1) FROM user_badges));
+SELECT setval('tours_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tours));
+SELECT setval('tour_stops_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tour_stops));
+
+-- ==========================================
+-- Analytics & Telemetry Subsystem
+-- ==========================================
+CREATE TABLE IF NOT EXISTS audio_listen_logs (
+    id BIGSERIAL PRIMARY KEY,
+    device_id VARCHAR(100) NOT NULL,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    poi_id BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    trigger_type VARCHAR(20) NOT NULL DEFAULT 'MANUAL', -- 'AUTO', 'MANUAL'
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_audio_listen_poi ON audio_listen_logs(poi_id);
+CREATE INDEX IF NOT EXISTS idx_audio_listen_created ON audio_listen_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audio_listen_device ON audio_listen_logs(device_id);
+
+CREATE TABLE IF NOT EXISTS dwell_logs (
+    id BIGSERIAL PRIMARY KEY,
+    device_id VARCHAR(100) NOT NULL,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    location geography(Point, 4326) NOT NULL,
+    dwell_seconds INTEGER NOT NULL,
+    matched_poi_id BIGINT REFERENCES pois(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_dwell_logs_location ON dwell_logs USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_dwell_logs_created ON dwell_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_dwell_logs_poi ON dwell_logs(matched_poi_id);
+
+-- Seed Audio Listen Logs
+INSERT INTO audio_listen_logs (id, device_id, user_id, poi_id, duration_seconds, completed, trigger_type, created_at)
+VALUES
+    (1, 'dev-mobile-001', 1, 1, 95, true, 'AUTO', now() - interval '2 days'),
+    (2, 'dev-mobile-002', NULL, 1, 45, false, 'MANUAL', now() - interval '1 day'),
+    (3, 'dev-mobile-003', NULL, 2, 80, true, 'AUTO', now() - interval '18 hours'),
+    (4, 'dev-mobile-004', 1, 3, 120, true, 'AUTO', now() - interval '5 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Dwell Logs
+INSERT INTO dwell_logs (id, device_id, user_id, location, dwell_seconds, matched_poi_id, created_at)
+VALUES
+    (1, 'dev-mobile-001', 1, ST_SetSRID(ST_MakePoint(106.70252, 10.76125), 4326)::geography, 240, 1, now() - interval '2 days'),
+    (2, 'dev-mobile-002', NULL, ST_SetSRID(ST_MakePoint(106.70260, 10.76130), 4326)::geography, 180, 1, now() - interval '1 day'),
+    (3, 'dev-mobile-003', NULL, ST_SetSRID(ST_MakePoint(106.70585, 10.75782), 4326)::geography, 300, 2, now() - interval '18 hours'),
+    (4, 'dev-mobile-004', 1, ST_SetSRID(ST_MakePoint(106.70682, 10.76822), 4326)::geography, 600, 3, now() - interval '5 hours')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('audio_listen_logs_id_seq', (SELECT COALESCE(MAX(id), 1) FROM audio_listen_logs));
+SELECT setval('dwell_logs_id_seq', (SELECT COALESCE(MAX(id), 1) FROM dwell_logs));
+SELECT setval('pois_id_seq', COALESCE((SELECT MAX(id) FROM pois), 1));
+SELECT setval('menu_categories_id_seq', COALESCE((SELECT MAX(id) FROM menu_categories), 1));
+SELECT setval('dishes_id_seq', COALESCE((SELECT MAX(id) FROM dishes), 1));
+SELECT setval('dish_images_id_seq', COALESCE((SELECT MAX(id) FROM dish_images), 1));
+SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1));
+
+

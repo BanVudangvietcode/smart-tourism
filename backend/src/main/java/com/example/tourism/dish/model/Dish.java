@@ -20,6 +20,7 @@ public class Dish {
     private boolean hasPeanuts;
     private boolean hasSeafood;
     private boolean hasGluten;
+    private boolean isAvailable = true;
     private int sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -76,6 +77,9 @@ public class Dish {
 
     public boolean isHasGluten() { return hasGluten; }
     public void setHasGluten(boolean hasGluten) { this.hasGluten = hasGluten; }
+
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { isAvailable = available; }
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
