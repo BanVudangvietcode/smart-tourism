@@ -40,6 +40,13 @@ Kiểm tra trực tiếp:
 curl http://localhost:8080/api/v1/health
 ```
 
+### Swagger UI
+
+Sau khi backend khởi động, mở [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) để xem và thử các API.
+
+- OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- Với endpoint cần JWT, chọn **Authorize** và nhập token theo dạng `Bearer <JWT>`.
+
 ### 3. Frontend
 
 Mở terminal khác:
