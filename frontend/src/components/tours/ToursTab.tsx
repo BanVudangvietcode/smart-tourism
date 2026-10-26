@@ -1,276 +1,268 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { TourSummary, TourDetail } from '@/types';
+import { fetchTours, fetchTourDetail } from '@/services/api';
+import CustomTourModal from '@/components/tours/CustomTourModal';
+import PoiDetailModal from '@/components/poi/PoiDetailModal';
 
 interface ToursTabProps {
-  onOpenMap: (poiId?: string) => void;
-}
-
-interface TourStep {
-  title: string;
-  desc: string;
-  duration: string;
-  poiId: string;
-  address?: string;
-}
-
-interface TourItem {
-  id: string;
-  title: string;
-  tagline: string;
-  category: string;
-  image: string;
-  totalTime: string;
-  distance: string;
-  estimatedCost: string;
-  suitableFor: string;
-  steps: TourStep[];
+  onOpenMap: (poiId?: string | number) => void;
 }
 
 export default function ToursTab({ onOpenMap }: ToursTabProps) {
-  const toursList: TourItem[] = [
-    {
-      id: 'tour-heritage',
-      title: 'Dấu ấn Di sản & Ký ức Sài Gòn',
-      tagline: 'Khám phá các công trình thế kỷ bên bờ sông Sài Gòn và kiến trúc thuộc địa.',
-      category: 'Lịch sử & Kiến trúc',
-      image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1200&q=80',
-      totalTime: 'Khoảng 2.5 giờ',
-      distance: '2.4 km',
-      estimatedCost: 'Miễn phí (vé bảo tàng 30.000đ)',
-      suitableFor: 'Đi bộ hoặc xe máy, gia đình, người yêu lịch sử',
-      steps: [
-        {
-          title: 'Bến Nhà Rồng (Bảo tàng Hồ Chí Minh)',
-          desc: 'Công trình xây dựng năm 1863 mang dấu ấn kiến trúc Đông Dương, nơi lưu giữ tư liệu về hành trình tìm đường cứu nước.',
-          duration: '60 phút',
-          poiId: 'ben-nha-rong',
-          address: '01 Nguyễn Tất Thành, Phường 12',
-        },
-        {
-          title: 'Cầu Mống lịch sử',
-          desc: 'Cây cầu đi bộ bằng thép cổ nhất thành phố nối Quận 1 và Quận 4, xây dựng cuối thế kỷ 19 bởi kỹ sư Gustave Eiffel.',
-          duration: '30 phút',
-          poiId: 'cau-mong',
-          address: 'Bến Vân Đồn, giáp Kênh Bến Nghé',
-        },
-        {
-          title: 'Nhà thờ Xóm Chiếu',
-          desc: 'Ngôi thánh đường cổ kính giữa khu dân cư lâu đời của Quận 4 với kiến trúc thanh bình và cổ kính.',
-          duration: '45 phút',
-          poiId: 'xom-chieu',
-          address: 'Nguyễn Tất Thành, Phường 13',
-        },
-      ],
-    },
-    {
-      id: 'tour-food-trail',
-      title: 'Hành trình Ẩm thực Đường phố Chiều Tối',
-      tagline: 'Oanh tạc các món ăn vặt trứ danh từ Chợ Xóm Chiếu đến Phố Ốc Vĩnh Khánh.',
-      category: 'Ẩm thực & Đời sống',
-      image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
-      totalTime: 'Khoảng 3 giờ',
-      distance: '1.8 km',
-      estimatedCost: '100.000đ - 200.000đ / người',
-      suitableFor: 'Nhóm bạn, các tín đồ ẩm thực đường phố',
-      steps: [
-        {
-          title: 'Khu ẩm thực Chợ Xóm Chiếu (Chợ 200)',
-          desc: 'Khởi động buổi xế chiều với món phá lấu bò nước dừa nóng hổi và tô mì ốc hến chua cay đậm vị.',
-          duration: '45 phút',
-          poiId: 'cho-200',
-          address: 'Hẻm 200 Xóm Chiếu',
-        },
-        {
-          title: 'Phố Ốc Vĩnh Khánh',
-          desc: 'Thưởng thức hải sản tươi sống và không khí ẩm thực đêm nhộn nhịp đặc trưng bậc nhất thành phố.',
-          duration: '90 phút',
-          poiId: 'vinh-khanh',
-          address: 'Trục đường Vĩnh Khánh',
-        },
-        {
-          title: 'Tráng miệng chè & ngắm phố đêm',
-          desc: 'Kết thúc chuyến dạo chơi với chén chè thanh mát hoặc ly nước mía sầu riêng mát lạnh.',
-          duration: '30 phút',
-          poiId: 'cho-200',
-          address: 'Khu ẩm thực đêm Xóm Chiếu',
-        },
-      ],
-    },
-    {
-      id: 'tour-sunset-walk',
-      title: 'Tản bộ Chiều Hoàng hôn Ven Kênh Bến Nghé',
-      tagline: 'Đón gió sông trong lành và ngắm nhìn toàn cảnh trung tâm thành phố lên đèn.',
-      category: 'Thư giãn & Dạo mát',
-      image: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
-      totalTime: 'Khoảng 1.5 giờ',
-      distance: '3.0 km',
-      estimatedCost: 'Chi phí tự do (cà phê bờ sông)',
-      suitableFor: 'Cặp đôi, đi dạo một mình, chụp ảnh phong cảnh',
-      steps: [
-        {
-          title: 'Công viên ven sông Bến Vân Đồn',
-          desc: 'Đi dạo dưới hàng cây xanh mát dọc kênh Bến Nghé, ngắm các tòa cao ốc trung tâm phía bờ Quận 1.',
-          duration: '45 phút',
-          poiId: 'ben-van-don',
-          address: 'Tuyến Bến Vân Đồn',
-        },
-        {
-          title: 'Ngắm hoàng hôn từ Cầu Mống',
-          desc: 'Thời khắc thành phố lên đèn phản chiếu trên mặt nước là góc ảnh check-in được yêu thích nhất.',
-          duration: '45 phút',
-          poiId: 'cau-mong',
-          address: 'Cầu Mống nối Q1 - Q4',
-        },
-      ],
-    },
-  ];
+  const [tours, setTours] = useState<TourSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTourDetail, setActiveTourDetail] = useState<TourDetail | null>(null);
+  const [loadingDetailId, setLoadingDetailId] = useState<number | null>(null);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [selectedPoiId, setSelectedPoiId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadTours = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchTours();
+        if (isMounted) setTours(data);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách tour:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadTours();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleOpenDetail = async (tourId: number) => {
+    setLoadingDetailId(tourId);
+    try {
+      const detail = await fetchTourDetail(tourId);
+      setActiveTourDetail(detail);
+    } catch (err: any) {
+      alert(err.message || 'Không thể tải chi tiết tour');
+    } finally {
+      setLoadingDetailId(null);
+    }
+  };
 
   return (
     <div className="w-full h-full overflow-y-auto bg-slate-50 pb-28 lg:pb-12 pt-16">
-      {/* ─── Clean Header ────────────────────────────────────── */}
+      {/* ─── Header ────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-8">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-            Lịch trình được tuyển chọn
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Tuyến Tour Khám Phá Quận 4
-          </h1>
-          <p className="text-sm text-slate-600 mt-1 max-w-2xl">
-            Các lộ trình tham quan được sắp xếp logic theo thứ tự địa lý, giúp bạn tối ưu thời gian di chuyển và trải nghiệm trọn vẹn nét văn hóa bản địa.
-          </p>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1.5">
+                Lộ Trình Được Thiết Kế Chuyên Nghiệp
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Tuyến Tour Thuyết Minh Tự Động
+              </h1>
+              <p className="text-sm text-slate-600 mt-1 max-w-xl">
+                Trải nghiệm {tours.length} tour di sản, ẩm thực đường phố và ngắm cảnh ven sông với chỉ đường thông minh và audio GPS.
+              </p>
+            </div>
+
+            {/* Custom Tour Button */}
+            <button
+              onClick={() => setIsCustomModalOpen(true)}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:scale-95 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition cursor-pointer self-start md:self-auto shrink-0"
+            >
+              <span>🧭</span>
+              <span>Tạo Tour Cá Nhân Hóa (AI / PostGIS)</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ─── Danh sách Tour ──────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8">
-        {toursList.map((tour, index) => (
-          <div
-            key={tour.id}
-            className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition duration-200 overflow-hidden"
-          >
-            {/* Tour Header Banner with Real Photo */}
-            <div className="relative h-60 sm:h-72 w-full overflow-hidden bg-slate-900">
-              <img
-                src={tour.image}
-                alt={tour.title}
-                className="w-full h-full object-cover opacity-85 hover:scale-102 transition duration-500"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent pointer-events-none" />
+      {/* ─── Tours List ─────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-semibold">Đang tải tuyến tour từ Backend...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {tours.map((tour) => (
+              <div
+                key={tour.id}
+                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-indigo-200 transition-all duration-300 overflow-hidden flex flex-col"
+              >
+                {/* Photo & Badges */}
+                <div className="relative h-52 w-full overflow-hidden bg-slate-900">
+                  {tour.thumbnailUrl ? (
+                    <img
+                      src={tour.thumbnailUrl}
+                      alt={tour.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl bg-indigo-900 text-indigo-400">
+                      🗺️
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
-              {/* Tag & Index Badge */}
-              <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                <span className="bg-white/95 backdrop-blur-xs text-slate-900 text-xs font-semibold px-3 py-1 rounded-md shadow-xs">
-                  {tour.category}
-                </span>
-                <span className="bg-black/40 backdrop-blur-xs text-white text-xs font-medium px-2.5 py-1 rounded-md">
-                  Lộ trình #{index + 1}
-                </span>
-              </div>
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-indigo-600/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      {tour.theme}
+                    </span>
+                  </div>
 
-              {/* Title & Tagline in banner */}
-              <div className="absolute bottom-4 left-4 right-4 text-white">
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                  {tour.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-200 mt-1 line-clamp-1">
-                  {tour.tagline}
-                </p>
+                  <div className="absolute bottom-4 left-4 right-4 text-white">
+                    <h3 className="text-lg font-black leading-snug">{tour.name}</h3>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                    {tour.description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-center">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Thời gian</p>
+                      <p className="text-xs font-black text-slate-800 mt-0.5">{tour.estimatedDurationMinutes} phút</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Cự ly</p>
+                      <p className="text-xs font-black text-slate-800 mt-0.5">{(tour.totalDistanceMeters / 1000).toFixed(1)} km</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Chi phí</p>
+                      <p className="text-xs font-black text-indigo-600 mt-0.5">
+                        {tour.estimatedCost ? `${tour.estimatedCost.toLocaleString()}đ` : 'Miễn phí'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-bold text-slate-500">
+                      📍 {tour.stopCount} điểm dừng chân
+                    </span>
+
+                    <button
+                      onClick={() => handleOpenDetail(tour.id)}
+                      disabled={loadingDetailId === tour.id}
+                      className="bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 font-bold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      {loadingDetailId === tour.id ? 'Đang tải...' : 'Xem lộ trình chi tiết →'}
+                    </button>
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* TOUR DETAIL MODAL */}
+      {activeTourDetail && (
+        <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Chi tiết lộ trình</span>
+                <h3 className="text-base font-extrabold text-slate-900 leading-tight">{activeTourDetail.name}</h3>
+              </div>
+              <button
+                onClick={() => setActiveTourDetail(null)}
+                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            {/* Tour Overview Stats Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 bg-slate-50/70 border-b border-slate-100 text-xs text-slate-600">
-              <div>
-                <span className="text-[11px] text-slate-400 block font-medium">Thời gian</span>
-                <span className="font-semibold text-slate-800 text-sm mt-0.5 block">{tour.totalTime}</span>
+            {/* Stops Timeline */}
+            <div className="p-5 overflow-y-auto space-y-4">
+              <div className="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-2xl flex items-center justify-between text-xs text-indigo-900">
+                <span>⏱️ <b>{activeTourDetail.estimatedDurationMinutes} phút</b></span>
+                <span>📏 <b>{(activeTourDetail.totalDistanceMeters / 1000).toFixed(1)} km</b></span>
+                <span>💰 <b>{activeTourDetail.estimatedCost?.toLocaleString()}đ</b></span>
               </div>
-              <div>
-                <span className="text-[11px] text-slate-400 block font-medium">Quãng đường</span>
-                <span className="font-semibold text-slate-800 text-sm mt-0.5 block">{tour.distance}</span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-400 block font-medium">Dự trù chi phí</span>
-                <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate">{tour.estimatedCost}</span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-400 block font-medium">Phù hợp</span>
-                <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate">{tour.suitableFor}</span>
-              </div>
-            </div>
 
-            {/* Tour Steps Timeline */}
-            <div className="p-6 sm:p-8">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
-                Các điểm dừng trên tuyến ({tour.steps.length} điểm)
-              </h3>
-
-              <div className="space-y-6 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200">
-                {tour.steps.map((step, sIdx) => (
-                  <div key={sIdx} className="relative flex items-start gap-4">
-                    {/* Circle Node */}
-                    <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0 z-10 shadow-xs">
-                      {sIdx + 1}
+              <div className="space-y-3 relative pl-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-indigo-200">
+                {activeTourDetail.stops.map((stop, idx) => (
+                  <div key={stop.id} className="relative bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="absolute -left-[27px] top-3.5 w-5 h-5 rounded-full bg-indigo-600 text-white font-black text-[10px] flex items-center justify-center ring-4 ring-white">
+                      {idx + 1}
                     </div>
 
-                    {/* Step Card */}
-                    <div className="flex-1 bg-white border border-slate-200/80 rounded-xl p-4 hover:border-slate-300 transition">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <h4 className="font-bold text-slate-900 text-sm">
-                          {step.title}
-                        </h4>
-                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded self-start sm:self-auto">
-                          Dừng chân {step.duration}
-                        </span>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-slate-900">{stop.poiName}</h4>
+                      <span className="text-[10px] font-bold text-indigo-600">~{stop.suggestedDurationMinutes} phút</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">📍 {stop.address}</p>
+                    {stop.notes && <p className="text-[11px] text-slate-600 italic mt-1">{stop.notes}</p>}
 
-                      {step.address && (
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          {step.address}
-                        </p>
-                      )}
-
-                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                        {step.desc}
-                      </p>
-
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          onClick={() => onOpenMap(step.poiId)}
-                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>Xem vị trí này</span>
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      </div>
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedPoiId(stop.poiId);
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                      >
+                        Xem quán/di tích →
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        onClick={() => {
+                          onOpenMap(stop.poiId);
+                          setActiveTourDetail(null);
+                        }}
+                        className="text-[10px] font-bold text-blue-600 hover:underline"
+                      >
+                        Chỉ đường trên bản đồ →
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
 
-              {/* Bottom Actions */}
-              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-xs text-slate-500">
-                  Nhấn bắt đầu để mở bản đồ và tự động định vị chặng dừng đầu tiên.
-                </p>
-                <button
-                  onClick={() => onOpenMap(tour.steps[0].poiId)}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Bắt đầu lộ trình</span>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              </div>
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+              <button
+                onClick={() => {
+                  if (activeTourDetail.stops.length > 0) {
+                    onOpenMap(activeTourDetail.stops[0].poiId);
+                    setActiveTourDetail(null);
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Bắt đầu đi theo tuyến →
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* CUSTOM TOUR MODAL */}
+      <CustomTourModal
+        isOpen={isCustomModalOpen}
+        onClose={() => setIsCustomModalOpen(false)}
+        onSelectPoi={(id) => {
+          setSelectedPoiId(id);
+          setIsCustomModalOpen(false);
+        }}
+      />
+
+      {/* POI DETAIL MODAL */}
+      {selectedPoiId && (
+        <PoiDetailModal
+          poiId={selectedPoiId}
+          onClose={() => setSelectedPoiId(null)}
+          onNavigate={() => onOpenMap(selectedPoiId)}
+        />
+      )}
     </div>
   );
 }

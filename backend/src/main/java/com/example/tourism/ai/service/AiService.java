@@ -45,11 +45,16 @@ public class AiService {
     }
 
     public AiAskResponse askPoi(AiAskRequest request) {
-        if (request.getPoiId() == null) {
-            throw new IllegalArgumentException("poiId không được để trống.");
-        }
         if (request.getQuestion() == null || request.getQuestion().trim().isBlank()) {
-            throw new IllegalArgumentException("question không được để trống.");
+            throw new IllegalArgumentException("Nội dung câu hỏi không được để trống.");
+        }
+
+        final String conversationId = (request.getConversationId() != null && !request.getConversationId().isBlank())
+                ? request.getConversationId()
+                : UUID.randomUUID().toString();
+
+        if (request.getPoiId() == null) {
+            return askGeneral(request, conversationId);
         }
 
         AiContextRepository.PoiDetailContext poi = contextRepository
@@ -60,11 +65,6 @@ public class AiService {
                 ? calculateHaversine(request.getUserLat(), request.getUserLng(), poi.lat, poi.lng)
                 : null;
 
-        final String conversationId = (request.getConversationId() != null && !request.getConversationId().isBlank())
-                ? request.getConversationId()
-                : UUID.randomUUID().toString();
-
-
         String systemPrompt = buildAskSystemPrompt(poi, distanceMeters);
         String userPrompt = request.getQuestion().trim();
 
@@ -74,6 +74,56 @@ public class AiService {
         List<String> followUps = generateFollowUps(poi);
 
         return new AiAskResponse(answer, poi.id, poi.name, conversationId, distanceMeters, followUps);
+    }
+
+    private AiAskResponse askGeneral(AiAskRequest request, String conversationId) {
+        String userPrompt = request.getQuestion().trim();
+        String systemPrompt = """
+            Bạn là Trợ lý Ảo Du Lịch & Hướng Dẫn Viên Thông Minh của Quận 4, TP. Hồ Chí Minh (Saigon Whispers).
+            Quận 4 là một cù lao tam giác đặc biệt của Sài Gòn, nổi tiếng với:
+            - Văn hóa ẩm thực đường phố sôi động: Phố ẩm thực Vĩnh Khánh (thánh địa các món ốc), Phố Tôn Đản, Chợ Xóm Chiếu (thiên đường ăn vặt).
+            - Các địa điểm nổi bật trong hệ thống:
+              1. Quán Ốc Oanh (534 Vĩnh Khánh): Quán ốc đông nhất, nổi tiếng ốc hương rang muối ớt, sò huyết nướng mọi.
+              2. Quán Phá Lấu Bò Cô Thảo (243/29G Tôn Đản): Phá lấu nước dừa béo thơm chấm tắc ớt, ăn kèm bánh mì.
+              3. Mì Vịt Tiềm Thuận Hiếu (Hoàng Diệu): Mì sợi dai, đùi vịt tiềm thảo mộc gia truyền mềm rục.
+              4. Quán Cơm Tấm Bãi Rác (77 Lê Văn Linh): Cơm tấm đêm sườn non nướng, chả cua, thịt kho trứng lòng đào.
+              5. Bến Nhà Rồng - Bảo tàng Hồ Chí Minh (01 Nguyễn Tất Thành): Di tích lịch sử nơi Bác Hồ ra đi tìm đường cứu nước năm 1911.
+              6. Cầu Mống: Cây cầu sắt cổ bắc qua rạch Bến Nghé nối Quận 1 và Quận 4, điểm check-in hoàng hôn tuyệt đẹp.
+              7. Chùa Kim Liên (109 Đoàn Văn Bơ): Ngôi chùa Phật giáo Bắc Tông thanh tịnh giữa lòng đô thị.
+              8. Nhà thờ Xóm Chiếu (Lê Văn Linh): Nhà thờ cổ kính hơn 160 năm gắn bó với giáo dân Quận 4.
+            Phong cách trả lời: Thân thiện, hào sảng, hiếu khách chuẩn người Sài Gòn, am hiểu sâu sắc, trả lời ngắn gọn, rành mạch và gợi mở các trải nghiệm tuyệt vời.
+            """;
+
+        String answer = geminiClient.generateText(systemPrompt, userPrompt)
+                .orElseGet(() -> generateGeneralFallbackAnswer(userPrompt));
+
+        List<String> followUps = List.of(
+                "Quán ốc nào ngon và đông khách nhất ở Vĩnh Khánh?",
+                "Bến Nhà Rồng mở cửa những ngày nào và giá vé bao nhiêu?",
+                "Có món ăn đêm nào ngon ở đường Tôn Đản không?"
+        );
+
+        return new AiAskResponse(answer, null, "Quận 4 - Saigon Whispers", conversationId, null, followUps);
+    }
+
+    private String generateGeneralFallbackAnswer(String prompt) {
+        String pLower = prompt.toLowerCase(Locale.ROOT);
+        if (pLower.contains("ốc") || pLower.contains("hải sản") || pLower.contains("vĩnh khánh")) {
+            return "Nhắc đến Quận 4 thì chắc chắn phải ghé ngay **Phố Ốc Vĩnh Khánh**! Nổi tiếng nhất là **Quán Ốc Oanh** (534 Vĩnh Khánh) với món ốc hương rang muối ớt đậm đà thơm nức mũi, hoặc ghé Ốc Vũ, Ốc Đào. Các quán thường mở cửa từ 15h đến 2h sáng, không khí cực kỳ náo nhiệt!";
+        }
+        if (pLower.contains("phá lấu") || pLower.contains("tôn đản")) {
+            return "Món ăn 'quốc hồn quốc túy' của Quận 4 chính là **Phá Lấu Bò Cô Thảo** tại hẻm 243 Tôn Đản. Nước lèo nấu từ nước cốt dừa béo ngậy, phá lấu giòn sần sật chấm cùng mắm tắc chua ngọt và bánh mì nóng giòn cực đỉnh!";
+        }
+        if (pLower.contains("lịch sử") || pLower.contains("bến nhà rồng") || pLower.contains("bảo tàng")) {
+            return "**Bến Nhà Rồng (Bảo tàng Hồ Chí Minh)** tại số 01 Nguyễn Tất Thành là chứng tích lịch sử thiêng liêng, nơi người thanh niên Nguyễn Tất Thành lên tàu ra đi tìm đường cứu nước năm 1911. Bảo tàng mở cửa từ 7h30 - 11h30 và 13h30 - 17h00 (từ thứ Ba đến Chủ Nhật).";
+        }
+        if (pLower.contains("chụp ảnh") || pLower.contains("check-in") || pLower.contains("cầu mống")) {
+            return "Để chụp ảnh sống ảo và ngắm hoàng hôn Quận 4 nhìn sang Bitexco Quận 1, bạn nhất định phải ghé **Cầu Mống** - cây cầu sắt cổ màu xanh ngọc hơn 120 năm tuổi. Buổi chiều tối ngồi hóng gió sông Sài Gòn ở đây cực kỳ mát mẻ!";
+        }
+        if (pLower.contains("đêm") || pLower.contains("khuya") || pLower.contains("cơm tấm")) {
+            return "Cú đêm Quận 4 không thể bỏ qua **Cơm Tấm Bãi Rác** (77 Lê Văn Linh, sau lưng chợ Xóm Chiếu) bán từ 16h30 đến 2h sáng với sườn cọng nướng vàng óng, chả trứng béo ngậy; hoặc các hàng mì vịt tiềm, xe ốc dọc đường Hoàng Diệu và Tôn Đản.";
+        }
+        return "Chào bạn! Mình là Trợ lý Du Lịch Saigon Whispers Quận 4. Quận 4 nổi danh là thiên đường ẩm thực đường phố với **Phố ốc Vĩnh Khánh**, **Phá lấu Tôn Đản**, **Chợ Xóm Chiếu** cùng các điểm di tích văn hóa lịch sử như **Bến Nhà Rồng** và **Cầu Mống**. Bạn đang muốn tìm quán ăn ngon hay địa điểm tham quan nào để mình hướng dẫn chi tiết nhé?";
     }
 
     /**

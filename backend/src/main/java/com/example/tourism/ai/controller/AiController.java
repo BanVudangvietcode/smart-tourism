@@ -13,7 +13,7 @@ import java.util.Base64;
 
 @RestController
 @RequestMapping("/api/v1/ai")
-@CrossOrigin(origins = "*")
+@CrossOrigin(originPatterns = "*")
 public class AiController {
 
     private final AiService aiService;

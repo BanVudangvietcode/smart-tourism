@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,7 +16,7 @@ import java.util.*;
 public class GeminiClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
-    private static final String DEFAULT_MODEL = "gemini-3.8-flash";
+    private static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
 
     private final ApiKeyConfig apiKeyConfig;
@@ -25,7 +26,11 @@ public class GeminiClient {
     public GeminiClient(ApiKeyConfig apiKeyConfig, ObjectMapper objectMapper) {
         this.apiKeyConfig = apiKeyConfig;
         this.objectMapper = objectMapper;
-        this.restTemplate = new RestTemplate();
+        
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(12000);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public Optional<String> generateText(String systemInstruction, String userPrompt) {

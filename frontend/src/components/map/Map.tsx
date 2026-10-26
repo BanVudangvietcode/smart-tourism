@@ -6,36 +6,31 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents 
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-import { MapPOI, NavStep, RouteInfo } from '@/types';
+import { MapPOI, NavStep, RouteInfo, PoiSummary } from '@/types';
 import { D4_CENTER, POI_LIST } from '@/lib/map-data';
 import { createPoiIcon, createUserLocationIcon, createDestinationIcon } from '@/lib/map-icons';
 import { fetchRoute, getDistance } from '@/lib/routing';
+import { fetchPois, getAudioStreamUrl, trackAudioListen } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import PoiDetailModal from '@/components/poi/PoiDetailModal';
 
 // ─── Các thành phần phụ trợ của Bản đồ (Map Sub-components) ───
 
-/**
- * DragHandler: Lắng nghe các tương tác của người dùng lên bản đồ.
- * Nếu người dùng chủ động vuốt, chạm hoặc click, ta sẽ tắt tính năng "Tự động bám theo GPS".
- */
-function DragHandler({ onDrag }: { onDrag: () => void }) {
+function MapEventsHandler({ onDrag, onMapClick }: { onDrag: () => void; onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({ 
-    dragstart: onDrag // Chuẩn cho cả điện thoại (vuốt tay) và máy tính (kéo chuột)
+    dragstart: onDrag,
+    click: (e) => {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    }
   });
   return null;
 }
 
-/**
- * FollowUser: Tự động di chuyển camera bám theo vị trí người dùng.
- * Được kích hoạt khi `active` = true.
- */
 function FollowUser({ pos, active }: { pos: [number, number]; active: boolean }) {
   const map = useMap();
   useEffect(() => {
-    // Chỉ chạy nếu tính năng bám đuôi đang bật và tọa độ hợp lệ
     if (active && typeof pos[0] === 'number' && typeof pos[1] === 'number' && !isNaN(pos[0]) && !isNaN(pos[1])) {
       const dist = map.getCenter().distanceTo(pos);
-      // Thuật toán "Lazy pan": Chỉ kéo camera nếu GPS lệch quá 5 mét so với tâm hiện tại,
-      // giúp bản đồ không bị rung giật (jitter) liên tục do sai số GPS.
       if (dist > 5) { 
         map.closePopup();
         map.panTo(pos, { animate: true, duration: 0.5 });
@@ -45,17 +40,10 @@ function FollowUser({ pos, active }: { pos: [number, number]; active: boolean })
   return null;
 }
 
-/**
- * AutoResize: Giải quyết lỗi kinh điển của Leaflet "bản đồ xám xịt".
- * Khi đổi tab (từ ẩn sang hiện), vùng chứa bản đồ thay đổi kích thước đột ngột từ 0x0 lên full màn hình.
- * Hàm `map.invalidateSize()` ép Leaflet tính toán lại kích thước thật để tải toàn bộ bản đồ.
- */
 function AutoResize({ isActive }: { isActive: boolean }) {
   const map = useMap();
   useEffect(() => {
     if (isActive) {
-      // Đợi một chút (50ms) để DOM kịp vẽ xong display:block rồi mới đo đạc lại.
-      // Gọi thêm lần 2 (300ms) để phòng hờ các animation chuyển trang làm sai kích thước.
       const t = setTimeout(() => map.invalidateSize(), 50);
       const t2 = setTimeout(() => map.invalidateSize(), 300);
       return () => { clearTimeout(t); clearTimeout(t2); };
@@ -64,25 +52,20 @@ function AutoResize({ isActive }: { isActive: boolean }) {
 
   useEffect(() => {
     const h = () => map.invalidateSize();
-    window.addEventListener('resize', h); // Bắt sự kiện xoay màn hình điện thoại
+    window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, [map]);
   return null;
 }
 
-/**
- * FitRoute: Tự động zoom bản đồ sao cho vừa vặn với toàn bộ tuyến đường.
- */
 function FitRoute({ coords, once }: { coords: [number, number][]; once: boolean }) {
   const map = useMap();
   useEffect(() => {
-    // padding: [60,60] giúp đường đi không bị lẹm sát mép màn hình.
     if (coords.length && once) map.fitBounds(L.latLngBounds(coords), { padding: [60, 60], animate: true });
   }, [coords, once, map]);
   return null;
 }
 
-// ─── Maneuver SVG Icon ───────────────────────────────────────────
 const ManeuverSVG = ({ type, modifier, size = 36 }: { type: string; modifier?: string; size?: number }) => {
   const c = '#fff';
   if (type === 'arrive') return <svg width={size} height={size} viewBox="0 0 24 24" fill={c}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>;
@@ -95,11 +78,21 @@ const ManeuverSVG = ({ type, modifier, size = 36 }: { type: string; modifier?: s
 interface MapProps {
   isActive?: boolean;
   onNavChange?: (isNav: boolean) => void;
+  targetPoiId?: number | string | null;
+  autoPlayEnabled?: boolean;
+  onToggleAutoPlay?: () => void;
 }
 
-// ─── MAIN COMPONENT ──────────────────────────────────────────────
-export default function Map({ isActive = true, onNavChange }: MapProps) {
+export default function Map({
+  isActive = true,
+  onNavChange,
+  targetPoiId,
+  autoPlayEnabled = true,
+  onToggleAutoPlay,
+}: MapProps) {
+  const { deviceId } = useAuth();
   const mapRef = useRef<L.Map | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasInitializedGPS = useRef(false);
 
   // GPS & Compass
@@ -120,11 +113,247 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState(false);
 
+  // Live Backend POIs (Khởi tạo ngay từ POI_LIST chuẩn)
+  const [mapPois, setMapPois] = useState<MapPOI[]>(POI_LIST);
+  const [modalPoiId, setModalPoiId] = useState<number | string | null>(null);
+  const [showSimPanel, setShowSimPanel] = useState(false);
+
+  // ─── TỰ ĐỘNG PHÁT & HÀNG ĐỢI ÂM THANH (AUTO-PLAY & QUEUE) ───
+  const [currentAudioPoi, setCurrentAudioPoi] = useState<MapPOI | null>(null);
+  const [audioQueue, setAudioQueue] = useState<MapPOI[]>([]);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+
+  // Lưu lịch sử các POI đã phát trong phiên để tránh lặp vô tận khi đứng yên một chỗ
+  const playedPoiIds = useRef<Set<string | number>>(new Set());
+  const currentAudioPoiRef = useRef<MapPOI | null>(null);
+  const audioQueueRef = useRef<MapPOI[]>([]);
+
+  useEffect(() => {
+    currentAudioPoiRef.current = currentAudioPoi;
+  }, [currentAudioPoi]);
+
+  useEffect(() => {
+    audioQueueRef.current = audioQueue;
+  }, [audioQueue]);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => {
+      setToastMsg((prev) => (prev === msg ? null : prev));
+    }, 4500);
+  };
+
+  // Hàm phát âm thanh cho 1 POI
+  const playPoiAudio = useCallback((poi: MapPOI) => {
+    setCurrentAudioPoi(poi);
+    setIsPlayingAudio(true);
+    setAudioProgress(0);
+
+    const streamUrl = getAudioStreamUrl(poi.id);
+
+    if (audioRef.current) {
+      audioRef.current.src = streamUrl;
+      audioRef.current.currentTime = 0;
+      const promise = audioRef.current.play();
+
+      if (promise !== undefined) {
+        promise
+          .then(() => {
+            setAutoplayBlocked(false);
+          })
+          .catch((e) => {
+            console.warn('Autoplay bị trình duyệt hạn chế, cần tương tác người dùng:', e);
+            setAutoplayBlocked(true);
+          });
+      }
+    }
+
+    // Telemetry ghi nhận lượt nghe tự động
+    trackAudioListen({
+      deviceId: deviceId || 'web-guest',
+      poiId: Number(poi.id),
+      durationSeconds: 0,
+      completed: false,
+      triggerType: 'AUTO',
+    });
+  }, [deviceId]);
+
+  // Xử lý khi bài audio hiện tại kết thúc -> Tự động lấy điểm tiếp theo trong hàng đợi
+  const handleAudioEnded = useCallback(() => {
+    if (audioQueueRef.current.length > 0) {
+      const nextPoi = audioQueueRef.current[0];
+      const remaining = audioQueueRef.current.slice(1);
+      setAudioQueue(remaining);
+      playPoiAudio(nextPoi);
+      showToast(`🎧 Chuyển sang địa điểm kế tiếp: ${nextPoi.name}`);
+    } else {
+      setCurrentAudioPoi(null);
+      setIsPlayingAudio(false);
+      setAudioProgress(0);
+      showToast('✓ Đã hoàn tất thuyết minh các điểm lân cận.');
+    }
+  }, [playPoiAudio]);
+
+  // Nút Bỏ qua / Chuyển bài kế tiếp
+  const handleSkipTrack = () => {
+    handleAudioEnded();
+  };
+
+  // Nút Tạm dừng / Phát tiếp
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlayingAudio) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioRef.current.play().then(() => {
+        setAutoplayBlocked(false);
+      }).catch(() => {});
+      setIsPlayingAudio(true);
+    }
+  };
+
+  // Nút Tắt audio
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setCurrentAudioPoi(null);
+    setAudioQueue([]);
+    setIsPlayingAudio(false);
+    setAudioProgress(0);
+    setAutoplayBlocked(false);
+  };
+
+  // Kiểm tra cự ly và xếp hàng đợi tự động
+  const checkProximityAndQueue = useCallback((pos: [number, number]) => {
+    if (!autoPlayEnabled || mapPois.length === 0) return;
+
+    // Tìm tất cả các điểm trong bán kính <= 30 mét
+    const nearby = mapPois
+      .map((poi) => ({ poi, dist: getDistance(pos, [poi.lat, poi.lng]) }))
+      .filter((item) => item.dist <= 30)
+      .sort((a, b) => a.dist - b.dist)
+      .map((item) => item.poi);
+
+    if (nearby.length === 0) return;
+
+    for (const poi of nearby) {
+      const isCurrent = currentAudioPoiRef.current?.id === poi.id;
+      const isQueued = audioQueueRef.current.some((item) => item.id === poi.id);
+      const isAlreadyPlayed = playedPoiIds.current.has(poi.id);
+
+      if (!isCurrent && !isQueued && !isAlreadyPlayed) {
+        playedPoiIds.current.add(poi.id);
+
+        if (!currentAudioPoiRef.current) {
+          // Chưa có âm thanh nào đang phát -> PHÁT LUÔN NGAY LẬP TỨC!
+          playPoiAudio(poi);
+          showToast(`🎧 Tự động phát thuyết minh: ${poi.name}`);
+        } else {
+          // Đang phát bài khác -> XẾP VÀO DANH SÁCH ĐỢI (QUEUE)
+          setAudioQueue((prev) => {
+            const nextList = [...prev, poi];
+            showToast(`📋 Đã thêm vào hàng đợi: ${poi.name} (Vị trí #${nextList.length})`);
+            return nextList;
+          });
+        }
+      }
+    }
+  }, [autoPlayEnabled, mapPois, playPoiAudio]);
+
+  // Giả lập di chuyển GPS cho Testing
+  const setSimulatedLocation = (lat: number, lng: number, name?: string) => {
+    const newPos: [number, number] = [lat, lng];
+    setUserPos(newPos);
+    setHasRealGPS(true);
+    sessionStorage.setItem('sw_sim_pos', JSON.stringify({ lat, lng, name }));
+    mapRef.current?.setView(newPos, 18, { animate: true });
+
+    // Khi người dùng chủ động chọn test điểm này, cho phép phát lại ngay
+    if (name) {
+      const target = mapPois.find((p) => p.name.includes(name) || name.includes(p.name));
+      if (target) {
+        playedPoiIds.current.delete(target.id);
+      }
+    }
+
+    // Kích hoạt logic tự động phát & xếp hàng đợi
+    checkProximityAndQueue(newPos);
+  };
+
+  const resetSimulatedLocation = () => {
+    sessionStorage.removeItem('sw_sim_pos');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((p) => {
+        setUserPos([p.coords.latitude, p.coords.longitude]);
+      });
+    }
+  };
+
+  const clearPlayedHistory = () => {
+    playedPoiIds.current.clear();
+    showToast('🔄 Đã xóa lịch sử nghe. Bạn có thể test phát lại bất cứ điểm nào.');
+  };
+
+  // Fetch POIs từ Backend PostGIS (Cập nhật realtime)
+  useEffect(() => {
+    const loadBackendPois = async () => {
+      try {
+        const livePois: PoiSummary[] = await fetchPois();
+        if (livePois && livePois.length > 0) {
+          const mapped: MapPOI[] = livePois.map((p) => {
+            let color = '#2563eb';
+            let emoji = '📍';
+
+            if (p.poiType === 'HISTORICAL' || p.categoryName?.includes('Di tích')) {
+              color = '#e11d48';
+              emoji = '🏛️';
+            } else if (p.poiType === 'FOOD' || p.categoryName?.includes('Ốc') || p.categoryName?.includes('Phá lấu')) {
+              color = '#ea580c';
+              emoji = '🍲';
+            } else if (p.poiType === 'RELIGIOUS' || p.categoryName?.includes('Chùa') || p.categoryName?.includes('thờ')) {
+              color = '#8b5cf6';
+              emoji = '⛩️';
+            } else if (p.poiType === 'LANDMARK' || p.categoryName?.includes('Cầu') || p.categoryName?.includes('Cảnh quan')) {
+              color = '#0ea5e9';
+              emoji = '🌉';
+            }
+
+            return {
+              id: p.id,
+              name: p.name,
+              desc: p.address,
+              category: p.categoryName || 'Địa điểm',
+              lat: p.latitude,
+              lng: p.longitude,
+              color,
+              emoji,
+              thumbnailUrl: p.thumbnailUrl,
+              rating: p.avgRating,
+              poiType: p.poiType,
+              rawPoi: p,
+            };
+          });
+          setMapPois(mapped);
+        }
+      } catch (err) {
+        console.warn('Dùng POI mặc định:', err);
+      }
+    };
+    loadBackendPois();
+  }, []);
+
   useEffect(() => {
     onNavChange?.(isNav);
   }, [isNav, onNavChange]);
 
-  // Lắng nghe tín hiệu GPS liên tục từ thiết bị (hoạt động ngầm)
+  // Lắng nghe tín hiệu GPS liên tục từ thiết bị
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let watchId: number;
@@ -133,16 +362,17 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
         (p) => {
           const newPos: [number, number] = [p.coords.latitude, p.coords.longitude];
           setUserPos(newPos);
-          setHasRealGPS(true); // Đánh dấu đã có GPS thật để bắt đầu hiển thị chấm xanh
-          
-          // Lần đầu tiên bắt được sóng GPS, chỉ kéo bản đồ về vị trí của user (không bật bám đuôi)
+          setHasRealGPS(true);
+
           if (!hasInitializedGPS.current) {
             hasInitializedGPS.current = true;
             mapRef.current?.setView(newPos, 16, { animate: true });
           }
 
-          // Lấy la bàn (nếu trình duyệt/thiết bị hỗ trợ trả về qua GPS)
           if (p.coords.heading !== null && !(window as any).DeviceOrientationEvent) setHeading(p.coords.heading);
+
+          // Kiểm tra tự động phát & hàng đợi khi GPS thực thay đổi
+          checkProximityAndQueue(newPos);
         },
         (e) => console.warn(`GPS(${e.code}):`, e.message),
         { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
@@ -156,14 +386,13 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
       window.removeEventListener('deviceorientationabsolute', onOri);
       window.removeEventListener('deviceorientation', onOri);
     };
-  }, []);
+  }, [checkProximityAndQueue]);
 
   // Auto-advance step khi GPS gần điểm rẽ
   useEffect(() => {
     if (!isNav || !steps.length) return;
     for (let i = stepIdx; i < steps.length; i++) {
       if (getDistance(userPos, steps[i].location) < 30) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStepIdx(i); break;
       }
     }
@@ -178,7 +407,7 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
       setRouteInfo(info);
       setSteps(s);
       setStepIdx(0);
-    } catch { /* handled in fetchRoute */ }
+    } catch { /* handled */ }
     setLoading(false);
   }, [userPos]);
 
@@ -192,12 +421,13 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
   const stopNav = () => { setIsNav(false); setDest(null); setRouteCoords([]); setRouteInfo(null); setSteps([]); setStepIdx(0); setOverview(false); setIsTracking(false); };
 
   const recenterToUser = (targetZoom = 17) => {
-    if (isNav) setIsTracking(true); // Chỉ tự động bám đuôi liên tục nếu đang dẫn đường
+    if (isNav) setIsTracking(true);
     setOverview(false);
 
-    // Lập tức đưa camera về vị trí đã biết nếu hợp lệ
     if (userPos && typeof userPos[0] === 'number' && typeof userPos[1] === 'number' && !isNaN(userPos[0]) && !isNaN(userPos[1])) {
       mapRef.current?.setView(userPos, targetZoom, { animate: true });
+      // Kích hoạt quét cự ly ngay khi bấm nút vị trí
+      checkProximityAndQueue(userPos);
     }
 
     if (typeof (DeviceOrientationEvent as any)?.requestPermission === 'function') {
@@ -206,20 +436,62 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
   };
 
   const eta = routeInfo?.eta || '';
-
   const cur = steps[stepIdx];
   const nxt = steps[stepIdx + 1];
   const lineColor = mode === 'driving' ? '#4285F4' : '#34A853';
 
   return (
     <div className="w-full h-full relative z-0">
+      {/* ── THẺ AUDIO TỰ ĐỘNG PHÁT NGẦM ────────────────────── */}
+      <audio
+        ref={audioRef}
+        onTimeUpdate={() => {
+          if (audioRef.current) {
+            setAudioProgress(audioRef.current.currentTime);
+            setAudioDuration(audioRef.current.duration || 0);
+          }
+        }}
+        onEnded={handleAudioEnded}
+      />
+
+      {/* ── TOAST THÔNG BÁO TỰ ĐỘNG PHÁT & HÀNG ĐỢI ─────────── */}
+      {toastMsg && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1500] bg-slate-900/95 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl border border-white/20 backdrop-blur-md flex items-center gap-2 animate-bounce">
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* ── BANNER TRÌNH DUYỆT CHẶN AUTOPLAY (NẾU CÓ) ───────── */}
+      {autoplayBlocked && currentAudioPoi && (
+        <div className="absolute top-28 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto z-[2000] flex justify-center animate-bounce">
+          <button
+            onClick={() => {
+              audioRef.current?.play().then(() => {
+                setAutoplayBlocked(false);
+              }).catch(() => {});
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-2 cursor-pointer"
+          >
+            <span className="text-base">🔊</span>
+            <span>Bấm vào đây để Nghe Âm Thanh Thuyết Minh {currentAudioPoi.name}</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── BẢN ĐỒ MAP CONTAINER ────────────────────────────── */}
       <MapContainer ref={mapRef} center={userPos} zoom={16} zoomControl={false} className="w-full h-full rounded-2xl border-none absolute inset-0 z-0 bg-[#f4f7f6]">
         <TileLayer
           attribution='&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="http://openstreetmap.org">OSM</a>'
           url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
           maxZoom={20}
         />
-        <DragHandler onDrag={() => setIsTracking(false)} />
+        <MapEventsHandler
+          onDrag={() => setIsTracking(false)}
+          onMapClick={(lat, lng) => {
+            // Khi bấm vào bất kỳ đâu trên bản đồ (trong chế độ thử nghiệm): di chuyển chấm GPS đến đó!
+            setSimulatedLocation(lat, lng);
+          }}
+        />
         <FollowUser pos={userPos} active={isTracking && !overview} />
         <AutoResize isActive={isActive} />
         {routeCoords.length > 0 && overview && <FitRoute coords={routeCoords} once={overview} />}
@@ -243,31 +515,141 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
         )}
 
         {/* POI markers */}
-        {POI_LIST.map((p) => (
+        {mapPois.map((p) => (
           <Marker key={p.id} position={[p.lat, p.lng]} icon={createPoiIcon(p.color, p.emoji)}>
-            <Popup className="rounded-xl overflow-hidden shadow-lg p-0">
-              <div className="p-3 max-w-[220px]">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">{p.emoji}</span>
-                  <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
+            <Popup className="rounded-2xl overflow-hidden shadow-2xl p-0">
+              <div className="p-3.5 max-w-[240px]">
+                {p.thumbnailUrl && (
+                  <div className="h-24 w-full rounded-xl overflow-hidden mb-2 bg-slate-100">
+                    <img src={p.thumbnailUrl} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-sm">{p.emoji}</span>
+                  <h4 className="font-extrabold text-gray-900 text-xs leading-snug truncate">{p.name}</h4>
                 </div>
-                <span className="inline-block text-[10px] bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-full mb-2">{p.category}</span>
-                <p className="text-xs text-gray-600 mb-3 line-clamp-2">{p.desc}</p>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startNav(p);
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-lg shadow flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                  Chỉ đường tới đây
-                </button>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full">{p.category}</span>
+                  {p.rating && p.rating > 0 ? (
+                    <span className="text-[10px] text-amber-500 font-bold">★ {p.rating.toFixed(1)}</span>
+                  ) : null}
+                </div>
+                <p className="text-[11px] text-gray-500 mb-3 line-clamp-1">{p.desc}</p>
+
+                <div className="space-y-1.5">
+                  {/* Nút phát ngay lập tức từ Marker */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playedPoiIds.current.delete(p.id);
+                      playPoiAudio(p);
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>▶️ Phát thuyết minh ngay</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startNav(p);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                    <span>Chỉ đường tới đây</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalPoiId(p.id);
+                    }}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🎧 Chi tiết & Check-in 30m</span>
+                  </button>
+                </div>
               </div>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
+
+      {/* ── THANH MINI-PLAYER PHÁT THUYẾT MINH & HÀNG ĐỢI (QUEUE) ── */}
+      {currentAudioPoi && (
+        <div className="absolute bottom-20 lg:bottom-6 left-4 right-4 sm:left-6 sm:right-auto sm:w-96 z-[1200] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-slate-700 backdrop-blur-md animate-fadeIn">
+          {/* Header Track */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-lg shrink-0 shadow-md">
+                {isPlayingAudio ? '🎧' : '⏸️'}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Đang tự động phát</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+                <h4 className="text-xs font-black truncate">{currentAudioPoi.name}</h4>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={togglePlayPause}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer"
+                title={isPlayingAudio ? 'Tạm dừng' : 'Phát tiếp'}
+              >
+                {isPlayingAudio ? '⏸️' : '▶️'}
+              </button>
+
+              <button
+                onClick={handleSkipTrack}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer"
+                title="Bỏ qua / Kế tiếp"
+              >
+                ⏭️
+              </button>
+
+              <button
+                onClick={handleStopAudio}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-500/30 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+                title="Dừng phát"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-2.5 space-y-1">
+            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-emerald-400 h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${audioDuration > 0 ? (audioProgress / audioDuration) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+              <span>{Math.floor(audioProgress)}s</span>
+              <span>{Math.floor(audioDuration)}s</span>
+            </div>
+          </div>
+
+          {/* Danh sách đợi (Queue Preview) */}
+          {audioQueue.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
+              <div className="flex items-center gap-1.5 text-amber-300 truncate">
+                <span>📋 <b>Hàng đợi ({audioQueue.length}):</b></span>
+                <span className="truncate">{audioQueue.map((p) => p.name).join(' → ')}</span>
+              </div>
+              <span className="text-[9px] text-slate-400 shrink-0 ml-2">Tự phát tiếp</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── NAVIGATION UI ───────────────────────────────────── */}
       {isNav && (
@@ -310,10 +692,10 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
                   <p className="text-[10px] text-gray-500 truncate max-w-[120px]">{dest?.name}</p>
                 </div>
               </div>
-              <button onClick={stopNav} className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-2 px-5 rounded-full shadow transition shrink-0">Kết thúc</button>
+              <button onClick={stopNav} className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-2 px-5 rounded-full shadow transition shrink-0 cursor-pointer">Kết thúc</button>
             </div>
             <div className="border-t border-gray-100 py-2.5 flex justify-center bg-gray-50/50">
-              <button onClick={() => { setOverview(!overview); if (overview) setIsTracking(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1.5 px-4 py-1 rounded-full hover:bg-blue-50 transition active:scale-95">
+              <button onClick={() => { setOverview(!overview); if (overview) setIsTracking(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1.5 px-4 py-1 rounded-full hover:bg-blue-50 transition active:scale-95 cursor-pointer">
                 {overview ? '📍 Quay lại dẫn đường' : '🗺️ Xem tổng quan'}
               </button>
             </div>
@@ -322,7 +704,7 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
           {(overview || !isTracking) && (
             <button
               onClick={() => recenterToUser(17)}
-              className="absolute bottom-36 right-4 z-[1000] bg-white text-blue-600 px-3.5 py-2.5 rounded-full shadow-2xl border border-gray-200 active:scale-95 transition-all flex items-center gap-1.5 font-bold text-xs"
+              className="absolute bottom-36 right-4 z-[1000] bg-white text-blue-600 px-3.5 py-2.5 rounded-full shadow-2xl border border-gray-200 active:scale-95 transition-all flex items-center gap-1.5 font-bold text-xs cursor-pointer"
               title="Quay lại vị trí của mình"
             >
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,21 +716,138 @@ export default function Map({ isActive = true, onNavChange }: MapProps) {
         </>
       )}
 
-      {/* Location button (khi không dẫn đường) */}
+      {/* ── FLOATING CONTROLS (GPS RECENTER & SIMULATOR) ──── */}
       {!isNav && (
-        <button
-          onClick={() => recenterToUser(16)}
-          className={`absolute bottom-24 lg:bottom-6 right-4 z-[1000] p-3.5 rounded-full shadow-xl border transition-all active:scale-95 ${
-            isTracking ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-          }`}
-          title="Quay về vị trí của tôi"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12 0a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-        </button>
+        <>
+          {/* Nút bật Panel Giả Lập Vị Trí GPS (Testing Tool) */}
+          <div className="absolute top-16 left-4 z-[1000]">
+            <button
+              onClick={() => setShowSimPanel(!showSimPanel)}
+              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-extrabold text-xs px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-1.5 active:scale-95 transition cursor-pointer"
+            >
+              <span>🧪</span>
+              <span>Thử Nghiệm Tự Phát & Hàng Đợi</span>
+            </button>
+
+            {showSimPanel && (
+              <div className="mt-2 w-80 bg-white/98 backdrop-blur-md rounded-2xl p-3.5 shadow-2xl border border-slate-200 space-y-2.5 animate-fadeIn text-left">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <span className="text-[10px] font-black uppercase text-slate-400">Giả lập GPS & Test Hàng Đợi</span>
+                  <button onClick={() => setShowSimPanel(false)} className="text-slate-400 hover:text-slate-700 text-xs font-bold cursor-pointer">✕</button>
+                </div>
+
+                <p className="text-[11px] text-slate-600 leading-tight">
+                  Bấm vào địa điểm để "dịch chuyển" vị trí của bạn:
+                </p>
+
+                <div className="space-y-1.5">
+                  <button
+                    onClick={() => {
+                      playedPoiIds.current.delete(1);
+                      setSimulatedLocation(10.76121, 106.70251, 'Quán Ốc Oanh');
+                    }}
+                    className="w-full text-left p-2 rounded-xl text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 transition cursor-pointer flex items-center justify-between"
+                  >
+                    <span>🍲 Đến Quán Ốc Oanh (1.5m)</span>
+                    <span className="text-[9px] bg-orange-200 px-1.5 py-0.5 rounded">Tự phát</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playedPoiIds.current.delete(3);
+                      setSimulatedLocation(10.76821, 106.70681, 'Bến Nhà Rồng');
+                    }}
+                    className="w-full text-left p-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition cursor-pointer flex items-center justify-between"
+                  >
+                    <span>🏛️ Đến Bến Nhà Rồng (2m)</span>
+                    <span className="text-[9px] bg-rose-200 px-1.5 py-0.5 rounded">Tự phát</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playedPoiIds.current.delete(2);
+                      setSimulatedLocation(10.75881, 106.70421, 'Phá Lấu Cô Thảo');
+                    }}
+                    className="w-full text-left p-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 transition cursor-pointer flex items-center justify-between"
+                  >
+                    <span>🍲 Đến Phá Lấu Cô Thảo (2m)</span>
+                    <span className="text-[9px] bg-amber-200 px-1.5 py-0.5 rounded">Tự phát</span>
+                  </button>
+
+                  {/* Kịch bản test 2 điểm liên tiếp vào hàng đợi */}
+                  <button
+                    onClick={() => {
+                      playedPoiIds.current.clear();
+                      // Điểm 1 phát ngay
+                      setSimulatedLocation(10.76121, 106.70251, 'Quán Ốc Oanh');
+                      // Sau 500ms đưa thêm Phá Lấu Cô Thảo vào hàng đợi
+                      setTimeout(() => {
+                        const phaLau = mapPois.find((p) => p.id === 2 || p.name.includes('Phá Lấu'));
+                        if (phaLau) {
+                          setAudioQueue((prev) => [...prev, phaLau]);
+                          showToast(`📋 Đã thêm vào hàng đợi: ${phaLau.name} (Vị trí #1)`);
+                        }
+                      }, 500);
+                    }}
+                    className="w-full text-left p-2 rounded-xl text-xs font-extrabold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer border border-indigo-200 flex items-center justify-between"
+                  >
+                    <span>⚡ Test 2 điểm (Ốc Oanh + Phá Lấu)</span>
+                    <span className="text-[9px] bg-indigo-200 px-1.5 py-0.5 rounded">Tự phát + Đợi</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSimulatedLocation(10.7769, 106.7009, 'Quận 1')}
+                    className="w-full text-left p-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 transition cursor-pointer flex items-center justify-between"
+                  >
+                    <span>❌ Đến Quận 1 (1.8km)</span>
+                    <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded">&gt;30m</span>
+                  </button>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <button
+                      onClick={clearPlayedHistory}
+                      className="text-[10px] text-amber-600 font-bold hover:underline cursor-pointer"
+                    >
+                      🔄 Reset lịch sử nghe
+                    </button>
+                    <button
+                      onClick={resetSimulatedLocation}
+                      className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
+                    >
+                      Về GPS thật
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => recenterToUser(16)}
+            className={`absolute bottom-24 lg:bottom-6 right-4 z-[1000] p-3.5 rounded-full shadow-xl border transition-all active:scale-95 cursor-pointer ${
+              isTracking ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+            }`}
+            title="Quay về vị trí của tôi"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12 0a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+        </>
+      )}
+
+      {/* ── POI DETAIL MODAL ─────────────────────────────────── */}
+      {modalPoiId && (
+        <PoiDetailModal
+          poiId={modalPoiId}
+          onClose={() => setModalPoiId(null)}
+          onNavigate={(target) => {
+            const found = mapPois.find((p) => p.id === modalPoiId);
+            if (found) startNav(found);
+            setModalPoiId(null);
+          }}
+        />
       )}
     </div>
   );
 }
-

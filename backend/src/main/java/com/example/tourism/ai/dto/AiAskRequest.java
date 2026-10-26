@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public class AiAskRequest {
 
-    @NotNull(message = "poiId không được để trống.")
     private Long poiId;
 
     @NotBlank(message = "Nội dung câu hỏi không được để trống.")
