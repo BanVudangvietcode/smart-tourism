@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS categories (
     created_at  TIMESTAMP NOT NULL DEFAULT now()
 );
 
+-- Phân loại hệ thống điểm đến (POI Types)
+CREATE TABLE IF NOT EXISTS poi_types (
+    code        VARCHAR(50) PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    icon        VARCHAR(50),
+    description VARCHAR(255),
+    sort_order  INT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS pois (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(255) NOT NULL,
@@ -99,6 +109,14 @@ INSERT INTO categories (id, name, slug, sort_order) VALUES
     (7, 'Chùa & Nhà thờ',      'chua-nha-tho',      7),
     (8, 'Cảnh quan & Check-in', 'canh-quan-checkin', 8)
 ON CONFLICT (slug) DO NOTHING;
+
+-- Seed POI Types
+INSERT INTO poi_types (code, name, icon, description, sort_order) VALUES
+    ('FOOD',        'Ẩm Thực & Quán Ăn', '🍲', 'Các quán ăn, nhà hàng, ẩm thực đường phố Quận 4', 1),
+    ('HISTORICAL',  'Di Tích Lịch Sử',   '🏛️', 'Bến Nhà Rồng, di tích, bảo tàng lịch sử', 2),
+    ('RELIGIOUS',   'Chùa & Tôn Giáo',   '⛩️', 'Chùa chiền, miếu, nhà thờ linh thiêng', 3),
+    ('LANDMARK',    'Cảnh Quan Check-in','🌉', 'Cầu Mống, bến cảng, công viên, điểm ngắm cảnh', 4)
+ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================
 -- Menu & Dishes tables
@@ -456,6 +474,21 @@ CREATE TABLE IF NOT EXISTS reviews (
 CREATE INDEX IF NOT EXISTS idx_reviews_poi_id ON reviews(poi_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS tour_reviews (
+    id              BIGSERIAL PRIMARY KEY,
+    tour_id         BIGINT NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating          INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment         TEXT NOT NULL,
+    is_anonymous    BOOLEAN NOT NULL DEFAULT false,
+    created_at      TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tour_reviews_tour_id ON tour_reviews(tour_id);
+CREATE INDEX IF NOT EXISTS idx_tour_reviews_user_id ON tour_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_tour_reviews_created_at ON tour_reviews(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS favorites (
     id              BIGSERIAL PRIMARY KEY,

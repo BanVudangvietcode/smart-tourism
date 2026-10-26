@@ -16,6 +16,11 @@ public record CreateReviewRequest(
         @NotBlank(message = "Nội dung đánh giá không được để trống.")
         String comment,
 
-        List<String> images
-) {}
+        List<String> images,
+        Boolean isAnonymous
+) {
+    public CreateReviewRequest(Integer rating, String comment, List<String> images) {
+        this(rating, comment, images, false);
+    }
+}
 

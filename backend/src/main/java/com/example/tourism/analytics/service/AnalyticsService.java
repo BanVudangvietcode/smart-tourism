@@ -108,7 +108,7 @@ public class AnalyticsService {
         );
 
         // 3. Top hotspots
-        List<HotspotPoiSummary> topHotspots = dwellRepository.findTopHotspots(5);
+        List<HotspotPoiSummary> topHotspots = dwellRepository.findTopHotspots(20);
 
         // 4. System overview
         int totalTours = dwellRepository.countTotalTours();

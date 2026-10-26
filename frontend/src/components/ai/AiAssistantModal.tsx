@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { askAi, recommendDishesByBudget } from '@/services/api';
 import { AiRecommendDishResponse } from '@/types';
+import FormattedAiText from '@/components/common/FormattedAiText';
 
 interface AiAssistantModalProps {
   isOpen: boolean;
@@ -52,6 +54,11 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
   const [groupSize, setGroupSize] = useState<number>(2);
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<AiRecommendDishResponse | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'chat' && isOpen) {
@@ -59,7 +66,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
     }
   }, [messages, activeTab, isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   // Xử lý gửi câu hỏi chat
   const handleSendQuestion = async (textToSend?: string) => {
@@ -116,8 +123,8 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[2200] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[88vh] max-h-[720px]">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-blue-600 text-white p-4 sm:p-5 flex items-center justify-between shadow-md">
@@ -200,7 +207,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                         : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-xs'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{m.text}</div>
+                    <FormattedAiText content={m.text} isUser={m.sender === 'user'} />
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1 px-1">{m.time}</span>
 
@@ -398,6 +405,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

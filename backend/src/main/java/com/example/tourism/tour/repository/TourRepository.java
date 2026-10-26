@@ -183,10 +183,13 @@ public class TourRepository {
             return ps;
         }, keyHolder);
 
-        Number key = keyHolder.getKey();
-        if (key != null) {
-            tour.setId(key.longValue());
-            return key.longValue();
+        java.util.Map<String, Object> keys = keyHolder.getKeys();
+        Long id = keys != null && keys.containsKey("id")
+                ? ((Number) keys.get("id")).longValue()
+                : (keyHolder.getKey() != null ? keyHolder.getKey().longValue() : null);
+        if (id != null) {
+            tour.setId(id);
+            return id;
         }
         throw new IllegalStateException("Failed to insert tour, no ID obtained.");
     }
@@ -209,15 +212,19 @@ public class TourRepository {
             return ps;
         }, keyHolder);
 
-        Number key = keyHolder.getKey();
-        if (key != null) {
-            stop.setId(key.longValue());
-            return key.longValue();
+        java.util.Map<String, Object> stopKeys = keyHolder.getKeys();
+        Long stopId = stopKeys != null && stopKeys.containsKey("id")
+                ? ((Number) stopKeys.get("id")).longValue()
+                : (keyHolder.getKey() != null ? keyHolder.getKey().longValue() : null);
+        if (stopId != null) {
+            stop.setId(stopId);
+            return stopId;
         }
         throw new IllegalStateException("Failed to insert tour stop, no ID obtained.");
     }
 
     public void deleteTour(Long tourId) {
+        jdbcTemplate.update("DELETE FROM tour_stops WHERE tour_id = ?", tourId);
         jdbcTemplate.update("DELETE FROM tours WHERE id = ?", tourId);
     }
 }

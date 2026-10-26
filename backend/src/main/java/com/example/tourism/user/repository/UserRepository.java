@@ -96,6 +96,10 @@ public class UserRepository {
         return user;
     }
 
+    public void updateRole(Long userId, String role) {
+        jdbcTemplate.update("UPDATE users SET role = ? WHERE id = ?", role, userId);
+    }
+
     private User update(User user) {
         user.setUpdatedAt(LocalDateTime.now());
         jdbcTemplate.update(

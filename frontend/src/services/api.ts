@@ -1,6 +1,7 @@
 import {
   HealthStatus,
   Category,
+  PoiTypeItem,
   PoiSummary,
   PoiDetail,
   PoiMenuResponse,
@@ -8,6 +9,9 @@ import {
   CheckinResult,
   TourSummary,
   TourDetail,
+  TourReviewItem,
+  TourReviewListResponse,
+  CreateTourInput,
   CustomPlanResponse,
   AiAskResponse,
   AiRecommendDishResponse,
@@ -46,6 +50,130 @@ export const fetchCategories = async (): Promise<Category[]> => {
   const res = await fetch(`${API_V1}/categories`);
   if (!res.ok) throw new Error('Không thể tải danh mục');
   return res.json();
+};
+
+export const createCategory = async (data: {
+  name: string;
+  slug?: string;
+  iconUrl?: string;
+  sortOrder?: number;
+}): Promise<Category> => {
+  const res = await fetch(`${API_V1}/categories`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tạo danh mục mới');
+  }
+  return res.json();
+};
+
+export const updateCategory = async (
+  id: number,
+  data: {
+    name?: string;
+    slug?: string;
+    iconUrl?: string;
+    sortOrder?: number;
+  }
+): Promise<Category> => {
+  const res = await fetch(`${API_V1}/categories/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể cập nhật danh mục');
+  }
+  return res.json();
+};
+
+export const deleteCategory = async (id: number): Promise<void> => {
+  const res = await fetch(`${API_V1}/categories/${id}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeader(),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa danh mục');
+  }
+};
+
+// ─── 2.1 POI Types (Phân loại hệ thống) ─────────────────────────
+export const fetchPoiTypes = async (): Promise<PoiTypeItem[]> => {
+  const res = await fetch(`${API_V1}/poi-types`);
+  if (!res.ok) throw new Error('Không thể tải danh sách phân loại hệ thống');
+  return res.json();
+};
+
+export const createPoiType = async (data: {
+  code: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  sortOrder?: number;
+}): Promise<PoiTypeItem> => {
+  const res = await fetch(`${API_V1}/poi-types`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tạo phân loại hệ thống mới');
+  }
+  return res.json();
+};
+
+export const updatePoiType = async (
+  code: string,
+  data: {
+    name?: string;
+    icon?: string;
+    description?: string;
+    sortOrder?: number;
+  }
+): Promise<PoiTypeItem> => {
+  const res = await fetch(`${API_V1}/poi-types/${code}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể cập nhật phân loại hệ thống');
+  }
+  return res.json();
+};
+
+export const deletePoiType = async (code: string): Promise<void> => {
+  const res = await fetch(`${API_V1}/poi-types/${code}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeader(),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa phân loại hệ thống');
+  }
 };
 
 // ─── 3. POIs (Địa điểm) ─────────────────────────────────────────
@@ -112,6 +240,35 @@ export const fetchTourDetail = async (tourIdOrSlug: number | string): Promise<To
   return res.json();
 };
 
+export const createTour = async (payload: CreateTourInput): Promise<TourDetail> => {
+  const res = await fetch(`${API_V1}/tours`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    throw new Error(errData?.error || errData?.message || 'Không thể tạo tour du lịch');
+  }
+  return res.json();
+};
+
+export const deleteTour = async (tourId: number): Promise<void> => {
+  const res = await fetch(`${API_V1}/tours/${tourId}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeader(),
+    },
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    throw new Error(errData?.error || errData?.message || 'Không thể xóa tour du lịch');
+  }
+};
+
 export interface CustomTourPlanParams {
   availableMinutes: number;
   startLat: number;
@@ -149,7 +306,7 @@ export const fetchPoiReviews = async (poiId: number | string, page = 0, size = 1
 
 export const postReview = async (
   poiId: number | string,
-  data: { rating: number; comment: string; images?: string[] }
+  data: { rating: number; comment: string; images?: string[]; isAnonymous?: boolean }
 ): Promise<ReviewPageResponse['items'][0]> => {
   const res = await fetch(`${API_V1}/pois/${poiId}/reviews`, {
     method: 'POST',
@@ -162,6 +319,31 @@ export const postReview = async (
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Lỗi khi gửi đánh giá');
+  }
+  return res.json();
+};
+
+export const fetchTourReviews = async (tourId: number | string): Promise<TourReviewListResponse> => {
+  const res = await fetch(`${API_V1}/tours/${tourId}/reviews`);
+  if (!res.ok) throw new Error('Không thể tải đánh giá tuyến tour');
+  return res.json();
+};
+
+export const postTourReview = async (
+  tourId: number | string,
+  data: { rating: number; comment: string; isAnonymous?: boolean }
+): Promise<TourReviewItem> => {
+  const res = await fetch(`${API_V1}/tours/${tourId}/reviews`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi khi gửi đánh giá tuyến tour');
   }
   return res.json();
 };
@@ -339,3 +521,187 @@ export const getMyProfile = async (customToken?: string): Promise<UserProfile> =
 // Aliases cho form đăng nhập
 export const requestOtp = requestTelegramOtp;
 export const verifyOtpAndLogin = verifyTelegramOtp;
+
+// ─── 11. Admin CMS APIs ─────────────────────────────────────────
+
+export const loginAsAdmin = async (): Promise<AuthV1Response> => {
+  const res = await fetch(`${API_V1}/auth/admin-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi đăng nhập tài khoản Quản trị');
+  }
+  const data: AuthV1Response = await res.json();
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('auth_token', data.token);
+  }
+  return data;
+};
+
+export const adminCreatePoi = async (formData: FormData): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/pois`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tạo địa điểm mới');
+  }
+  return res.json();
+};
+
+export const adminUpdatePoi = async (id: number, data: any): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/pois/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể cập nhật địa điểm');
+  }
+  return res.json();
+};
+
+export const adminDeletePoi = async (id: number): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/pois/${id}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa địa điểm');
+  }
+  return res.json();
+};
+
+export const adminUploadPoiAudio = async (id: number, formData: FormData): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/pois/${id}/audio`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tải lên file thuyết minh');
+  }
+  return res.json();
+};
+
+export const adminScanMenuOcr = async (poiId: number, file: File): Promise<any> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_V1}/admin/pois/${poiId}/menu/scan-ocr`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'AI OCR không thể nhận diện thực đơn');
+  }
+  return res.json();
+};
+
+export const adminCreateDish = async (poiId: number, data: any): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/pois/${poiId}/dishes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tạo món ăn mới');
+  }
+  return res.json();
+};
+
+export const adminUpdateDish = async (dishId: number, data: any): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/dishes/${dishId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể cập nhật món ăn');
+  }
+  return res.json();
+};
+
+export const adminDeleteDish = async (dishId: number): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/dishes/${dishId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa món ăn');
+  }
+  return res.json();
+};
+
+export const adminBatchImportMenu = async (poiId: number, file: File): Promise<any> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_V1}/admin/pois/${poiId}/menu/batch-import`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Lỗi nhập hàng loạt thực đơn');
+  }
+  return res.json();
+};
+
+export const adminEvictCache = async (pattern = 'poi:*'): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/cache/evict`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify({ pattern }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa cache');
+  }
+  return res.json();
+};
+
+export const getDashboardSummary = async (): Promise<any> => {
+  const res = await fetch(`${API_V1}/analytics/dashboard-summary`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Không thể tải báo cáo Dashboard');
+  }
+  return res.json();
+};
+
+export const getHeatmap = async (minDwellSeconds = 30, limit = 500): Promise<any> => {
+  const res = await fetch(`${API_V1}/analytics/heatmap?minDwellSeconds=${minDwellSeconds}&limit=${limit}`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Không thể tải bản đồ nhiệt');
+  }
+  return res.json();
+};

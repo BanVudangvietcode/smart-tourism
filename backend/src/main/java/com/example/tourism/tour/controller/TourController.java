@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tours")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(originPatterns = "*")
 public class TourController {
 
     private final TourService tourService;
@@ -91,5 +91,40 @@ public class TourController {
 
         CustomPlanResponse plan = tourService.generateCustomPlan(requestBody, currentUserId, currentRole);
         return ResponseEntity.ok(plan);
+    }
+
+    /**
+     * DELETE /api/v1/tours/{tourId}
+     * Delete a tour and its associated stops.
+     */
+    @DeleteMapping("/{tourId}")
+    public ResponseEntity<Void> deleteTour(@PathVariable Long tourId) {
+        tourService.deleteTour(tourId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * GET /api/v1/tours/{tourId}/reviews
+     * Retrieves all user ratings & reviews for this tour.
+     */
+    @GetMapping("/{tourId}/reviews")
+    public ResponseEntity<TourReviewListResponse> getTourReviews(@PathVariable Long tourId) {
+        TourReviewListResponse reviews = tourService.getTourReviews(tourId);
+        return ResponseEntity.ok(reviews);
+    }
+
+    /**
+     * POST /api/v1/tours/{tourId}/reviews
+     * Submits a rating & review for this tour with public or private/anonymous visibility.
+     */
+    @PostMapping("/{tourId}/reviews")
+    public ResponseEntity<TourReviewResponse> createTourReview(
+            @PathVariable Long tourId,
+            @Valid @RequestBody CreateTourReviewRequest request,
+            @CurrentUser AuthUser authUser) {
+
+        Long userId = authUser != null ? authUser.id() : null;
+        TourReviewResponse created = tourService.createTourReview(tourId, userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }

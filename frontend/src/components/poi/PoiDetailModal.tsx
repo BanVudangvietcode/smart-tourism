@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PoiDetail,
   PoiMenuResponse,
@@ -20,16 +21,27 @@ import {
   askAi,
 } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import FormattedAiText from '@/components/common/FormattedAiText';
 
 interface PoiDetailModalProps {
   poiId: number | string | null;
+  initialTab?: 'info' | 'menu' | 'reviews' | 'ai';
   onClose: () => void;
   onNavigate?: (poi: { lat: number; lng: number; name: string }) => void;
 }
 
-export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetailModalProps) {
+export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, onNavigate }: PoiDetailModalProps) {
   const { user, deviceId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>('info');
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, poiId]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [detail, setDetail] = useState<PoiDetail | null>(null);
   const [menu, setMenu] = useState<PoiMenuResponse | null>(null);
@@ -52,6 +64,7 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
   // Review Form State
   const [userRating, setUserRating] = useState(5);
   const [commentText, setCommentText] = useState('');
+  const [reviewIsPublic, setReviewIsPublic] = useState(true);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
@@ -202,6 +215,7 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
       await postReview(poiId, {
         rating: userRating,
         comment: commentText.trim(),
+        isAnonymous: !reviewIsPublic,
       });
       setReviewSuccess(true);
       setCommentText('');
@@ -239,8 +253,10 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+  if (!poiId || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       {/* Audio Element ngầm */}
       <audio
         ref={audioRef}
@@ -445,7 +461,7 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
                   <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Giới thiệu</h3>
                     <p className="text-sm text-slate-700 leading-relaxed">
-                      {detail.description || 'Chưa có mô tả chi tiết cho địa điểm này.'}
+                      {detail.description?.replace(/<!--pin:.*?-->/g, '').trim() || 'Chưa có mô tả chi tiết cho địa điểm này.'}
                     </p>
                   </div>
 
@@ -601,17 +617,43 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 bg-slate-50"
                     />
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-400">
-                        Đăng dưới tên: <b className="text-slate-600">{user?.displayName || 'Khách vãng lai'}</b>
-                      </span>
-                      <button
-                        type="submit"
-                        disabled={submittingReview || !commentText.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer disabled:opacity-50"
-                      >
-                        {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
-                      </button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-500">Chế độ:</span>
+                        <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setReviewIsPublic(true)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                              reviewIsPublic ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            🌐 Công khai
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReviewIsPublic(false)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                              !reviewIsPublic ? 'bg-white text-purple-700 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            🔒 Riêng tư / Ẩn danh
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-2.5">
+                        <span className="text-[10px] text-slate-400">
+                          Đăng dưới tên: <b className="text-slate-600">{reviewIsPublic ? (user?.displayName || 'Du khách ẩm thực') : 'Du khách ẩn danh'}</b>
+                        </span>
+                        <button
+                          type="submit"
+                          disabled={submittingReview || !commentText.trim()}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer disabled:opacity-50"
+                        >
+                          {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
+                        </button>
+                      </div>
                     </div>
 
                     {reviewSuccess && (
@@ -707,7 +749,7 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
                       <div className="flex items-center gap-2 text-purple-700 font-bold text-xs">
                         <span>🤖 Câu trả lời từ AI:</span>
                       </div>
-                      <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{aiAnswer}</p>
+                      <FormattedAiText content={aiAnswer} />
 
                       {aiFollowUps.length > 0 && (
                         <div className="pt-2 border-t border-slate-100">
@@ -765,7 +807,8 @@ export default function PoiDetailModal({ poiId, onClose, onNavigate }: PoiDetail
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 

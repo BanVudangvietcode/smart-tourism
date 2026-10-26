@@ -57,10 +57,13 @@ public class CommunityService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng", userId));
 
-        String displayName = user.getDisplayName() != null && !user.getDisplayName().isBlank()
-                ? user.getDisplayName()
-                : "Du khách ẩm thực";
-        String avatarUrl = user.getAvatarUrl();
+        boolean isAnon = Boolean.TRUE.equals(request.isAnonymous());
+        String displayName = isAnon
+                ? "Du khách ẩn danh"
+                : (user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                    ? user.getDisplayName()
+                    : "Du khách ẩm thực");
+        String avatarUrl = isAnon ? null : user.getAvatarUrl();
 
         Review review = new Review();
         review.setPoiId(poiId);

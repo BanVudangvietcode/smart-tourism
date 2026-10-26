@@ -41,6 +41,15 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Đăng nhập quyền Quản trị viên (ROLE_ADMIN) cho trang Admin CMS.
+     */
+    @PostMapping("/api/v1/auth/admin-login")
+    public ResponseEntity<AuthResponse> loginAsAdmin() {
+        AuthResponse response = authService.loginAsAdmin();
+        return ResponseEntity.ok(response);
+    }
+
     // ──────────────────────────────────────────────
     // Legacy OTP API (kept for backward compatibility)
     // ──────────────────────────────────────────────

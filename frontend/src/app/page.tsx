@@ -48,30 +48,65 @@ function MainApp() {
       {/* ============================================================ */}
       {!isNavigating && (
         <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
-          <div className="flex items-center justify-between px-4 py-3 pointer-events-auto">
+          <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 sm:py-3 pointer-events-auto max-w-7xl mx-auto">
             
             {/* Logo + Tên app (Bấm vào để về Trang chủ) */}
             <div 
               onClick={() => setCurrentTab('home')}
-              className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2.5 shadow-lg border border-white/60 cursor-pointer hover:scale-102 active:scale-98 transition"
+              className="flex items-center gap-2 bg-white/95 backdrop-blur-md rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 shadow-lg border border-white/60 cursor-pointer hover:scale-102 active:scale-98 transition shrink-0"
             >
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-cyan-400 rounded-xl flex items-center justify-center shadow-md relative">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-600 to-cyan-400 rounded-xl flex items-center justify-center shadow-md relative shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <div>
-                <h1 className="text-sm font-extrabold text-gray-900 leading-none tracking-tight">Saigon Whispers</h1>
-                <p className="text-[10px] text-gray-500 font-medium leading-none mt-0.5">Thì Thầm Sài Gòn</p>
+              <div className="leading-tight">
+                <h1 className="text-xs sm:text-sm font-extrabold text-gray-900 tracking-tight">Saigon Whispers</h1>
+                <p className="text-[9px] text-gray-500 font-medium hidden sm:block">Thì Thầm Sài Gòn</p>
               </div>
             </div>
 
-            {/* Nút Trợ lý AI + Đăng nhập / Avatar */}
-            <div className="flex items-center gap-2">
+            {/* Các nút hành động bên phải: Tự phát + Trợ lý AI + UserMenu */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Nút Tự động phát âm thanh (chỉ hiện khi xem Bản đồ) */}
+              {currentTab === 'map' && (
+                <button
+                  onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
+                  className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-2xl shadow-lg border flex items-center gap-1.5 transition-all hover:scale-102 active:scale-95 cursor-pointer shrink-0 ${
+                    autoPlayEnabled
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white border-emerald-400/30'
+                      : 'bg-slate-800/90 hover:bg-slate-800 text-slate-300 border-slate-700'
+                  }`}
+                  title={autoPlayEnabled ? 'Đang bật tự động phát thuyết minh (<30m)' : 'Đã tắt tự động phát (bấm để bật)'}
+                >
+                  <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 ${
+                    autoPlayEnabled ? 'bg-white/25' : 'bg-slate-700'
+                  }`}>
+                    {autoPlayEnabled ? (
+                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse" />
+                    ) : (
+                      <span className="text-[9px]">⏸</span>
+                    )}
+                  </div>
+                  <div className="text-left hidden md:block">
+                    <p className="text-[11px] font-bold leading-none">
+                      {autoPlayEnabled ? 'Tự phát: BẬT' : 'Tự phát: TẮT'}
+                    </p>
+                    <p className={`text-[8px] leading-none mt-0.5 ${autoPlayEnabled ? 'text-emerald-100' : 'text-slate-400'}`}>
+                      {autoPlayEnabled ? 'Cách <30m' : 'Bấm để bật'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold md:hidden">
+                    {autoPlayEnabled ? 'Tự phát' : 'Tắt'}
+                  </span>
+                </button>
+              )}
+
+              {/* Nút Trợ lý AI */}
               <button
                 onClick={() => setIsAiOpen(true)}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-3.5 py-2.5 rounded-2xl shadow-lg border border-purple-400/30 flex items-center gap-1.5 font-bold text-xs active:scale-95 transition cursor-pointer"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white p-2 sm:px-3.5 sm:py-2 rounded-2xl shadow-lg border border-purple-400/30 flex items-center gap-1.5 font-bold text-xs active:scale-95 transition cursor-pointer shrink-0"
                 title="Hỏi trợ lý AI"
               >
                 <span className="text-sm">✨</span>
@@ -120,41 +155,7 @@ function MainApp() {
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* NÚT TỰ ĐỘNG PHÁT (Chỉ hiện khi ở tab Bản đồ và không dẫn đường)*/}
-      {/* ============================================================ */}
-      {currentTab === 'map' && !isNavigating && (
-        <div className="absolute right-4 top-16 lg:top-4 lg:right-20 z-40 flex items-center">
-          <button
-            onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
-            className={`px-3.5 py-2 lg:px-4 lg:py-2.5 rounded-2xl shadow-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95 border backdrop-blur-sm cursor-pointer ${
-              autoPlayEnabled
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white border-emerald-400/30'
-                : 'bg-slate-800/90 hover:bg-slate-800 text-slate-300 border-slate-700'
-            }`}
-          >
-            <div className={`w-6 h-6 lg:w-7 lg:h-7 rounded-full flex items-center justify-center shrink-0 ${
-              autoPlayEnabled ? 'bg-white/20' : 'bg-slate-700'
-            }`}>
-              {autoPlayEnabled ? (
-                <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              ) : (
-                <span className="text-xs">⏸️</span>
-              )}
-            </div>
-            <div className="text-left">
-              <p className="text-[11px] lg:text-xs font-bold leading-none">
-                {autoPlayEnabled ? 'Tự động phát: BẬT' : 'Tự động phát: TẮT'}
-              </p>
-              <p className={`text-[8px] lg:text-[9px] leading-none mt-0.5 ${autoPlayEnabled ? 'text-emerald-100' : 'text-slate-400'}`}>
-                {autoPlayEnabled ? 'Tự phát khi cách <30m' : 'Bấm để bật lại'}
-              </p>
-            </div>
-          </button>
-        </div>
-      )}
+
 
       {/* ============================================================ */}
       {/* THANH ĐIỀU HƯỚNG DESKTOP (Ẩn khi đang dẫn đường)            */}

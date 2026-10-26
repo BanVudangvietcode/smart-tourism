@@ -15,6 +15,16 @@ export interface Category {
   sortOrder: number;
 }
 
+// Phân loại hệ thống (PoiTypeItem)
+export interface PoiTypeItem {
+  code: string;
+  name: string;
+  icon?: string | null;
+  description?: string | null;
+  sortOrder: number;
+  createdAt?: string;
+}
+
 // Tóm tắt địa điểm (PoiSummaryResponse)
 export interface PoiSummary {
   id: number;
@@ -157,16 +167,21 @@ export interface TourSummary {
 }
 
 export interface TourStop {
-  id: number;
+  id?: number;
+  stopId?: number;
   stopOrder: number;
-  poiId: number;
-  poiName: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  thumbnailUrl: string | null;
-  suggestedDurationMinutes: number;
-  notes: string | null;
+  estimatedDurationMinutes?: number;
+  suggestedDurationMinutes?: number;
+  recommendedDishOrActivity?: string;
+  note?: string | null;
+  notes?: string | null;
+  poi?: PoiSummary;
+  poiId?: number;
+  poiName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  thumbnailUrl?: string | null;
 }
 
 export interface TourDetail {
@@ -184,15 +199,74 @@ export interface TourDetail {
   stops: TourStop[];
 }
 
+export interface TourReviewItem {
+  id: number;
+  tourId: number;
+  userId: number;
+  userDisplayName: string;
+  userAvatarUrl?: string | null;
+  rating: number;
+  comment: string;
+  isAnonymous: boolean;
+  createdAt: string;
+}
+
+export interface TourReviewListResponse {
+  items: TourReviewItem[];
+  totalCount: number;
+  avgRating: number;
+}
+
+export interface CreateTourStopInput {
+  poiId: number;
+  stopOrder: number;
+  estimatedDurationMinutes?: number;
+  recommendedDishOrActivity?: string;
+  note?: string;
+}
+
+export interface CreateTourInput {
+  name: string;
+  description?: string;
+  theme?: string;
+  estimatedDurationMinutes?: number;
+  estimatedCost?: number;
+  totalDistanceMeters?: number;
+  thumbnailUrl?: string;
+  isPublic?: boolean;
+  creatorName?: string;
+  stops: CreateTourStopInput[];
+}
+
 // Kế hoạch tour tự động (CustomPlanResponse)
+export interface CustomPlanStop {
+  stopOrder: number;
+  poi?: PoiSummary;
+  poiId?: number;
+  poiName?: string;
+  address?: string;
+  estimatedDurationMinutes?: number;
+  suggestedDurationMinutes?: number;
+  travelMinutesFromPrevious?: number;
+  distanceMetersFromPrevious?: number;
+  recommendedDishOrActivity?: string;
+  note?: string;
+  notes?: string;
+}
+
 export interface CustomPlanResponse {
-  tourId: number | null;
-  tourName: string;
-  theme: string;
+  availableMinutes?: number;
   totalDurationMinutes: number;
+  remainingMinutes?: number;
+  estimatedCost?: number;
+  totalEstimatedCost?: number;
   totalDistanceMeters: number;
-  totalEstimatedCost: number;
-  stops: TourStop[];
+  stopCount?: number;
+  stops: CustomPlanStop[];
+  savedTourId?: number | null;
+  tourId?: number | null;
+  tourName?: string;
+  theme?: string;
   message?: string;
 }
 

@@ -1,5 +1,6 @@
 package com.example.tourism.tour.service;
 
+import com.example.tourism.common.exception.ResourceNotFoundException;
 import com.example.tourism.dish.model.Dish;
 import com.example.tourism.dish.repository.DishRepository;
 import com.example.tourism.poi.dto.PoiSummaryResponse;
@@ -9,6 +10,9 @@ import com.example.tourism.tour.dto.*;
 import com.example.tourism.tour.model.Tour;
 import com.example.tourism.tour.model.TourStop;
 import com.example.tourism.tour.repository.TourRepository;
+import com.example.tourism.tour.repository.TourReviewRepository;
+import com.example.tourism.user.model.User;
+import com.example.tourism.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,13 +30,26 @@ public class TourService {
     private final TourRepository tourRepository;
     private final PoiRepository poiRepository;
     private final DishRepository dishRepository;
+    private final TourReviewRepository tourReviewRepository;
+    private final UserRepository userRepository;
 
     public TourService(TourRepository tourRepository,
                        PoiRepository poiRepository,
                        DishRepository dishRepository) {
+        this(tourRepository, poiRepository, dishRepository, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public TourService(TourRepository tourRepository,
+                       PoiRepository poiRepository,
+                       DishRepository dishRepository,
+                       TourReviewRepository tourReviewRepository,
+                       UserRepository userRepository) {
         this.tourRepository = tourRepository;
         this.poiRepository = poiRepository;
         this.dishRepository = dishRepository;
+        this.tourReviewRepository = tourReviewRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -249,6 +266,13 @@ public class TourService {
                 tour.getUpdatedAt(),
                 stopResponses
         );
+    }
+
+    @Transactional
+    public void deleteTour(Long tourId) {
+        tourRepository.findById(tourId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tour ID: " + tourId));
+        tourRepository.deleteTour(tourId);
     }
 
     /**
@@ -533,6 +557,48 @@ public class TourService {
             );
         }
         return distance;
+    }
+
+    public TourReviewListResponse getTourReviews(Long tourId) {
+        tourRepository.findById(tourId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tuyến tour", tourId));
+
+        List<TourReviewResponse> items = tourReviewRepository.findByTourId(tourId);
+        long count = tourReviewRepository.countByTourId(tourId);
+        Double avgRating = tourReviewRepository.getTourAvgRating(tourId);
+
+        return new TourReviewListResponse(
+                items,
+                count,
+                avgRating != null ? avgRating : 5.0
+        );
+    }
+
+    @Transactional
+    public TourReviewResponse createTourReview(Long tourId, Long userId, CreateTourReviewRequest request) {
+        Tour tour = tourRepository.findById(tourId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tuyến tour", tourId));
+
+        Long effectiveUserId = userId != null ? userId : 38L;
+        User user = userRepository.findById(effectiveUserId).orElse(null);
+
+        boolean isAnon = Boolean.TRUE.equals(request.isAnonymous());
+        String displayName = isAnon
+                ? "Du khách ẩn danh"
+                : (user != null && user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                    ? user.getDisplayName()
+                    : "Du khách ẩm thực");
+        String avatarUrl = (isAnon || user == null) ? null : user.getAvatarUrl();
+
+        return tourReviewRepository.save(
+                tourId,
+                effectiveUserId,
+                request.rating(),
+                request.comment().trim(),
+                isAnon,
+                displayName,
+                avatarUrl
+        );
     }
 
     public static double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2) {

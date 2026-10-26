@@ -1,11 +1,24 @@
 import L from 'leaflet';
 
 // Icon địa điểm POI
-export const createPoiIcon = (colorClass: string, emoji: string) => L.divIcon({
-  className: 'bg-transparent border-none',
-  html: `<div class="flex flex-col items-center cursor-pointer"><div class="w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.2)] border-2 border-white text-sm z-10 relative hover:scale-110 transition-transform">${emoji}</div><div class="w-2.5 h-2.5 ${colorClass} rotate-45 -mt-1.5 border-r-2 border-b-2 border-white shadow-sm z-0 relative"></div></div>`,
-  iconSize: [32, 40], iconAnchor: [16, 40], popupAnchor: [0, -40],
-});
+export const createPoiIcon = (colorClass: string, emoji: string) => {
+  const isHexOrRgb = colorClass && (colorClass.startsWith('#') || colorClass.startsWith('rgb'));
+  const bgStyle = isHexOrRgb ? `style="background-color: ${colorClass};"` : '';
+  const cls = isHexOrRgb ? '' : (colorClass || 'bg-blue-600');
+
+  return L.divIcon({
+    className: 'bg-transparent border-none',
+    html: `<div class="flex flex-col items-center cursor-pointer">
+      <div class="w-8 h-8 rounded-full ${cls} flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.25)] border-2 border-white text-sm z-10 relative hover:scale-110 transition-transform" ${bgStyle}>
+        ${emoji || '📍'}
+      </div>
+      <div class="w-2.5 h-2.5 ${cls} rotate-45 -mt-1.5 border-r-2 border-b-2 border-white shadow-xs z-0 relative" ${bgStyle}></div>
+    </div>`,
+    iconSize: [32, 40],
+    iconAnchor: [16, 40],
+    popupAnchor: [0, -40],
+  });
+};
 
 // Icon định vị user (kèm vệt sáng đèn pin xoay theo la bàn)
 export const createUserLocationIcon = (headingDeg: number) => L.divIcon({

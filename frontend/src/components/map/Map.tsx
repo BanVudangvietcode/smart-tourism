@@ -307,22 +307,57 @@ export default function Map({
       try {
         const livePois: PoiSummary[] = await fetchPois();
         if (livePois && livePois.length > 0) {
+          let customPins: Record<number, { emoji?: string; color?: string }> = {};
+          try {
+            if (typeof window !== 'undefined') {
+              customPins = JSON.parse(localStorage.getItem('smart_tourism_poi_pins') || '{}');
+            }
+          } catch {}
+
           const mapped: MapPOI[] = livePois.map((p) => {
             let color = '#2563eb';
             let emoji = '📍';
 
-            if (p.poiType === 'HISTORICAL' || p.categoryName?.includes('Di tích')) {
-              color = '#e11d48';
-              emoji = '🏛️';
-            } else if (p.poiType === 'FOOD' || p.categoryName?.includes('Ốc') || p.categoryName?.includes('Phá lấu')) {
-              color = '#ea580c';
-              emoji = '🍲';
-            } else if (p.poiType === 'RELIGIOUS' || p.categoryName?.includes('Chùa') || p.categoryName?.includes('thờ')) {
-              color = '#8b5cf6';
-              emoji = '⛩️';
-            } else if (p.poiType === 'LANDMARK' || p.categoryName?.includes('Cầu') || p.categoryName?.includes('Cảnh quan')) {
-              color = '#0ea5e9';
-              emoji = '🌉';
+            // 1. Kiểm tra cấu hình ghim tùy chỉnh từ localStorage
+            if (customPins[p.id]) {
+              if (customPins[p.id].emoji) emoji = customPins[p.id].emoji!;
+              if (customPins[p.id].color) color = customPins[p.id].color!;
+            } else {
+              // 2. Kiểm tra nhãn pin nhúng trong description nếu có
+              const rawDesc = (p as any).description || '';
+              const pinMatch = rawDesc.match(/<!--pin:({.*?})-->/);
+              if (pinMatch) {
+                try {
+                  const parsed = JSON.parse(pinMatch[1]);
+                  if (parsed.emoji) emoji = parsed.emoji;
+                  if (parsed.color) color = parsed.color;
+                } catch {}
+              } else {
+                // 3. Quy chuẩn tự động theo Danh mục & POI Type
+                const catName = p.categoryName || '';
+                if (p.poiType === 'HISTORICAL' || catName.includes('Di tích')) {
+                  color = '#e11d48';
+                  emoji = '🏛️';
+                } else if (catName.includes('Ăn vặt')) {
+                  color = '#f59e0b';
+                  emoji = '🍢';
+                } else if (catName.includes('Món nước') || catName.includes('Phở') || catName.includes('tiếu')) {
+                  color = '#ef4444';
+                  emoji = '🍜';
+                } else if (catName.includes('Cà phê') || catName.includes('phê')) {
+                  color = '#78350f';
+                  emoji = '☕';
+                } else if (p.poiType === 'FOOD' || catName.includes('Ốc') || catName.includes('Phá lấu')) {
+                  color = '#ea580c';
+                  emoji = '🍲';
+                } else if (p.poiType === 'RELIGIOUS' || catName.includes('Chùa') || catName.includes('thờ')) {
+                  color = '#8b5cf6';
+                  emoji = '⛩️';
+                } else if (p.poiType === 'LANDMARK' || catName.includes('Cầu') || catName.includes('Cảnh quan')) {
+                  color = '#0ea5e9';
+                  emoji = '🌉';
+                }
+              }
             }
 
             return {
@@ -720,13 +755,14 @@ export default function Map({
       {!isNav && (
         <>
           {/* Nút bật Panel Giả Lập Vị Trí GPS (Testing Tool) */}
-          <div className="absolute top-16 left-4 z-[1000]">
+          <div className="absolute top-[68px] sm:top-20 left-3 sm:left-4 z-[1000]">
             <button
               onClick={() => setShowSimPanel(!showSimPanel)}
-              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-extrabold text-xs px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-1.5 active:scale-95 transition cursor-pointer"
+              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-extrabold text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-1.5 active:scale-95 transition cursor-pointer"
             >
               <span>🧪</span>
-              <span>Thử Nghiệm Tự Phát & Hàng Đợi</span>
+              <span className="hidden sm:inline">Thử Nghiệm Tự Phát & Hàng Đợi</span>
+              <span className="sm:hidden text-[10px] font-bold">Test GPS</span>
             </button>
 
             {showSimPanel && (

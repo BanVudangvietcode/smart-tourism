@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { loginWithGoogle } from '@/services/api';
 
@@ -101,7 +102,7 @@ export default function UserMenu() {
           // Logged-in: show avatar
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white/80 hover:scale-105 active:scale-95 transition cursor-pointer"
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white/80 hover:scale-105 active:scale-95 transition cursor-pointer"
             title={user.displayName || 'Tài khoản'}
           >
             {getInitials()}
@@ -110,12 +111,12 @@ export default function UserMenu() {
           // Not logged in: show login button
           <button
             onClick={() => setShowLoginModal(true)}
-            className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-white/60 text-gray-700 hover:bg-white transition cursor-pointer flex items-center gap-2"
+            className="bg-white/95 backdrop-blur-md px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl shadow-lg border border-white/60 text-gray-700 hover:bg-white transition cursor-pointer flex items-center gap-1.5"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span className="text-xs font-bold hidden sm:inline">Đăng nhập</span>
+            <span className="text-[11px] sm:text-xs font-bold hidden sm:inline">Đăng nhập</span>
           </button>
         )}
 
@@ -129,6 +130,16 @@ export default function UserMenu() {
                 {user.role === 'GUEST' ? 'Khách' : 'Thành viên'}
               </span>
             </div>
+
+            <Link
+              href="/admin"
+              onClick={() => setShowDropdown(false)}
+              className="w-full text-left px-4 py-2.5 text-xs font-bold text-purple-700 hover:bg-purple-50 transition flex items-center gap-2 cursor-pointer border-b border-gray-100"
+            >
+              <span>⚡</span>
+              <span>Trang Quản Trị (Admin CMS)</span>
+            </Link>
+
             <button
               onClick={() => {
                 logout();
@@ -224,6 +235,17 @@ export default function UserMenu() {
             {error && (
               <p className="mt-4 text-center text-xs font-medium text-red-500">{error}</p>
             )}
+
+            <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+              <Link
+                href="/admin"
+                onClick={() => setShowLoginModal(false)}
+                className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center justify-center gap-1.5"
+              >
+                <span>⚡</span>
+                <span>Truy cập Hệ thống Quản trị (Admin CMS)</span>
+              </Link>
+            </div>
 
             {/* Terms */}
             <p className="mt-6 text-center text-[10px] text-gray-400">

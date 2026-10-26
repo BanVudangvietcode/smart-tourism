@@ -152,6 +152,22 @@ public class AuthService {
                 user.getDisplayName(), user.getRole());
     }
 
+    public AuthResponse loginAsAdmin() {
+        User adminUser = userRepository.findByEmail("admin@saigonwhispers.vn")
+                .orElseGet(() -> {
+                    User u = new User();
+                    u.setEmail("admin@saigonwhispers.vn");
+                    u.setDisplayName("Quản Trị Viên");
+                    u.setRole("ADMIN");
+                    u.setProvider("local");
+                    return userRepository.save(u);
+                });
+        userRepository.updateRole(adminUser.getId(), "ADMIN");
+        String token = jwtUtils.generateToken(adminUser.getId(), "ADMIN", null);
+        return new AuthResponse(token, adminUser.getId(), adminUser.getEmail(),
+                adminUser.getDisplayName(), "ADMIN");
+    }
+
     private GoogleIdToken.Payload verifyGoogleToken(String idTokenString) {
         try {
             GoogleIdToken idToken = this.googleVerifier.verify(idTokenString);

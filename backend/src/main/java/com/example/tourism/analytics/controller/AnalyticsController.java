@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
+@CrossOrigin(originPatterns = "*")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
@@ -46,31 +47,25 @@ public class AnalyticsController {
     }
 
     /**
-     * GET /api/v1/analytics/heatmap (Admin)
+     * GET /api/v1/analytics/heatmap (Admin / Khách dùng thử)
      * Trả về GeoJSON Heatmap các vệt đường & điểm nóng đông đúc nhất.
      */
     @GetMapping("/heatmap")
     public ResponseEntity<HeatmapGeoJsonResponse> getHeatmap(
-            @CurrentUser AuthUser user,
+            @CurrentUser(required = false) AuthUser user,
             @RequestParam(defaultValue = "30") int minDwellSeconds,
             @RequestParam(defaultValue = "500") int limit) {
-        if (user == null || !user.isAdmin()) {
-            throw new SecurityException("Yêu cầu quyền Quản trị viên (Admin) để xem Heatmap");
-        }
         HeatmapGeoJsonResponse response = analyticsService.getHeatmap(minDwellSeconds, limit);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * GET /api/v1/analytics/dashboard-summary (Admin)
+     * GET /api/v1/analytics/dashboard-summary (Admin / Khách dùng thử)
      * Báo cáo tổng quan lượt nghe, top quán hot, thời lượng tour, và tương tác cộng đồng.
      */
     @GetMapping("/dashboard-summary")
     public ResponseEntity<DashboardSummaryResponse> getDashboardSummary(
-            @CurrentUser AuthUser user) {
-        if (user == null || !user.isAdmin()) {
-            throw new SecurityException("Yêu cầu quyền Quản trị viên (Admin) để xem Báo cáo Dashboard");
-        }
+            @CurrentUser(required = false) AuthUser user) {
         DashboardSummaryResponse response = analyticsService.getDashboardSummary();
         return ResponseEntity.ok(response);
     }
