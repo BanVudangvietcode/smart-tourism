@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import HomePage from '@/components/home/HomePage';
 import PlacesTab from '@/components/places/PlacesTab';
@@ -41,13 +41,13 @@ function MainApp() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#f0f4f8] relative">
+    <div className="fixed inset-0 w-full h-[100dvh] flex flex-col overflow-hidden bg-[#f0f4f8]">
 
       {/* ============================================================ */}
       {/* THANH TRÊN (Header) - Nổi trên bản đồ (Ẩn khi đang dẫn đường)*/}
       {/* ============================================================ */}
       {!isNavigating && (
-        <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none pt-safe">
           <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 sm:py-3 pointer-events-auto max-w-7xl mx-auto">
             
             {/* Logo + Tên app (Bấm vào để về Trang chủ) */}
@@ -122,7 +122,7 @@ function MainApp() {
       {/* ============================================================ */}
       {/* VÙNG NỘI DUNG CHÍNH (Trang chủ hoặc Bản đồ)                   */}
       {/* ============================================================ */}
-      <div className="flex-1 w-full relative overflow-hidden">
+      <div className="flex-1 w-full h-full relative overflow-hidden">
         {/* VIEW 1: TRANG CHỦ */}
         <div className={`w-full h-full ${currentTab === 'home' ? 'block' : 'hidden'}`}>
           <HomePage onOpenMap={goToMap} />
@@ -161,7 +161,7 @@ function MainApp() {
       {/* THANH ĐIỀU HƯỚNG DESKTOP (Ẩn khi đang dẫn đường)            */}
       {/* ============================================================ */}
       {!isNavigating && (
-        <div className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 z-40 flex-col bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 py-3 px-2 gap-1.5">
+        <div className="hidden lg:flex fixed left-4 top-1/2 -translate-y-1/2 z-40 flex-col bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 py-3 px-2 gap-1.5">
           {/* Tab 1: Trang chủ */}
           <button
             onClick={() => setCurrentTab('home')}

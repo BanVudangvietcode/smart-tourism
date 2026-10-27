@@ -6,8 +6,12 @@ import com.example.tourism.auth.annotation.CurrentUser;
 import com.example.tourism.auth.model.AuthUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
@@ -18,6 +22,39 @@ public class AnalyticsController {
 
     public AnalyticsController(AnalyticsService analyticsService) {
         this.analyticsService = analyticsService;
+    }
+
+    /**
+     * GET /api/v1/analytics/realtime/visitors
+     * Server-Sent Events (SSE) stream kết nối thời gian thực cho trang Admin.
+     */
+    @GetMapping(value = "/realtime/visitors", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamActiveVisitors() {
+        return analyticsService.subscribeVisitors();
+    }
+
+    /**
+     * POST /api/v1/analytics/realtime/ping
+     * Heartbeat tín hiệu thiết bị du khách đang online.
+     */
+    @PostMapping("/realtime/ping")
+    public ResponseEntity<Map<String, Object>> pingVisitor(
+            @RequestBody(required = false) Map<String, String> body) {
+        String deviceId = body != null ? body.get("deviceId") : null;
+        int count = analyticsService.recordVisitorPing(deviceId);
+        return ResponseEntity.ok(Map.of("status", "OK", "activeVisitors", count));
+    }
+
+    /**
+     * POST /api/v1/analytics/realtime/leave
+     * Báo hiệu thiết bị rời trang.
+     */
+    @PostMapping("/realtime/leave")
+    public ResponseEntity<Map<String, Object>> leaveVisitor(
+            @RequestBody(required = false) Map<String, String> body) {
+        String deviceId = body != null ? body.get("deviceId") : null;
+        int count = analyticsService.recordVisitorLeave(deviceId);
+        return ResponseEntity.ok(Map.of("status", "OK", "activeVisitors", count));
     }
 
     /**
@@ -70,4 +107,3 @@ public class AnalyticsController {
         return ResponseEntity.ok(response);
     }
 }
-

@@ -100,6 +100,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [refreshGuestSession]);
 
+  // Gửi heartbeat hiện diện thời gian thực (Real-time active visitor ping)
+  useEffect(() => {
+    const currentDevId =
+      deviceId ||
+      (typeof window !== 'undefined' ? localStorage.getItem('sw_device_id') : '') ||
+      'web-' + Math.random().toString(36).substring(2, 9);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sw_device_id', currentDevId);
+    }
+
+    const ping = () => {
+      // Chỉ gửi ping khi tab đang hiển thị (tránh ping ngầm khi đã khóa máy / ẩn tab)
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      // 1. Gửi tới Next.js real-time presence (trực tiếp port 3000)
+      fetch('/api/realtime/ping?deviceId=' + encodeURIComponent(currentDevId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: currentDevId }),
+        keepalive: true,
+      }).catch(() => {});
+
+      // 2. Gửi tới Spring Boot backend nếu đang chạy
+      fetch('/api/v1/analytics/realtime/ping?deviceId=' + encodeURIComponent(currentDevId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: currentDevId }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const leave = () => {
+      const leaveUrl = '/api/realtime/leave?deviceId=' + encodeURIComponent(currentDevId);
+      try {
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          navigator.sendBeacon(leaveUrl, JSON.stringify({ deviceId: currentDevId }));
+        } else {
+          fetch(leaveUrl, { method: 'POST', keepalive: true }).catch(() => {});
+        }
+      } catch {}
+
+      try {
+        fetch('/api/v1/analytics/realtime/leave?deviceId=' + encodeURIComponent(currentDevId), {
+          method: 'POST',
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
+    };
+
+    // Ping tức thì ngay khi mở trang
+    ping();
+    // Heartbeat đều đặn mỗi 5 giây
+    const interval = setInterval(ping, 5000);
+
+    // Bắt sự kiện thoát, khóa màn hình, chuyển ứng dụng trên điện thoại (Mobile Page Lifecycle)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        leave();
+      } else if (document.visibilityState === 'visible') {
+        ping();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', leave);
+    window.addEventListener('beforeunload', leave);
+
+    return () => {
+      clearInterval(interval);
+      leave();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', leave);
+      window.removeEventListener('beforeunload', leave);
+    };
+  }, [deviceId]);
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);

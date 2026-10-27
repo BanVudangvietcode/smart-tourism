@@ -31,7 +31,8 @@ public record DashboardSummaryResponse(
             int avgTourDurationMinutes,
             int totalCheckins,
             int totalReviews,
-            int totalFavorites
+            int totalFavorites,
+            int activeVisitors
     ) {
     }
 }

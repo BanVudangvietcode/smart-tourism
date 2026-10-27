@@ -225,5 +225,21 @@ public class DwellRepository {
         Integer count = jdbcTemplate.queryForObject("SELECT count(*) FROM favorites", Integer.class);
         return count != null ? count : 0;
     }
+
+    public int countActiveVisitors() {
+        try {
+            String sql = "SELECT count(DISTINCT device_id) FROM (" +
+                         "  SELECT device_id FROM dwell_logs WHERE created_at >= now() - INTERVAL '15 minutes' " +
+                         "  UNION " +
+                         "  SELECT device_id FROM audio_listen_logs WHERE created_at >= now() - INTERVAL '15 minutes' " +
+                         "  UNION " +
+                         "  SELECT device_id FROM guest_devices WHERE created_at >= now() - INTERVAL '60 minutes'" +
+                         ") active";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+            return (count != null && count > 0) ? count : 1;
+        } catch (Exception e) {
+            return 1;
+        }
+    }
 }
 

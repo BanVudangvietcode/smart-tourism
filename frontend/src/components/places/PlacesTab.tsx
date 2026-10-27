@@ -80,6 +80,11 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
                 placeholder="Tìm tên địa điểm, di tích, đường..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                suppressHydrationWarning
+                autoComplete="off"
+                spellCheck={false}
+                data-gramm="false"
+                data-enable-grammarly="false"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none transition"
               />
               <svg

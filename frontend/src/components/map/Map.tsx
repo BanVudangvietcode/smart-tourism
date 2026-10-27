@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 import { MapPOI, NavStep, RouteInfo, PoiSummary } from '@/types';
@@ -53,7 +52,9 @@ function AutoResize({ isActive }: { isActive: boolean }) {
   useEffect(() => {
     const h = () => map.invalidateSize();
     window.addEventListener('resize', h);
+    window.addEventListener('orientationchange', h);
     return () => window.removeEventListener('resize', h);
+      window.removeEventListener('orientationchange', h);
   }, [map]);
   return null;
 }
@@ -99,6 +100,14 @@ export default function Map({
   const safeCenter: [number, number] = (Array.isArray(D4_CENTER) && typeof D4_CENTER[0] === 'number') ? D4_CENTER : [10.7613, 106.7056];
   const [userPos, setUserPos] = useState<[number, number]>(safeCenter);
   const [hasRealGPS, setHasRealGPS] = useState(false);
+  const [isInsecureOrigin, setIsInsecureOrigin] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      setIsInsecureOrigin(!window.isSecureContext && !isLocal);
+    }
+  }, []);
   const [heading, setHeading] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
 
@@ -393,6 +402,12 @@ export default function Map({
     if (typeof window === 'undefined') return;
     let watchId: number;
     if (navigator.geolocation) {
+      const isInsecure = !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      if (isInsecure) {
+        console.warn('GPS thực bị trình duyệt chặn do kết nối HTTP trên mạng LAN. Hãy dùng panel [Test GPS] hoặc chạy server với HTTPS.');
+        return;
+      }
+
       watchId = navigator.geolocation.watchPosition(
         (p) => {
           const newPos: [number, number] = [p.coords.latitude, p.coords.longitude];
@@ -409,7 +424,14 @@ export default function Map({
           // Kiểm tra tự động phát & hàng đợi khi GPS thực thay đổi
           checkProximityAndQueue(newPos);
         },
-        (e) => console.warn(`GPS(${e.code}):`, e.message),
+        (e) => {
+          if (e.code === 1) {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            console.warn('GPS bị chặn quyền hoặc cần HTTPS:', e.message);
+          } else {
+            console.warn(`GPS(${e.code}):`, e.message);
+          }
+        },
         { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
       );
     }
@@ -456,6 +478,12 @@ export default function Map({
   const stopNav = () => { setIsNav(false); setDest(null); setRouteCoords([]); setRouteInfo(null); setSteps([]); setStepIdx(0); setOverview(false); setIsTracking(false); };
 
   const recenterToUser = (targetZoom = 17) => {
+    if (!hasRealGPS) {
+      if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
+        showToast('⚠️ Trình duyệt chặn GPS qua HTTP (192.168.1.15). Đang mở panel [Test GPS] để bạn thử nghiệm!');
+        setShowSimPanel(true);
+      }
+    }
     if (isNav) setIsTracking(true);
     setOverview(false);
 
@@ -514,7 +542,7 @@ export default function Map({
       )}
 
       {/* ── BẢN ĐỒ MAP CONTAINER ────────────────────────────── */}
-      <MapContainer ref={mapRef} center={userPos} zoom={16} zoomControl={false} className="w-full h-full rounded-2xl border-none absolute inset-0 z-0 bg-[#f4f7f6]">
+      <MapContainer ref={mapRef} center={userPos} zoom={16} zoomControl={false} className="w-full h-full border-none absolute inset-0 z-0 bg-[#f4f7f6]">
         <TileLayer
           attribution='&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="http://openstreetmap.org">OSM</a>'
           url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
@@ -764,6 +792,14 @@ export default function Map({
               <span className="hidden sm:inline">Thử Nghiệm Tự Phát & Hàng Đợi</span>
               <span className="sm:hidden text-[10px] font-bold">Test GPS</span>
             </button>
+            {isInsecureOrigin && !hasRealGPS && (
+              <button
+                onClick={() => setShowSimPanel(true)}
+                className="mt-1 bg-amber-500/90 hover:bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-md cursor-pointer flex items-center gap-1 animate-fadeIn border border-amber-300/40"
+              >
+                <span>⚠️ HTTP: Bấm để Test GPS</span>
+              </button>
+            )}
 
             {showSimPanel && (
               <div className="mt-2 w-80 bg-white/98 backdrop-blur-md rounded-2xl p-3.5 shadow-2xl border border-slate-200 space-y-2.5 animate-fadeIn text-left">

@@ -10,9 +10,14 @@ import com.example.tourism.poi.model.Poi;
 import com.example.tourism.poi.repository.PoiRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.*;
 
 @Service
 public class AnalyticsService {
@@ -21,12 +26,100 @@ public class AnalyticsService {
     private final DwellRepository dwellRepository;
     private final PoiRepository poiRepository;
 
+    // Real-time visitor tracking & SSE broadcasting
+    private final CopyOnWriteArrayList<SseEmitter> visitorEmitters = new CopyOnWriteArrayList<>();
+    private final ConcurrentHashMap<String, Long> activeVisitorsMap = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "visitor-sse-heartbeat");
+        t.setDaemon(true);
+        return t;
+    });
+
     public AnalyticsService(AudioListenRepository audioListenRepository,
                             DwellRepository dwellRepository,
                             PoiRepository poiRepository) {
         this.audioListenRepository = audioListenRepository;
         this.dwellRepository = dwellRepository;
         this.poiRepository = poiRepository;
+
+        // Định kỳ gửi heartbeat giữ kết nối SSE và dọn dẹp các session hết hạn
+        this.heartbeatExecutor.scheduleAtFixedRate(() -> {
+            try {
+                int count = getActiveVisitorsCount();
+                broadcastActiveVisitors(count);
+            } catch (Exception ignored) {
+            }
+        }, 5, 5, TimeUnit.SECONDS);
+    }
+
+    public SseEmitter subscribeVisitors() {
+        SseEmitter emitter = new SseEmitter(180_000L); // 3 phút timeout, browser tự động reconnect
+        visitorEmitters.add(emitter);
+
+        emitter.onCompletion(() -> visitorEmitters.remove(emitter));
+        emitter.onTimeout(() -> {
+            visitorEmitters.remove(emitter);
+            emitter.complete();
+        });
+        emitter.onError(e -> visitorEmitters.remove(emitter));
+
+        // Gửi ngay số liệu hiện tại cho client vừa kết nối
+        try {
+            int currentCount = getActiveVisitorsCount();
+            emitter.send(SseEmitter.event()
+                    .name("visitors")
+                    .data(Map.of(
+                            "activeVisitors", currentCount,
+                            "timestamp", System.currentTimeMillis()
+                    )));
+        } catch (IOException e) {
+            visitorEmitters.remove(emitter);
+        }
+
+        return emitter;
+    }
+
+    public int recordVisitorPing(String deviceId) {
+        String key = (deviceId != null && !deviceId.isBlank()) ? deviceId.trim() : UUID.randomUUID().toString();
+        activeVisitorsMap.put(key, System.currentTimeMillis());
+        int count = getActiveVisitorsCount();
+        broadcastActiveVisitors(count);
+        return count;
+    }
+
+    public int recordVisitorLeave(String deviceId) {
+        if (deviceId != null && !deviceId.isBlank()) {
+            activeVisitorsMap.remove(deviceId.trim());
+        }
+        int count = getActiveVisitorsCount();
+        broadcastActiveVisitors(count);
+        return count;
+    }
+
+    public int getActiveVisitorsCount() {
+        long now = System.currentTimeMillis();
+        // Xóa session quá 45 giây không phản hồi
+        activeVisitorsMap.entrySet().removeIf(entry -> now - entry.getValue() > 45_000);
+        int realTimeCount = activeVisitorsMap.size();
+        int dbCount = dwellRepository.countActiveVisitors();
+        return Math.max(1, Math.max(realTimeCount, dbCount));
+    }
+
+    public void broadcastActiveVisitors(int count) {
+        if (visitorEmitters.isEmpty()) return;
+
+        Map<String, Object> payload = Map.of(
+                "activeVisitors", count,
+                "timestamp", System.currentTimeMillis()
+        );
+
+        for (SseEmitter emitter : visitorEmitters) {
+            try {
+                emitter.send(SseEmitter.event().name("visitors").data(payload));
+            } catch (Exception e) {
+                visitorEmitters.remove(emitter);
+            }
+        }
     }
 
     @Transactional
@@ -116,16 +209,17 @@ public class AnalyticsService {
         int totalCheckins = dwellRepository.countTotalCheckins();
         int totalReviews = dwellRepository.countTotalReviews();
         int totalFavorites = dwellRepository.countTotalFavorites();
+        int activeVisitors = getActiveVisitorsCount();
 
         DashboardSummaryResponse.SystemOverviewMetrics systemOverview = new DashboardSummaryResponse.SystemOverviewMetrics(
                 totalTours,
                 avgTourDurationMinutes,
                 totalCheckins,
                 totalReviews,
-                totalFavorites
+                totalFavorites,
+                activeVisitors
         );
 
         return new DashboardSummaryResponse(audioStats, dwellStats, topHotspots, systemOverview);
     }
 }
-

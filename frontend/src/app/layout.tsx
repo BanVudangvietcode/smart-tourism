@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import Providers from './providers';
+import 'leaflet/dist/leaflet.css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className="bg-gray-50 min-h-screen">
+    <html lang="vi" suppressHydrationWarning>
+      <body className="bg-gray-50 min-h-screen" suppressHydrationWarning>
         {/* Google Identity Services SDK */}
         <Script
           src="https://accounts.google.com/gsi/client"

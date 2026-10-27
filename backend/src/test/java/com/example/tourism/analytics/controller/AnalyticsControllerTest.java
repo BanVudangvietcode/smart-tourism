@@ -196,7 +196,7 @@ class AnalyticsControllerTest {
         );
         HotspotPoiSummary hotspot = new HotspotPoiSummary(1L, "Quán Ốc Oanh", "Ốc", 50, 40, 180.0, 4.9);
         DashboardSummaryResponse.SystemOverviewMetrics overview = new DashboardSummaryResponse.SystemOverviewMetrics(
-                4, 110, 50, 40, 80
+                4, 110, 50, 40, 80, 12
         );
 
         DashboardSummaryResponse res = new DashboardSummaryResponse(audio, dwell, List.of(hotspot), overview);
