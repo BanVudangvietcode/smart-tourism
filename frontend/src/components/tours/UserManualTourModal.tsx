@@ -12,7 +12,7 @@ interface UserManualTourModalProps {
 }
 
 export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: UserManualTourModalProps) {
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [pois, setPois] = useState<PoiSummary[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -87,7 +87,7 @@ export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: 
     return () => {
       isMounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, language]);
 
   if (!isOpen) return null;
 

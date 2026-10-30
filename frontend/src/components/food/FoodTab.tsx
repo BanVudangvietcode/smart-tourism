@@ -11,7 +11,7 @@ interface FoodTabProps {
 }
 
 export default function FoodTab({ onOpenMap }: FoodTabProps) {
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [foods, setFoods] = useState<PoiSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,15 +24,22 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
       setLoading(true);
       try {
         const allPois = await fetchPois();
-        // Lọc các quán ẩm thực, ốc, ăn vặt
-        const foodPois = allPois.filter(
-          (p) =>
-            p.poiType === 'FOOD' ||
-            p.categoryName?.includes('Ốc') ||
-            p.categoryName?.includes('Ẩm thực') ||
-            p.categoryName?.includes('Phá lấu') ||
-            p.categoryName?.includes('Ăn vặt')
-        );
+        // Lọc các quán ẩm thực, ốc, ăn vặt (song ngữ)
+        const foodPois = allPois.filter((p) => {
+          if (p.poiType === 'FOOD') return true;
+          const cat = (p.categoryName || '').toLowerCase();
+          return (
+            cat.includes('ốc') ||
+            cat.includes('snail') ||
+            cat.includes('seafood') ||
+            cat.includes('ẩm thực') ||
+            cat.includes('phá lấu') ||
+            cat.includes('offal') ||
+            cat.includes('ăn vặt') ||
+            cat.includes('snack') ||
+            cat.includes('food')
+          );
+        });
         if (isMounted) setFoods(foodPois.length > 0 ? foodPois : allPois);
       } catch (err) {
         console.error('Lỗi khi tải quán ăn:', err);
@@ -44,7 +51,7 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   const categories = useMemo(() => {
     const set = new Set(foods.map((f) => f.categoryName).filter(Boolean));

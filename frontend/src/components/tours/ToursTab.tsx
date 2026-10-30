@@ -13,7 +13,7 @@ interface ToursTabProps {
 }
 
 export default function ToursTab({ onOpenMap }: ToursTabProps) {
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTourDetail, setActiveTourDetail] = useState<TourDetail | null>(null);
@@ -47,7 +47,12 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
 
   useEffect(() => {
     loadTours();
-  }, []);
+    if (activeTourDetail) {
+      fetchTourDetail(activeTourDetail.id)
+        .then((detail) => setActiveTourDetail(detail))
+        .catch(() => {});
+    }
+  }, [language]);
 
   const handleOpenDetail = async (tourId: number) => {
     setLoadingDetailId(tourId);

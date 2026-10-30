@@ -28,8 +28,10 @@ public class AiController {
      * Xác thực hợp lệ qua @Valid, lỗi được GlobalExceptionHandler tự động bắt.
      */
     @PostMapping("/ask")
-    public ResponseEntity<AiAskResponse> askPoi(@Valid @RequestBody AiAskRequest request) {
-        AiAskResponse response = aiService.askPoi(request);
+    public ResponseEntity<AiAskResponse> askPoi(
+            @Valid @RequestBody AiAskRequest request,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        AiAskResponse response = aiService.askPoi(request, lang);
         return ResponseEntity.ok(response);
     }
 
@@ -97,8 +99,10 @@ public class AiController {
      * AI gợi ý 3 món phù hợp nhất dựa trên ngân sách và vị trí du khách đang đứng.
      */
     @PostMapping("/recommend-dish")
-    public ResponseEntity<AiRecommendDishResponse> recommendDish(@RequestBody AiRecommendDishRequest request) {
-        AiRecommendDishResponse response = aiService.recommendDishes(request);
+    public ResponseEntity<AiRecommendDishResponse> recommendDish(
+            @RequestBody AiRecommendDishRequest request,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        AiRecommendDishResponse response = aiService.recommendDishes(request, lang);
         return ResponseEntity.ok(response);
     }
 }

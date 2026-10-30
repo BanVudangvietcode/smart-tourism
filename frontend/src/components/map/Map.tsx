@@ -93,7 +93,7 @@ export default function Map({
   onToggleAutoPlay,
 }: MapProps) {
   const { deviceId } = useAuth();
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const mapRef = useRef<L.Map | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasInitializedGPS = useRef(false);
@@ -393,7 +393,7 @@ export default function Map({
       }
     };
     loadBackendPois();
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     onNavChange?.(isNav);

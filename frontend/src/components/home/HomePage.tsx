@@ -13,7 +13,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onOpenMap }: HomePageProps) {
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [pois, setPois] = useState<PoiSummary[]>([]);
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -49,7 +49,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   return (
     <div className="w-full h-full overflow-y-auto bg-[#F8FAFC] pb-28 lg:pb-12">

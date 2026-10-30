@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useSyncExternalStore, useCallback } from 'react';
 import { translations, TranslationKey } from '@/i18n/translations';
 
 export type Language = 'vi' | 'en';
@@ -19,28 +19,48 @@ const LanguageContext = createContext<LanguageContextValue>({
   tk: (key) => key,
 });
 
+const listeners = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  listeners.add(callback);
+  window.addEventListener('storage', callback);
+  return () => {
+    listeners.delete(callback);
+    window.removeEventListener('storage', callback);
+  };
+}
+
+function getSnapshot(): Language {
+  if (typeof window === 'undefined') return 'vi';
+  const saved = localStorage.getItem('sw_language');
+  return saved === 'en' ? 'en' : 'vi';
+}
+
+function getServerSnapshot(): Language {
+  return 'vi';
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => {
-    // Lazy initializer: đọc localStorage một lần khi component mount (tránh gọi setState trong effect)
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sw_language');
-      if (saved === 'vi' || saved === 'en') return saved;
-    }
-    return 'vi';
-  });
+  const language = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
+  const setLanguage = useCallback((lang: Language) => {
     localStorage.setItem('sw_language', lang);
-  };
+    listeners.forEach((listener) => listener());
+  }, []);
 
-  const t = (vi: string, en: string) => (language === 'vi' ? vi : en);
+  const t = useCallback(
+    (vi: string, en: string) => (language === 'vi' ? vi : en),
+    [language]
+  );
 
-  const tk = (key: TranslationKey): string => {
-    const item = translations[key];
-    if (!item) return key;
-    return item[language] || item.vi || key;
-  };
+  const tk = useCallback(
+    (key: TranslationKey): string => {
+      const item = translations[key];
+      if (!item) return key;
+      return item[language] || item.vi || key;
+    },
+    [language]
+  );
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t, tk }}>
@@ -52,4 +72,5 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 export function useLanguage() {
   return useContext(LanguageContext);
 }
+
 

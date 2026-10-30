@@ -10,8 +10,10 @@ import java.time.LocalDateTime;
 public class Tour {
     private Long id;
     private String name;
+    private String nameEn;
     private String slug;
     private String description;
+    private String descriptionEn;
     private String theme; // "FOOD", "CULTURE", "RELIGIOUS", "LANDMARK", "MIXED"
     private int estimatedDurationMinutes;
     private int estimatedCost;
@@ -32,11 +34,17 @@ public class Tour {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getNameEn() { return nameEn; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
+
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getDescriptionEn() { return descriptionEn; }
+    public void setDescriptionEn(String descriptionEn) { this.descriptionEn = descriptionEn; }
 
     public String getTheme() { return theme; }
     public void setTheme(String theme) { this.theme = theme; }

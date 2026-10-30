@@ -620,4 +620,275 @@ SELECT setval('dishes_id_seq', COALESCE((SELECT MAX(id) FROM dishes), 1));
 SELECT setval('dish_images_id_seq', COALESCE((SELECT MAX(id) FROM dish_images), 1));
 SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1));
 
+-- ============================================================
+-- Bilingual Schema Migration (Method 1: Column-per-language)
+-- ============================================================
+
+-- 1. Categories
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS name_en VARCHAR(100);
+
+-- 2. POI Types
+ALTER TABLE poi_types ADD COLUMN IF NOT EXISTS name_en VARCHAR(100);
+ALTER TABLE poi_types ADD COLUMN IF NOT EXISTS description_en VARCHAR(255);
+
+-- 3. POIs
+ALTER TABLE pois ADD COLUMN IF NOT EXISTS name_en VARCHAR(255);
+ALTER TABLE pois ADD COLUMN IF NOT EXISTS description_en TEXT;
+ALTER TABLE pois ADD COLUMN IF NOT EXISTS address_en VARCHAR(500);
+CREATE INDEX IF NOT EXISTS idx_pois_name_en_fts ON pois USING GIN (to_tsvector('simple', COALESCE(name_en, '')));
+
+-- 4. Menu Categories
+ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS name_en VARCHAR(100);
+
+-- 5. Dishes
+ALTER TABLE dishes ADD COLUMN IF NOT EXISTS name_en VARCHAR(255);
+ALTER TABLE dishes ADD COLUMN IF NOT EXISTS description_en TEXT;
+ALTER TABLE dishes ADD COLUMN IF NOT EXISTS ingredients_en TEXT;
+ALTER TABLE dishes ADD COLUMN IF NOT EXISTS unit_en VARCHAR(50);
+
+-- 6. Tours & Tour Stops
+ALTER TABLE tours ADD COLUMN IF NOT EXISTS name_en VARCHAR(255);
+ALTER TABLE tours ADD COLUMN IF NOT EXISTS description_en TEXT;
+ALTER TABLE tour_stops ADD COLUMN IF NOT EXISTS recommended_dish_or_activity_en TEXT;
+ALTER TABLE tour_stops ADD COLUMN IF NOT EXISTS note_en TEXT;
+
+-- ============================================================
+-- Bilingual Seed Data Updates
+-- ============================================================
+
+-- Categories
+UPDATE categories SET name_en = 'Seafood & Snails' WHERE slug = 'oc-hai-san';
+UPDATE categories SET name_en = 'Market 200 Snacks' WHERE slug = 'an-vat-cho-200';
+UPDATE categories SET name_en = 'Beef Offal Stew' WHERE slug = 'pha-lau';
+UPDATE categories SET name_en = 'Noodle Soups' WHERE slug = 'mon-nuoc';
+UPDATE categories SET name_en = 'Vintage Cafes' WHERE slug = 'ca-phe-hoai-niem';
+UPDATE categories SET name_en = 'Historic Landmarks' WHERE slug = 'di-tich-lich-su';
+UPDATE categories SET name_en = 'Pagodas & Churches' WHERE slug = 'chua-nha-tho';
+UPDATE categories SET name_en = 'Sightseeing & Check-in' WHERE slug = 'canh-quan-checkin';
+
+-- POI Types
+UPDATE poi_types SET name_en = 'Food & Dining', description_en = 'Restaurants, eateries, street food stalls in District 4' WHERE code = 'FOOD';
+UPDATE poi_types SET name_en = 'Historical Landmarks', description_en = 'Dragon Wharf, historical sites, museums' WHERE code = 'HISTORICAL';
+UPDATE poi_types SET name_en = 'Pagodas & Religion', description_en = 'Temples, shrines, historic churches' WHERE code = 'RELIGIOUS';
+UPDATE poi_types SET name_en = 'Sightseeing Check-in', description_en = 'Rainbow bridge, harbours, riverside viewpoints' WHERE code = 'LANDMARK';
+
+-- POIs
+UPDATE pois SET 
+    name_en = 'Oc Oanh Eatery',
+    description_en = 'Famous night seafood stall on Vinh Khanh food street, featuring aromatic wok-tossed snails with salted egg sauce and garlic butter.',
+    address_en = '534 Vinh Khanh, Ward 8, District 4'
+WHERE slug = 'quan-oc-oanh';
+
+UPDATE pois SET 
+    name_en = 'Co Thao Beef Offal Stew',
+    description_en = 'Rich coconut milk beef offal stew with sweet-and-sour kumquat tamarind dipping sauce, a 20-year traditional recipe in Market 200.',
+    address_en = '243/29 Ton Dan, Ward 15, District 4'
+WHERE slug = 'pha-lau-bo-co-thao';
+
+UPDATE pois SET 
+    name_en = 'Ho Chi Minh Museum - Dragon Wharf (Ben Nha Rong)',
+    description_en = 'Special national historic landmark where young patriot Nguyen Tat Thanh departed on June 5, 1911 to seek national salvation. Classical French architecture on the Saigon riverbank.',
+    address_en = '01 Nguyen Tat Thanh, Ward 12, District 4'
+WHERE slug = 'ben-nha-rong';
+
+UPDATE pois SET 
+    name_en = 'Xom Chieu Church',
+    description_en = 'One of the oldest Catholic parishes in Saigon with over 160 years of history. Elegant Gothic architectural style nestled in District 4.',
+    address_en = '200 Le Quoc Hung, Ward 12, District 4'
+WHERE slug = 'nha-tho-xom-chieu';
+
+UPDATE pois SET 
+    name_en = 'Mong Bridge (Rainbow Bridge)',
+    description_en = 'The oldest steel bridge in Saigon connecting District 1 and District 4 across Ben Nghe canal. A premier pedestrian spot for sunrise and sunset vistas.',
+    address_en = 'Ben Van Don - Ben Chuong Duong, District 4'
+WHERE slug = 'cau-mong';
+
+UPDATE pois SET 
+    name_en = 'Giac Nguyen Pagoda',
+    description_en = 'Tranquil ancient temple nestled in the alley of Ben Van Don opposite Ben Nghe canal, preserving traditional Buddhist cultural heritage.',
+    address_en = '129F/95 Ben Van Don, Ward 8, District 4'
+WHERE slug = 'chua-giac-nguyen';
+
+-- Menu Categories
+UPDATE menu_categories SET name_en = 'Appetizers & Finger Food' WHERE id IN (1, 4);
+UPDATE menu_categories SET name_en = 'Main Dishes' WHERE id IN (2, 5);
+UPDATE menu_categories SET name_en = 'Beverages' WHERE id IN (3, 6);
+
+-- Dishes
+UPDATE dishes SET 
+    name_en = 'Spicy Salted Crab Claws',
+    description_en = 'Fresh sea crab claws dry-roasted with coarse Tay Ninh chili salt, delivering a crunchy spicy-salty burst of flavor.',
+    ingredients_en = 'Fresh crab claws, Tay Ninh chili rock salt, Bird''s eye chili, Minced garlic, Cane sugar',
+    unit_en = 'plate'
+WHERE slug = 'cang-ghe-rang-muoi-ot';
+
+UPDATE dishes SET 
+    name_en = 'Stir-fried Razor Clams with Water Spinach',
+    description_en = 'Sweet plump razor clams stir-fried over high heat with crisp tender morning glory and fragrant toasted garlic.',
+    ingredients_en = 'Live razor clams, Tender water spinach, Crispy garlic, Oyster sauce, Fish sauce',
+    unit_en = 'plate'
+WHERE slug = 'oc-mong-tay-xao-rau-muong';
+
+UPDATE dishes SET 
+    name_en = 'Lime Leaf Garlic Chili Roasted Peanuts',
+    description_en = 'Crunchy snack peanuts tossed with roasted chili powder, crispy garlic, and thinly sliced fresh kaffir lime leaves.',
+    ingredients_en = 'Grade-A peanuts, Golden garlic flakes, Dried chili, Lime leaves, Sweet savory glaze',
+    unit_en = 'small plate'
+WHERE slug = 'dau-phong-rang-toi-ot-la-chanh';
+
+UPDATE dishes SET 
+    name_en = 'Spotted Babylon Snails in Salted Egg Sauce',
+    description_en = 'Best-seller: Crunchy spotted snails coated in velvety salted egg yolk sauce and rich French butter, paired with warm crusty baguette.',
+    ingredients_en = 'Live spotted snails, Salted duck egg yolk, Anchor butter, Fresh milk, Garlic, Red chili, Crispy baguette',
+    unit_en = 'portion'
+WHERE slug = 'oc-huong-sot-trung-muoi';
+
+UPDATE dishes SET 
+    name_en = 'Grilled Scallops with Scallion Oil & Cheese',
+    description_en = 'Charcoal-grilled scallops topped with vibrant green scallion oil, crushed roasted peanuts, and molten stretchy mozzarella cheese.',
+    ingredients_en = 'Fresh scallops, Spring onions, Pork lard, Roasted peanuts, Mozzarella cheese',
+    unit_en = 'plate'
+WHERE slug = 'so-diep-nuong-mo-hanh-pho-mai';
+
+UPDATE dishes SET 
+    name_en = 'Thai Spicy & Sour Steamed Clams',
+    description_en = 'Fresh thick-meat clams simmered in zesty lemongrass, galangal, kaffir lime, and lime broth.',
+    ingredients_en = 'Live clams, Bruised lemongrass, Lime juice, Galangal, Chili, Lime leaves',
+    unit_en = 'clay pot'
+WHERE slug = 'ngheu-hap-sa-thai-chua-cay';
+
+UPDATE dishes SET 
+    name_en = 'Peach Orange Lemongrass Chia Tea',
+    description_en = 'Cold-brewed black tea with crunchy marinated peach slices, fresh orange juice, and nutrient-dense organic chia seeds.',
+    ingredients_en = 'Premium black tea, Pickled peach slices, Fresh orange juice, Lemongrass, Organic chia seeds',
+    unit_en = 'glass'
+WHERE slug = 'tra-dao-cam-sa-hat-chia';
+
+UPDATE dishes SET 
+    name_en = 'Frothy Ri6 Durian Sugarcane Juice',
+    description_en = 'Freshly pressed sugarcane juice blended with creamy aromatic Ri6 durian pulp, a specialty of Market 200.',
+    ingredients_en = 'Fresh sugarcane juice, Fresh Ri6 durian flesh, Calamansi lime',
+    unit_en = 'glass'
+WHERE slug = 'nuoc-mia-sau-rieng-sui-bot';
+
+UPDATE dishes SET 
+    name_en = 'Chilled Saigon Special Beer',
+    description_en = 'Premium malt lager, a refreshing crisp pairing with street-side seafood dishes.',
+    ingredients_en = 'Spring barley, Selected hops, Pure yeast culture',
+    unit_en = 'can'
+WHERE slug = 'bia-sai-gon-special';
+
+UPDATE dishes SET 
+    name_en = 'Mixed Beef Offal Stew with Baguette',
+    description_en = 'Tender beef tripe, honeycomb, liver, and intestine simmered in fresh coconut milk, served with zesty kumquat tamarind dip and warm baguette.',
+    ingredients_en = 'Honeycomb tripe, Bible tripe, Liver, Young intestine, Fresh coconut water, Cinnamon, Star anise, Crispy baguette, Tamarind dip',
+    unit_en = 'portion'
+WHERE slug = 'pha-lau-bo-thap-cam';
+
+UPDATE dishes SET 
+    name_en = 'Crispy Garlic Butter Pan-fried Offal',
+    description_en = 'Tender boiled offal pan-fried with fragrant butter and garlic, served with Vietnamese coriander and calamansi pepper salt.',
+    ingredients_en = 'Tender beef offal, French butter, Crispy garlic flakes, Chili, Vietnamese coriander, Calamansi pepper salt',
+    unit_en = 'plate'
+WHERE slug = 'pha-lau-chien-bo-toi';
+
+UPDATE dishes SET 
+    name_en = 'Wok-tossed Instant Noodles with Offal & Water Spinach',
+    description_en = 'Al dente instant noodles stir-fried over high heat with rich beef offal, crisp morning glory, and golden pork cracklings.',
+    ingredients_en = 'Miliket noodles, Beef offal mix, Tender water spinach, Pork crackling, Fried garlic, Spicy tamarind sauce',
+    unit_en = 'plate'
+WHERE slug = 'mi-goi-xao-pha-lau';
+
+UPDATE dishes SET 
+    name_en = 'Iced Lemongrass Calamansi Chia Tea',
+    description_en = 'Cold jasmine tea infused with tangy calamansi, bruised lemongrass, and nutritious chia seeds.',
+    ingredients_en = 'Jasmine green tea, Fresh calamansi, Cane sugar, Lemongrass stalks, Organic chia seeds',
+    unit_en = 'glass'
+WHERE slug = 'tra-tac-sa-hat-chia';
+
+UPDATE dishes SET 
+    name_en = 'Sweet Corn Soy Milk',
+    description_en = 'Organic soy milk blended with fresh sweet American corn and pandan leaves for a gentle refreshing sweetness.',
+    ingredients_en = 'Clean soybeans, Sweet American corn, Pandan leaves, Pasteurized milk',
+    unit_en = 'glass'
+WHERE slug = 'sua-dau-nanh-bap';
+
+-- Tours
+UPDATE tours SET 
+    name_en = 'Vinh Khanh Night Seafood Street Food Tour',
+    description_en = 'Immerse in the sizzling night culinary culture of District 4: savor aromatic wok-tossed snails with salted egg sauce and traditional beef offal stew.'
+WHERE slug = 'foodtour-dem-pho-oc-vinh-khanh';
+
+UPDATE tours SET 
+    name_en = 'Explore Market 200 & Co Thao Beef Offal',
+    description_en = 'Weave through the alley food paradise of 243 Ton Dan, savoring coconut milk beef offal dipped in tangy tamarind sauce and iced peach tea.'
+WHERE slug = 'kham-pha-am-thuc-cho-200';
+
+UPDATE tours SET 
+    name_en = 'Historical Footprints & Ancient Architecture of Ben Van Don',
+    description_en = 'Step back in time over a century: admire legendary Dragon Wharf harbor, Gothic Xom Chieu Church, and the historic steel Mong Bridge.'
+WHERE slug = 'dau-an-lich-su-kien-truc-co';
+
+UPDATE tours SET 
+    name_en = 'Full District 4: Morning Heritage & Evening Gastronomy',
+    description_en = 'A comprehensive journey combining sacred and historical morning landmarks with vibrant night street seafood at Vinh Khanh.'
+WHERE slug = 'quan-4-tron-ven-di-tich-va-am-thuc';
+
+-- Tour Stops
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Golden salted egg spotted snails, Snow-salt crab claws',
+    note_en = 'Order extra warm baguette to dip in the rich salted egg sauce'
+WHERE tour_id = 1 AND stop_order = 1;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Stone bowl beef offal stew, Frothy durian sugarcane juice',
+    note_en = 'Walk about 450m from Vinh Khanh turning into Ton Dan alley'
+WHERE tour_id = 1 AND stop_order = 2;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Crunchy honeycomb tripe with sweet-and-sour tamarind dip',
+    note_en = 'Visit around 16:30 when the offal broth is freshly brewed and most fragrant'
+WHERE tour_id = 2 AND stop_order = 1;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Dessert with sweet & sour tamarind sea snails',
+    note_en = 'A delightful wrap-up for an afternoon exploring the market'
+WHERE tour_id = 2 AND stop_order = 2;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Tour the museum, photograph the monument and twin dragons',
+    note_en = 'Admission: 30,000 VND/adult. Please dress modestly and respectfully'
+WHERE tour_id = 3 AND stop_order = 1;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Walk along Ben Nghe canal at sunset, capture skyline view of Bitexco',
+    note_en = 'Golden hour for photos is between 17:15 and 17:45'
+WHERE tour_id = 3 AND stop_order = 2;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Admire Gothic architecture and learn about historic sedge mat weaving village',
+    note_en = 'Please remain quiet in this sacred place; no filming during liturgical services'
+WHERE tour_id = 3 AND stop_order = 3;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Trace Uncle Ho''s 30-year journey at Dragon Wharf',
+    note_en = 'Arrive early in the morning for crisp sunlight across the harbor'
+WHERE tour_id = 4 AND stop_order = 1;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Light incense and pay homage at serene Giac Nguyen Pagoda',
+    note_en = 'Dress reverently; remove shoes before stepping into the main sanctuary'
+WHERE tour_id = 4 AND stop_order = 2;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Recharge in the afternoon with Co Thao famous beef offal stew',
+    note_en = 'Try both the crispy pan-fried offal and coconut milk broth stew'
+WHERE tour_id = 4 AND stop_order = 3;
+
+UPDATE tour_stops SET 
+    recommended_dish_or_activity_en = 'Vibrant night seafood feast at Oc Oanh Eatery',
+    note_en = 'Soak in the bustling energy iconic to District 4 night food street'
+WHERE tour_id = 4 AND stop_order = 4;
+
+
 

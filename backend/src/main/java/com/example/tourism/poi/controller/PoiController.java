@@ -35,8 +35,9 @@ public class PoiController {
             @RequestParam double minLat,
             @RequestParam double maxLng,
             @RequestParam double maxLat,
-            @RequestParam(defaultValue = "15") int zoom) {
-        GeoJsonFeatureCollection result = poiService.getInViewport(minLng, minLat, maxLng, maxLat, zoom);
+            @RequestParam(defaultValue = "15") int zoom,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        GeoJsonFeatureCollection result = poiService.getInViewport(minLng, minLat, maxLng, maxLat, zoom, lang);
         return ResponseEntity.ok(result);
     }
 
@@ -50,8 +51,9 @@ public class PoiController {
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(defaultValue = "500") double radiusInMeters,
-            @RequestParam(defaultValue = "20") int limit) {
-        List<PoiSummaryResponse> results = poiService.getNearby(lat, lng, radiusInMeters, limit);
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        List<PoiSummaryResponse> results = poiService.getNearby(lat, lng, radiusInMeters, limit, lang);
         return ResponseEntity.ok(results);
     }
 
@@ -60,8 +62,10 @@ public class PoiController {
      * Returns full POI detail. Results are cached in Redis (30 min TTL).
      */
     @GetMapping("/{id}")
-    public ResponseEntity<PoiDetailResponse> getById(@PathVariable Long id) {
-        return poiService.getById(id)
+    public ResponseEntity<PoiDetailResponse> getById(
+            @PathVariable Long id,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        return poiService.getById(id, lang)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -78,8 +82,9 @@ public class PoiController {
             @RequestParam(name = "district_ward", required = false) String districtWard,
             @RequestParam(name = "sort_by", defaultValue = "popularity") String sortBy,
             @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lng) {
-        List<PoiSummaryResponse> results = poiService.search(q, categoryId, districtWard, sortBy, lat, lng);
+            @RequestParam(required = false) Double lng,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        List<PoiSummaryResponse> results = poiService.search(q, categoryId, districtWard, sortBy, lat, lng, lang);
         return ResponseEntity.ok(results);
     }
 
@@ -90,8 +95,10 @@ public class PoiController {
      * Cached on Redis with 15-minute TTL.
      */
     @GetMapping("/{poiId}/menu")
-    public ResponseEntity<PoiMenuResponse> getMenu(@PathVariable Long poiId) {
-        return dishService.getMenuByPoiId(poiId)
+    public ResponseEntity<PoiMenuResponse> getMenu(
+            @PathVariable Long poiId,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        return dishService.getMenuByPoiId(poiId, lang)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

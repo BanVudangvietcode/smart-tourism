@@ -23,8 +23,10 @@ public class DishController {
      * Cached on Redis with 30-minute TTL.
      */
     @GetMapping("/{dishId}")
-    public ResponseEntity<DishDetailResponse> getById(@PathVariable Long dishId) {
-        return dishService.getDishDetail(dishId)
+    public ResponseEntity<DishDetailResponse> getById(
+            @PathVariable Long dishId,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        return dishService.getDishDetail(dishId, lang)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

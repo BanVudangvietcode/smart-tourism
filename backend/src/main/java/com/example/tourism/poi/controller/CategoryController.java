@@ -25,16 +25,19 @@ public class CategoryController {
      * Returns all food categories sorted by display order.
      */
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getAll() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<List<CategoryResponse>> getAll(
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        return ResponseEntity.ok(categoryService.getAllCategories(lang));
     }
 
     /**
      * GET /api/v1/categories/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    public ResponseEntity<CategoryResponse> getById(
+            @PathVariable Long id,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id, lang));
     }
 
     /**

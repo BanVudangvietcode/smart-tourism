@@ -6,9 +6,12 @@ import java.time.LocalDateTime;
 public class Poi {
     private Long id;
     private String name;
+    private String nameEn;
     private String slug;
     private String description;
+    private String descriptionEn;
     private String address;
+    private String addressEn;
     private String district;
     private String ward;
     private String phone;
@@ -36,14 +39,23 @@ public class Poi {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getNameEn() { return nameEn; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
+
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
+    public String getDescriptionEn() { return descriptionEn; }
+    public void setDescriptionEn(String descriptionEn) { this.descriptionEn = descriptionEn; }
+
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public String getAddressEn() { return addressEn; }
+    public void setAddressEn(String addressEn) { this.addressEn = addressEn; }
 
     public String getDistrict() { return district; }
     public void setDistrict(String district) { this.district = district; }

@@ -33,7 +33,7 @@ interface PoiDetailModalProps {
 
 export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, onNavigate }: PoiDetailModalProps) {
   const { user, deviceId } = useAuth();
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>(initialTab);
 
@@ -88,8 +88,16 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
         const pDetail = await fetchPoiDetail(poiId);
         if (isMounted) setDetail(pDetail);
 
-        // Tải thực đơn nếu là điểm ăn uống
-        if (pDetail.poiType === 'FOOD' || pDetail.categoryName?.includes('Ốc') || pDetail.categoryName?.includes('Ẩm thực')) {
+        // Tải thực đơn nếu là điểm ăn uống (song ngữ)
+        const cat = (pDetail.categoryName || '').toLowerCase();
+        if (
+          pDetail.poiType === 'FOOD' ||
+          cat.includes('ốc') ||
+          cat.includes('snail') ||
+          cat.includes('ẩm thực') ||
+          cat.includes('food') ||
+          cat.includes('seafood')
+        ) {
           try {
             const pMenu = await fetchPoiMenu(poiId);
             if (isMounted) setMenu(pMenu);
@@ -120,7 +128,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
         audioRef.current.pause();
       }
     };
-  }, [poiId]);
+  }, [poiId, language]);
 
   if (!poiId) return null;
 
@@ -463,7 +471,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                   <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{tk('poi_section_intro')}</h3>
                     <p className="text-sm text-slate-700 leading-relaxed">
-                      {detail.description?.replace(/<!--pin:.*?-->/g, '').trim() || 'Chưa có mô tả chi tiết cho địa điểm này.'}
+                      {detail.description?.replace(/<!--pin:.*?-->/g, '').trim() || (language === 'en' ? 'No detailed description available for this place yet.' : 'Chưa có mô tả chi tiết cho địa điểm này.')}
                     </p>
                   </div>
 
@@ -486,7 +494,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_price')}</p>
                         <p className="text-xs font-extrabold text-slate-800">
-                          {detail.priceRangeMin ? `${detail.priceRangeMin.toLocaleString()}đ` : 'Miễn phí'}
+                          {detail.priceRangeMin ? `${detail.priceRangeMin.toLocaleString()}đ` : tk('home_poi_free')}
                           {detail.priceRangeMax ? ` - ${detail.priceRangeMax.toLocaleString()}đ` : ''}
                         </p>
                       </div>
@@ -556,7 +564,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                               </div>
 
                               <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
-                                {dish.description || 'Món đặc sản trứ danh.'}
+                                {dish.description || (language === 'en' ? 'Renowned signature dish.' : 'Món đặc sản trứ danh.')}
                               </p>
 
                               {/* Badges: Signature & Allergens */}
@@ -568,17 +576,17 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                                 )}
                                 {dish.hasPeanuts && (
                                   <span className="bg-rose-50 text-rose-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-rose-200">
-                                    ⚠️ Có đậu phộng
+                                    {tk('poi_dish_peanut')}
                                   </span>
                                 )}
                                 {dish.hasSeafood && (
                                   <span className="bg-cyan-50 text-cyan-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-cyan-200">
-                                    🦐 Có hải sản
+                                    {tk('poi_dish_seafood')}
                                   </span>
                                 )}
                                 {dish.hasGluten && (
                                   <span className="bg-purple-50 text-purple-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-purple-200">
-                                    🌾 Chứa gluten
+                                    {tk('poi_dish_gluten')}
                                   </span>
                                 )}
                               </div>
@@ -596,7 +604,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                 <div className="space-y-6">
                   {/* Form viết đánh giá */}
                   <form onSubmit={handleSubmitReview} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                    <h4 className="text-xs font-bold text-slate-800">Để lại cảm nhận của bạn</h4>
+                    <h4 className="text-xs font-bold text-slate-800">{tk('poi_review_title')}</h4>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -608,20 +616,20 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                           ★
                         </button>
                       ))}
-                      <span className="text-xs font-bold text-slate-600 ml-2">{userRating} sao</span>
+                      <span className="text-xs font-bold text-slate-600 ml-2">{userRating} {tk('poi_review_stars')}</span>
                     </div>
 
                     <textarea
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Chia sẻ trải nghiệm ẩm thực, hương vị, phong cách phục vụ tại quán..."
+                      placeholder={tk('poi_review_placeholder')}
                       rows={2}
                       className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 bg-slate-50"
                     />
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-500">Chế độ:</span>
+                        <span className="text-[10px] font-bold text-slate-500">{tk('poi_review_mode')}</span>
                         <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200">
                           <button
                             type="button"
@@ -630,7 +638,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                               reviewIsPublic ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
                             }`}
                           >
-                            🌐 Công khai
+                            🌐 {tk('poi_review_public')}
                           </button>
                           <button
                             type="button"
@@ -639,27 +647,27 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                               !reviewIsPublic ? 'bg-white text-purple-700 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
                             }`}
                           >
-                            🔒 Riêng tư / Ẩn danh
+                            🔒 {tk('poi_review_private')}
                           </button>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between sm:justify-end gap-2.5">
                         <span className="text-[10px] text-slate-400">
-                          Đăng dưới tên: <b className="text-slate-600">{reviewIsPublic ? (user?.displayName || 'Du khách ẩm thực') : 'Du khách ẩn danh'}</b>
+                          {tk('poi_review_post_as')} <b className="text-slate-600">{reviewIsPublic ? (user?.displayName || tk('poi_reviewer_default')) : tk('poi_reviewer_anon')}</b>
                         </span>
                         <button
                           type="submit"
                           disabled={submittingReview || !commentText.trim()}
                           className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer disabled:opacity-50"
                         >
-                          {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
+                          {submittingReview ? tk('poi_review_submitting') : tk('poi_review_submit')}
                         </button>
                       </div>
                     </div>
 
                     {reviewSuccess && (
-                      <p className="text-[11px] text-emerald-600 font-bold">✓ Cảm ơn bạn! Đánh giá đã được ghi nhận.</p>
+                      <p className="text-[11px] text-emerald-600 font-bold">{tk('poi_review_success')}</p>
                     )}
                   </form>
 
@@ -674,9 +682,9 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                                 {rev.userDisplayName ? rev.userDisplayName.charAt(0).toUpperCase() : 'U'}
                               </div>
                               <div>
-                                <p className="text-xs font-bold text-slate-900">{rev.userDisplayName || 'Du khách'}</p>
+                                <p className="text-xs font-bold text-slate-900">{rev.userDisplayName || tk('poi_reviewer_fallback')}</p>
                                 <p className="text-[10px] text-slate-400">
-                                  {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                                  {new Date(rev.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN')}
                                 </p>
                               </div>
                             </div>
@@ -689,7 +697,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                       ))
                     ) : (
                       <div className="text-center py-8 text-slate-400 text-xs">
-                        Chưa có đánh giá nào. Hãy là người đầu tiên trải nghiệm!
+                        {tk('poi_review_empty')}
                       </div>
                     )}
                   </div>
@@ -702,10 +710,12 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                   <div className="bg-gradient-to-br from-purple-700 to-indigo-800 text-white p-4 rounded-2xl shadow-sm">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">✨</span>
-                      <h4 className="text-xs font-black uppercase tracking-wider">Trợ lý AI Gemini 1.5 Flash</h4>
+                      <h4 className="text-xs font-black uppercase tracking-wider">{tk('poi_ai_title')}</h4>
                     </div>
                     <p className="text-xs text-purple-100">
-                      Hỏi bất cứ điều gì về lịch sử, nguồn gốc nguyên liệu, các món ăn đặc sắc nhất của quán {detail?.name}.
+                      {language === 'en'
+                        ? `Ask anything about the history, ingredients, or specialty dishes of ${detail?.name || 'this spot'}.`
+                        : `Hỏi bất cứ điều gì về lịch sử, nguồn gốc nguyên liệu, các món ăn đặc sắc nhất của quán ${detail?.name || 'này'}.`}
                     </p>
                   </div>
 
@@ -715,7 +725,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                       type="text"
                       value={aiQuestion}
                       onChange={(e) => setAiQuestion(e.target.value)}
-                      placeholder="Ví dụ: Quán có món ốc nào cay nhất?"
+                      placeholder={tk('poi_ai_placeholder')}
                       onKeyDown={(e) => e.key === 'Enter' && handleAskAi()}
                       className="flex-1 text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-600 bg-white"
                     />
@@ -724,17 +734,24 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                       disabled={aiLoading || !aiQuestion.trim()}
                       className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-3 rounded-xl transition cursor-pointer disabled:opacity-50 shrink-0"
                     >
-                      {aiLoading ? 'Đang nghĩ...' : 'Hỏi AI'}
+                      {aiLoading ? tk('poi_ai_thinking') : tk('poi_ai_btn')}
                     </button>
                   </div>
 
                   {/* Gợi ý câu hỏi nhanh */}
                   <div className="flex flex-wrap gap-1.5">
-                    {[
-                      'Món nào là Best-seller?',
-                      'Đi 2 người nên gọi gì?',
-                      'Quán có món gì cho người không ăn cay?',
-                    ].map((chip) => (
+                    {(language === 'en'
+                      ? [
+                          'Which dish is the best-seller?',
+                          'What should 2 people order?',
+                          'Any non-spicy options?',
+                        ]
+                      : [
+                          'Món nào là Best-seller?',
+                          'Đi 2 người nên gọi gì?',
+                          'Quán có món gì cho người không ăn cay?',
+                        ]
+                    ).map((chip) => (
                       <button
                         key={chip}
                         onClick={() => handleAskAi(chip)}
@@ -749,13 +766,13 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                   {aiAnswer && (
                     <div className="bg-white p-4 rounded-2xl border border-purple-200 shadow-xs space-y-2 animate-fadeIn">
                       <div className="flex items-center gap-2 text-purple-700 font-bold text-xs">
-                        <span>🤖 Câu trả lời từ AI:</span>
+                        <span>{tk('poi_ai_answer')}</span>
                       </div>
                       <FormattedAiText content={aiAnswer} />
 
                       {aiFollowUps.length > 0 && (
                         <div className="pt-2 border-t border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Câu hỏi tiếp theo:</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{tk('poi_ai_followup')}</p>
                           <div className="flex flex-wrap gap-1">
                             {aiFollowUps.map((fu, idx) => (
                               <button
@@ -783,8 +800,8 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
         <div className="fixed inset-0 z-[2500] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
             <div className="text-5xl animate-bounce">🏆</div>
-            <h3 className="text-lg font-black text-slate-900">Chúc Mừng Bạn!</h3>
-            <p className="text-xs text-slate-600">Bạn vừa mở khóa được huy hiệu du lịch mới tại Quận 4:</p>
+            <h3 className="text-lg font-black text-slate-900">{tk('poi_badge_title')}</h3>
+            <p className="text-xs text-slate-600">{tk('poi_badge_subtitle')}</p>
 
             <div className="space-y-3">
               {showBadgesModal.map((b) => (
@@ -804,7 +821,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
               onClick={() => setShowBadgesModal(null)}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-2xl transition cursor-pointer"
             >
-              Tiếp tục hành trình
+              {tk('poi_badge_continue')}
             </button>
           </div>
         </div>

@@ -11,7 +11,7 @@ interface PlacesTabProps {
 }
 
 export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
-  const { tk } = useLanguage();
+  const { language, tk } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [places, setPlaces] = useState<PoiSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   const filteredPlaces = useMemo(() => {
     return places.filter((p) => {
