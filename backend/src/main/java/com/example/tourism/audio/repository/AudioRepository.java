@@ -37,29 +37,49 @@ public class AudioRepository {
     };
 
     public Optional<PoiAudio> findAudioByPoiId(Long poiId) {
+        return findAudioByPoiIdAndLanguage(poiId, "vi");
+    }
+
+    public Optional<PoiAudio> findAudioByPoiIdAndLanguage(Long poiId, String lang) {
+        String targetLang = (lang != null && !lang.isBlank()) ? lang.trim().toLowerCase() : "vi";
         String sql = """
                 SELECT a.id, a.poi_id, p.name AS poi_name, a.title, a.file_name,
                        a.duration_seconds, a.file_size_bytes, a.voice, a.language,
                        a.zone, a.transcript, a.created_at, a.updated_at
                 FROM poi_audios a
                 JOIN pois p ON a.poi_id = p.id
-                WHERE a.poi_id = ?
+                WHERE a.poi_id = ? AND LOWER(a.language) = ?
                 """;
-        List<PoiAudio> results = jdbcTemplate.query(sql, audioRowMapper, poiId);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        List<PoiAudio> results = jdbcTemplate.query(sql, audioRowMapper, poiId, targetLang);
+        if (!results.isEmpty()) {
+            return Optional.of(results.get(0));
+        }
+        // Fallback to 'vi' if requested language not found
+        if (!"vi".equals(targetLang)) {
+            List<PoiAudio> fallback = jdbcTemplate.query(sql, audioRowMapper, poiId, "vi");
+            if (!fallback.isEmpty()) {
+                return Optional.of(fallback.get(0));
+            }
+        }
+        return Optional.empty();
     }
 
     public List<PoiAudio> findAudiosByZone(String zone) {
+        return findAudiosByZoneAndLanguage(zone, "vi");
+    }
+
+    public List<PoiAudio> findAudiosByZoneAndLanguage(String zone, String lang) {
+        String targetLang = (lang != null && !lang.isBlank()) ? lang.trim().toLowerCase() : "vi";
         String sql = """
                 SELECT a.id, a.poi_id, p.name AS poi_name, a.title, a.file_name,
                        a.duration_seconds, a.file_size_bytes, a.voice, a.language,
                        a.zone, a.transcript, a.created_at, a.updated_at
                 FROM poi_audios a
                 JOIN pois p ON a.poi_id = p.id
-                WHERE LOWER(a.zone) = LOWER(?)
+                WHERE LOWER(a.zone) = LOWER(?) AND LOWER(a.language) = ?
                 ORDER BY a.id ASC
                 """;
-        return jdbcTemplate.query(sql, audioRowMapper, zone.trim());
+        return jdbcTemplate.query(sql, audioRowMapper, zone.trim(), targetLang);
     }
 
     public Optional<String> findPoiNameById(Long poiId) {
@@ -73,19 +93,18 @@ public class AudioRepository {
     }
 
     /**
-     * Thêm mới hoặc cập nhật bản ghi audio cho một POI (UPSERT dựa trên poi_id UNIQUE).
+     * Thêm mới hoặc cập nhật bản ghi audio cho một POI (UPSERT dựa trên poi_id và language).
      */
     public Long upsertAudio(PoiAudio audio) {
         String sql = """
                 INSERT INTO poi_audios (poi_id, title, file_name, duration_seconds, file_size_bytes, voice, language, zone, transcript, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
-                ON CONFLICT (poi_id) DO UPDATE SET
+                ON CONFLICT (poi_id, language) DO UPDATE SET
                     title = EXCLUDED.title,
                     file_name = EXCLUDED.file_name,
                     duration_seconds = EXCLUDED.duration_seconds,
                     file_size_bytes = EXCLUDED.file_size_bytes,
                     voice = EXCLUDED.voice,
-                    language = EXCLUDED.language,
                     zone = EXCLUDED.zone,
                     transcript = EXCLUDED.transcript,
                     updated_at = now()

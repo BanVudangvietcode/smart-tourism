@@ -64,22 +64,27 @@ public class AudioService {
      * Generates timed subtitle cues and caches result in Redis with 1-hour TTL.
      */
     public Optional<AudioMetadataResponse> getAudioMetadata(Long poiId) {
-        String cacheKey = AUDIO_META_CACHE_PREFIX + poiId;
+        return getAudioMetadata(poiId, "vi");
+    }
+
+    public Optional<AudioMetadataResponse> getAudioMetadata(Long poiId, String lang) {
+        String targetLang = (lang != null && !lang.isBlank()) ? lang.trim().toLowerCase() : "vi";
+        String cacheKey = AUDIO_META_CACHE_PREFIX + poiId + ":" + targetLang;
 
         // 1. Check Redis cache
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                log.debug("Cache HIT for Audio metadata {}", poiId);
+                log.debug("Cache HIT for Audio metadata {}:{}", poiId, targetLang);
                 String json = objectMapper.writeValueAsString(cached);
                 return Optional.of(objectMapper.readValue(json, AudioMetadataResponse.class));
             }
         } catch (Exception e) {
-            log.warn("Redis read failed for audio metadata {}, falling back to DB", poiId, e);
+            log.warn("Redis read failed for audio metadata {}:{}, falling back to DB", poiId, targetLang, e);
         }
 
         // 2. Fetch from DB
-        Optional<PoiAudio> audioOpt = audioRepository.findAudioByPoiId(poiId);
+        Optional<PoiAudio> audioOpt = audioRepository.findAudioByPoiIdAndLanguage(poiId, targetLang);
         if (audioOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -98,16 +103,16 @@ public class AudioService {
                 audio.getVoice(),
                 audio.getLanguage(),
                 audio.getTranscript(),
-                "/api/v1/audio/stream/" + audio.getPoiId(),
+                "/api/v1/audio/stream/" + audio.getPoiId() + "?lang=" + audio.getLanguage(),
                 cues
         );
 
         // 3. Cache in Redis
         try {
             redisTemplate.opsForValue().set(cacheKey, response, AUDIO_META_CACHE_TTL);
-            log.debug("Cached audio metadata {} in Redis", poiId);
+            log.debug("Cached audio metadata {}:{} in Redis", poiId, targetLang);
         } catch (Exception e) {
-            log.warn("Failed to cache audio metadata {} in Redis", poiId, e);
+            log.warn("Failed to cache audio metadata {}:{} in Redis", poiId, targetLang, e);
         }
 
         return Optional.of(response);
@@ -118,7 +123,12 @@ public class AudioService {
      * Enables immediate loudspeaker playback without waiting for full download.
      */
     public ResponseEntity<byte[]> streamAudio(Long poiId, String rangeHeader) {
-        Optional<PoiAudio> audioOpt = audioRepository.findAudioByPoiId(poiId);
+        return streamAudio(poiId, "vi", rangeHeader);
+    }
+
+    public ResponseEntity<byte[]> streamAudio(Long poiId, String lang, String rangeHeader) {
+        String targetLang = (lang != null && !lang.isBlank()) ? lang.trim().toLowerCase() : "vi";
+        Optional<PoiAudio> audioOpt = audioRepository.findAudioByPoiIdAndLanguage(poiId, targetLang);
         if (audioOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -192,8 +202,17 @@ public class AudioService {
      * Generates a compressed .zip package containing all audio files, transcripts,
      * and a manifest.json for a given zone (e.g. "quan4") for offline playback.
      */
+    /**
+     * Generates a compressed .zip package containing all audio files, transcripts,
+     * and a manifest.json for a given zone (e.g. "quan4") for offline playback.
+     */
     public Optional<byte[]> generateOfflinePack(String zone) {
-        List<PoiAudio> audios = audioRepository.findAudiosByZone(zone);
+        return generateOfflinePack(zone, "vi");
+    }
+
+    public Optional<byte[]> generateOfflinePack(String zone, String lang) {
+        String targetLang = (lang != null && !lang.isBlank()) ? lang.trim().toLowerCase() : "vi";
+        List<PoiAudio> audios = audioRepository.findAudiosByZoneAndLanguage(zone, targetLang);
         if (audios.isEmpty()) {
             return Optional.empty();
         }
@@ -244,14 +263,14 @@ public class AudioService {
             String readme = """
                     =============================================================
                     HƯỚNG DẪN GÓI ÂM THANH THUYẾT MINH NGOẠI TUYẾN (OFFLINE PACK)
-                    Khu vực: %s
+                    Khu vực: %s | Ngôn ngữ: %s
                     =============================================================
                     Gói này cho phép ứng dụng phát thuyết minh tự động khi du khách
                     đi sâu vào các con hẻm ẩm thực mất kết nối internet/4G.
                     
                     Các tệp âm thanh nằm trong thư mục audio/
                     Thông tin phụ đề & kịch bản chi tiết nằm trong manifest.json
-                    """.formatted(zone);
+                    """.formatted(zone, targetLang);
             ZipEntry readmeEntry = new ZipEntry("README.txt");
             zos.putNextEntry(readmeEntry);
             zos.write(readme.getBytes(StandardCharsets.UTF_8));
@@ -267,33 +286,66 @@ public class AudioService {
     }
 
     /**
-     * Loads audio binary from classpath or filesystem, with fallback generation of valid MP3 frames.
+     * Loads audio binary from classpath or filesystem, with on-demand TTS generation and fallback.
      */
     public byte[] loadAudioBytes(PoiAudio audio) {
         String fileName = audio.getFileName();
         if (fileName == null || fileName.isBlank()) {
-            fileName = "poi_" + audio.getPoiId() + ".mp3";
+            fileName = "poi_" + audio.getPoiId() + "_" + (audio.getLanguage() != null ? audio.getLanguage() : "vi") + ".mp3";
         }
 
-        // Try classpath resource
+        // 1. Try classpath resource
         try {
             ClassPathResource resource = new ClassPathResource("audio/" + fileName);
             if (resource.exists()) {
                 try (InputStream is = resource.getInputStream()) {
-                    return is.readAllBytes();
+                    byte[] bytes = is.readAllBytes();
+                    if (bytes.length > 500) {
+                        return bytes;
+                    }
                 }
             }
         } catch (Exception ignored) {}
 
-        // Try filesystem path
-        try {
-            Path path = Paths.get("backend/src/main/resources/audio/" + fileName);
-            if (Files.exists(path)) {
-                return Files.readAllBytes(path);
-            }
-        } catch (Exception ignored) {}
+        // 2. Try filesystem paths
+        List<Path> checkPaths = List.of(
+                Paths.get("backend/src/main/resources/audio/" + fileName),
+                Paths.get("backend/target/classes/audio/" + fileName),
+                Paths.get("src/main/resources/audio/" + fileName),
+                Paths.get("target/classes/audio/" + fileName)
+        );
+        for (Path path : checkPaths) {
+            try {
+                if (Files.exists(path)) {
+                    byte[] bytes = Files.readAllBytes(path);
+                    if (bytes.length > 500) {
+                        return bytes;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
 
-        // Fallback: generate valid MPEG-1 Layer 3 frames matching the expected file size
+        // 3. On-demand TTS generation: If file is missing on disk, synthesize with TtsService & cache to disk!
+        if (audio.getTranscript() != null && !audio.getTranscript().isBlank()) {
+            String lang = (audio.getLanguage() != null && !audio.getLanguage().isBlank()) ? audio.getLanguage() : "vi";
+            try {
+                log.info("Generating on-demand TTS audio for POI {} in '{}'...", audio.getPoiId(), lang);
+                byte[] realTtsBytes = ttsService.generateSpeech(audio.getTranscript(), lang);
+                if (realTtsBytes != null && realTtsBytes.length > 1000) {
+                    saveAudioBytes(fileName, realTtsBytes);
+                    int durationSec = ttsService.estimateDurationSeconds(audio.getTranscript());
+                    audio.setDurationSeconds(durationSec);
+                    audio.setFileSizeBytes(realTtsBytes.length);
+                    audio.setFileName(fileName);
+                    audioRepository.upsertAudio(audio);
+                    return realTtsBytes;
+                }
+            } catch (Exception e) {
+                log.warn("On-demand TTS generation failed for {}: {}", fileName, e.getMessage());
+            }
+        }
+
+        // 4. Fallback: generate valid MPEG-1 Layer 3 frames matching the expected file size
         return generateSyntheticMp3Frames(audio.getFileSizeBytes() > 0 ? (int) audio.getFileSizeBytes() : 65536);
     }
 

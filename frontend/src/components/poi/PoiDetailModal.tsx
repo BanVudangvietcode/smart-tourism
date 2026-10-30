@@ -42,6 +42,15 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
   }, [initialTab, poiId]);
 
   useEffect(() => {
+    setIsPlayingAudio(false);
+    setAudioProgress(0);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [poiId, language]);
+
+  useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -270,7 +279,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
       {/* Audio Element ngầm */}
       <audio
         ref={audioRef}
-        src={getAudioStreamUrl(poiId)}
+        src={poiId ? getAudioStreamUrl(poiId, language) : undefined}
         onTimeUpdate={() => {
           if (audioRef.current) {
             setAudioProgress(audioRef.current.currentTime);

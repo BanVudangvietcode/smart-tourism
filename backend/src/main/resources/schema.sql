@@ -336,7 +336,7 @@ ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS poi_audios (
     id               BIGSERIAL PRIMARY KEY,
-    poi_id           BIGINT NOT NULL UNIQUE REFERENCES pois(id) ON DELETE CASCADE,
+    poi_id           BIGINT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
     title            VARCHAR(255) NOT NULL,
     file_name        VARCHAR(255) NOT NULL,
     duration_seconds INT NOT NULL DEFAULT 0,
@@ -346,7 +346,8 @@ CREATE TABLE IF NOT EXISTS poi_audios (
     zone             VARCHAR(50) NOT NULL DEFAULT 'quan4',
     transcript       TEXT NOT NULL,
     created_at       TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMP NOT NULL DEFAULT now()
+    updated_at       TIMESTAMP NOT NULL DEFAULT now(),
+    CONSTRAINT uq_poi_audios_poi_lang UNIQUE (poi_id, language)
 );
 
 CREATE INDEX IF NOT EXISTS idx_poi_audios_poi ON poi_audios(poi_id);
@@ -370,7 +371,7 @@ VALUES
     (5, 'Thuyết minh Cầu Mống - Chứng nhân lịch sử', 'poi_5_cau_mong.mp3', 60, 360000,
      'Nữ miền Nam (Truyền cảm)', 'vi', 'quan4',
      'Chào mừng bạn đến với Cầu Mống, một trong những cây cầu thép cổ xưa nhất của Thành phố Hồ Chí Minh. Cây cầu được xây dựng từ cuối thế kỷ 19 bởi công ty xây dựng Levallois Perret của Pháp. Cầu có dáng cong hình cầu vồng nên người dân quen gọi là Cầu Mống. Nối liền Quận 1 và Quận 4 qua dòng kênh Bến Nghé thơ mộng, ngày nay Cầu Mống là cầu đi bộ ngắm cảnh, điểm hẹn quen thuộc của giới trẻ và du khách để chiêm ngưỡng vẻ đẹp lung linh của thành phố lúc hoàng hôn buông xuống.')
-ON CONFLICT (poi_id) DO NOTHING;
+ON CONFLICT (poi_id, language) DO NOTHING;
 
 -- ============================================================
 -- Curated & Custom Tours tables
@@ -889,6 +890,38 @@ UPDATE tour_stops SET
     recommended_dish_or_activity_en = 'Vibrant night seafood feast at Oc Oanh Eatery',
     note_en = 'Soak in the bustling energy iconic to District 4 night food street'
 WHERE tour_id = 4 AND stop_order = 4;
+
+-- ============================================================
+-- Bilingual Audio Guide Migration & English Seed Transcripts
+-- ============================================================
+ALTER TABLE poi_audios DROP CONSTRAINT IF EXISTS poi_audios_poi_id_key;
+ALTER TABLE poi_audios DROP CONSTRAINT IF EXISTS uq_poi_audios_poi_lang;
+ALTER TABLE poi_audios ADD CONSTRAINT uq_poi_audios_poi_lang UNIQUE (poi_id, language);
+
+INSERT INTO poi_audios (poi_id, title, file_name, duration_seconds, file_size_bytes, voice, language, zone, transcript)
+VALUES
+    (1, 'Audio Guide: Vinh Khanh Food Street & Oc Oanh Eatery', 'poi_1_en.mp3', 64, 384192,
+     'English (Natural)', 'en', 'quan4',
+     'Welcome to Vinh Khanh Street, District 4 – the most vibrant night seafood paradise in Saigon. Right in front of you is Oc Oanh Eatery, a legendary dining destination for food lovers for over 15 years. The signature specialty that made Oc Oanh famous is fresh spotted babylonia snails tossed in rich, creamy salted egg sauce, paired with warm crispy baguettes. Furthermore, crunchy chili salt crab claws and grilled scallops with scallion oil and melted cheese are must-try delicacies. The sizzling sound of seafood woks over high flames and the irresistible aroma of garlic butter will bring you an unforgettable Southern Vietnamese street food experience.'),
+    (2, 'Audio Guide: Market 200 & Co Thao Beef Offal Stew', 'poi_2_en.mp3', 64, 383232,
+     'English (Natural)', 'en', 'quan4',
+     'You are stopping at alley 243 Ton Dan, entering the renowned Market 200 food paradise of District 4. Co Thao Beef Offal Stew has kept its stove burning for more than 20 years in this cozy alley corner. Each piece of honeycomb tripe, intestine, and tendon is thoroughly cleaned and slow-cooked in rich fresh coconut milk with aromatic star anise and cinnamon. When tasting, use a bamboo skewer to dip a tender piece into the signature sweet-and-sour tamarind chili sauce, then take a bite of warm crispy bread. The rich, velvety broth balanced with tangy flavors will reveal why Saigon locals adore this iconic street delicacy.'),
+    (3, 'Audio Guide: Historical Landmark Dragon Wharf (Ben Nha Rong)', 'poi_3_en.mp3', 85, 510000,
+     'English (Formal)', 'en', 'quan4',
+     'Welcome to Dragon Wharf, now the Ho Chi Minh Museum Ho Chi Minh City Branch. Built in 1863 by the French shipping company Messageries Maritimes, the building is distinguished by two rooftop ceramic dragons flanking a moon. It was here on June 5, 1911, that the young patriot Nguyen Tat Thanh, then 21 years old, boarded the ship Amiral Latouche-Treville to embark on a 30-year journey seeking national salvation for Vietnam. When exploring the museum grounds and exhibitions, visitors are kindly requested to dress respectfully and maintain solemnity.'),
+    (4, 'Audio Guide: Historic Xom Chieu Church', 'poi_4_en.mp3', 75, 450000,
+     'English (Formal)', 'en', 'quan4',
+     'You are visiting Xom Chieu Church, one of the oldest Catholic parishes in Saigon with over 160 years of history. The church boasts classic Gothic architecture with soaring pointed arches, colorful stained-glass windows, and a tranquil bell tower standing gracefully amidst the bustle of District 4. The parish has closely bonded with generations of local families since the days of the historic sedge mat weaving village. When stepping inside, please observe silence and dress reverently.'),
+    (5, 'Audio Guide: Historic Mong Bridge (Rainbow Bridge)', 'poi_5_en.mp3', 60, 360000,
+     'English (Natural)', 'en', 'quan4',
+     'Standing before you is Mong Bridge, the oldest historic steel bridge in Saigon, connecting District 1 and District 4 across the Ben Nghe canal. Built in 1893 by the Eiffel company, the bridge is famous for its distinctive curved arch and turquoise paint. Today, Mong Bridge is a favorite pedestrian and cultural hotspot, offering spectacular sunset views of the Saigon River and modern Bitexco skyline. In the late afternoon, enjoy the cool canal breeze and immerse yourself in Saigon urban life.'),
+    (6, 'Audio Guide: Giac Nguyen Pagoda', 'poi_6_en.mp3', 60, 360000,
+     'English (Formal)', 'en', 'quan4',
+     'Welcome to Giac Nguyen Pagoda, a serene Buddhist sanctuary located on Ben Van Don street along the canal. Founded in the mid-20th century, the pagoda follows the Mahayana tradition, providing a quiet spiritual haven for locals and travelers seeking peace and mindfulness in the heart of District 4. Please remove your shoes before entering the main hall and maintain a respectful demeanour.')
+ON CONFLICT (poi_id, language) DO UPDATE SET
+    title = EXCLUDED.title,
+    transcript = EXCLUDED.transcript,
+    voice = EXCLUDED.voice;
 
 
 

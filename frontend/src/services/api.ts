@@ -421,8 +421,9 @@ export const fetchMyFavorites = async (): Promise<PoiSummary[]> => {
 };
 
 // ─── 7. Audio Guide & Streaming ─────────────────────────────────
-export const getAudioStreamUrl = (poiId: number | string): string => {
-  return `${API_V1}/audio/stream/${poiId}`;
+export const getAudioStreamUrl = (poiId: number | string, lang?: string): string => {
+  const currentLang = lang || (typeof window !== 'undefined' ? (localStorage.getItem('sw_language') || 'vi') : 'vi');
+  return `${API_V1}/audio/stream/${poiId}?lang=${currentLang}`;
 };
 
 export const trackAudioListen = async (data: {

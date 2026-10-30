@@ -164,7 +164,7 @@ export default function Map({
     setIsPlayingAudio(true);
     setAudioProgress(0);
 
-    const streamUrl = getAudioStreamUrl(poi.id);
+    const streamUrl = getAudioStreamUrl(poi.id, language);
 
     if (audioRef.current) {
       audioRef.current.src = streamUrl;
@@ -191,7 +191,7 @@ export default function Map({
       completed: false,
       triggerType: 'AUTO',
     });
-  }, [deviceId]);
+  }, [deviceId, language]);
 
   // Xử lý khi bài audio hiện tại kết thúc -> Tự động lấy điểm tiếp theo trong hàng đợi
   const handleAudioEnded = useCallback(() => {
@@ -707,10 +707,12 @@ export default function Map({
           {audioQueue.length > 0 && (
             <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
               <div className="flex items-center gap-1.5 text-amber-300 truncate">
-                <span>📋 <b>Hàng đợi ({audioQueue.length}):</b></span>
+                <span>📋 <b>{language === 'en' ? `Queue (${audioQueue.length}):` : `Hàng đợi (${audioQueue.length}):`}</b></span>
                 <span className="truncate">{audioQueue.map((p) => p.name).join(' → ')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 shrink-0 ml-2">Tự phát tiếp</span>
+              <span className="text-[9px] text-slate-400 shrink-0 ml-2">
+                {language === 'en' ? 'Auto-play next' : 'Tự phát tiếp'}
+              </span>
             </div>
           )}
         </div>
