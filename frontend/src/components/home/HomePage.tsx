@@ -6,12 +6,14 @@ import { fetchPois, fetchTours, checkHealth } from '@/services/api';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
 import AiAssistantModal from '@/components/ai/AiAssistantModal';
 import CustomTourModal from '@/components/tours/CustomTourModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface HomePageProps {
   onOpenMap: (poiId?: string | number) => void;
 }
 
 export default function HomePage({ onOpenMap }: HomePageProps) {
+  const { tk } = useLanguage();
   const [pois, setPois] = useState<PoiSummary[]>([]);
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -60,16 +62,16 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
           <div className="flex items-center justify-between mb-4">
             <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-blue-100 border border-white/20">
               <span className={`w-2 h-2 rounded-full ${health?.status === 'UP' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              Backend: {health?.status === 'UP' ? 'Đã kết nối PostGIS 17' : 'Đang kết nối...'}
+              Backend: {health?.status === 'UP' ? tk('home_backend_up') : tk('home_backend_down')}
             </span>
-            <span className="text-xs text-white/80 font-medium">Quận 4 • TP. Hồ Chí Minh</span>
+            <span className="text-xs text-white/80 font-medium">{tk('home_district')}</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-2">
-            Thì Thầm Sài Gòn <span className="text-cyan-200">✨</span>
+            {tk('home_hero_title')} <span className="text-cyan-200">✨</span>
           </h1>
           <p className="text-sm sm:text-base text-blue-100 max-w-xl leading-relaxed mb-6">
-            Lắng nghe từng câu chuyện di tích, khám phá từng con hẻm ẩm thực với thuyết minh âm thanh tự động qua GPS.
+            {tk('home_hero_subtitle')}
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -80,7 +82,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              <span>Mở Bản Đồ Khám Phá</span>
+              <span>{tk('home_btn_open_map')}</span>
             </button>
 
             <button
@@ -88,7 +90,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-3 rounded-2xl shadow-lg font-bold text-xs transition active:scale-95 cursor-pointer"
             >
               <span>✨</span>
-              <span>Gợi ý món ăn AI theo ngân sách</span>
+              <span>{tk('home_btn_ai_food')}</span>
             </button>
           </div>
         </div>
@@ -105,8 +107,8 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               🗺️
             </div>
             <div>
-              <h3 className="font-bold text-xs text-gray-900">Bản đồ GPS</h3>
-              <p className="text-[10px] text-gray-500">Chỉ đường thời gian thực</p>
+              <h3 className="font-bold text-xs text-gray-900">{tk('home_feat_gps')}</h3>
+              <p className="text-[10px] text-gray-500">{tk('home_feat_gps_sub')}</p>
             </div>
           </div>
 
@@ -118,8 +120,8 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               🧭
             </div>
             <div>
-              <h3 className="font-bold text-xs text-gray-900">Tour tự động</h3>
-              <p className="text-[10px] text-gray-500">Tối ưu theo thời gian</p>
+              <h3 className="font-bold text-xs text-gray-900">{tk('home_feat_tour')}</h3>
+              <p className="text-[10px] text-gray-500">{tk('home_feat_tour_sub')}</p>
             </div>
           </div>
 
@@ -131,8 +133,8 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               ✨
             </div>
             <div>
-              <h3 className="font-bold text-xs text-gray-900">Trợ lý AI</h3>
-              <p className="text-[10px] text-gray-500">Hỏi đáp & gợi ý món</p>
+              <h3 className="font-bold text-xs text-gray-900">{tk('home_feat_ai')}</h3>
+              <p className="text-[10px] text-gray-500">{tk('home_feat_ai_sub')}</p>
             </div>
           </div>
 
@@ -141,8 +143,8 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
               🎧
             </div>
             <div>
-              <h3 className="font-bold text-xs text-gray-900">Audio Guide</h3>
-              <p className="text-[10px] text-gray-500">Tự phát ở bán kính 30m</p>
+              <h3 className="font-bold text-xs text-gray-900">{tk('home_feat_audio')}</h3>
+              <p className="text-[10px] text-gray-500">{tk('home_feat_audio_sub')}</p>
             </div>
           </div>
         </div>
@@ -151,14 +153,14 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Địa Điểm Nổi Bật ({pois.length})</h2>
-              <p className="text-xs text-gray-500">Dữ liệu thực tế từ cơ sở dữ liệu PostGIS</p>
+              <h2 className="text-lg font-bold text-gray-900">{tk('home_poi_title')} ({pois.length})</h2>
+              <p className="text-xs text-gray-500">{tk('home_poi_subtitle')}</p>
             </div>
             <button
               onClick={() => onOpenMap()}
               className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
             >
-              <span>Xem trên bản đồ</span>
+              <span>{tk('home_poi_view_map')}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -166,7 +168,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
           </div>
 
           {loading ? (
-            <div className="py-12 flex justify-center text-slate-400 text-xs">Đang tải danh sách địa điểm...</div>
+            <div className="py-12 flex justify-center text-slate-400 text-xs">{tk('home_poi_loading')}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {pois.slice(0, 4).map((poi) => (
@@ -195,10 +197,10 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs font-black text-blue-600">
-                      {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : 'Miễn phí'}
+                      {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : tk('home_poi_free')}
                     </span>
                     <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-600 transition">
-                      Chi tiết →
+                      {tk('home_poi_detail')}
                     </span>
                   </div>
                 </div>
@@ -211,14 +213,14 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Tuyến Tham Quan Đề Xuất</h2>
-              <p className="text-xs text-gray-500">Các tour mẫu được lập trình sẵn</p>
+              <h2 className="text-lg font-bold text-gray-900">{tk('home_tour_title')}</h2>
+              <p className="text-xs text-gray-500">{tk('home_tour_subtitle')}</p>
             </div>
             <button
               onClick={() => setIsCustomTourOpen(true)}
               className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
             >
-              <span>+ Tự tạo lộ trình</span>
+              <span>{tk('home_tour_create')}</span>
             </button>
           </div>
 
@@ -241,7 +243,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
 
                 <div className="p-3.5 bg-white flex flex-col gap-2.5">
                   <div className="flex items-center justify-between text-[10px] text-gray-500 font-semibold">
-                    <span>📍 {tour.stopCount} điểm</span>
+                    <span>📍 {tour.stopCount} {tk('home_tour_stops')}</span>
                     <span>⏱️ {tour.estimatedDurationMinutes}p</span>
                     <span>📏 {(tour.totalDistanceMeters / 1000).toFixed(1)}km</span>
                   </div>
@@ -250,7 +252,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
                     onClick={() => onOpenMap()}
                     className="w-full bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs py-2 rounded-xl transition text-center cursor-pointer"
                   >
-                    Bắt đầu hành trình
+                    {tk('home_tour_start')}
                   </button>
                 </div>
               </div>
@@ -261,12 +263,12 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
         {/* ─── 5. BANNER GIỚI THIỆU ─────────────────────────────────── */}
         <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="max-w-md text-center sm:text-left">
-            <span className="text-xs uppercase tracking-wider font-bold text-cyan-400 mb-1 inline-block">Hệ thống du lịch thông minh</span>
+            <span className="text-xs uppercase tracking-wider font-bold text-cyan-400 mb-1 inline-block">{tk('home_banner_badge')}</span>
             <h3 className="text-xl sm:text-2xl font-extrabold leading-snug mb-2">
-              Sẵn sàng khám phá Quận 4 cùng trợ lý âm thanh?
+              {tk('home_banner_title')}
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Bật GPS và tai nghe, ứng dụng sẽ tự động phát những câu chuyện lịch sử thú vị ngay khi bạn đến gần địa điểm trong bán kính 30m.
+              {tk('home_banner_desc')}
             </p>
           </div>
 
@@ -274,7 +276,7 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
             onClick={() => onOpenMap()}
             className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-lg transition active:scale-95 shrink-0 cursor-pointer"
           >
-            Trải nghiệm trên bản đồ ➔
+            {tk('home_banner_btn')}
           </button>
         </div>
       </div>

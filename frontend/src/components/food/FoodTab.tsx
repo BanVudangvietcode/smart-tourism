@@ -4,12 +4,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PoiSummary } from '@/types';
 import { fetchPois } from '@/services/api';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FoodTabProps {
   onOpenMap: (poiId?: string | number) => void;
 }
 
 export default function FoodTab({ onOpenMap }: FoodTabProps) {
+  const { tk } = useLanguage();
   const [foods, setFoods] = useState<PoiSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -67,13 +69,13 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1.5">
-                Thiên Đường Ẩm Thực Về Đêm
+                {tk('food_badge')}
               </p>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Phố Ốc Vĩnh Khánh & Chợ 200 Xóm Chiếu
+                {tk('food_title')}
               </h1>
               <p className="text-sm text-slate-600 mt-1 max-w-xl">
-                Khám phá các quán ốc chảo trứ danh, phá lấu bò gia truyền nước cốt dừa và hàng trăm món ăn vặt đường phố.
+                {tk('food_subtitle')}
               </p>
             </div>
 
@@ -81,7 +83,7 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
             <div className="relative w-full md:w-80">
               <input
                 type="text"
-                placeholder="Tìm món ngon, tên quán, con hẻm..."
+                placeholder={tk('food_search_placeholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 suppressHydrationWarning
@@ -115,7 +117,7 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
                     : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
-                {cat === 'all' ? 'Tất cả món ngon' : cat}
+                {cat === 'all' ? tk('food_all') : cat}
               </button>
             ))}
           </div>
@@ -127,13 +129,13 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
             <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold">Đang cập nhật thực đơn ẩm thực từ Backend...</span>
+            <span className="text-xs font-semibold">{tk('food_loading')}</span>
           </div>
         ) : filteredFoods.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
             <p className="text-3xl mb-2">🍜</p>
-            <h3 className="text-sm font-bold text-slate-800">Không tìm thấy quán ăn nào</h3>
-            <p className="text-xs text-slate-500 mt-1">Vui lòng thử tìm với từ khóa khác.</p>
+            <h3 className="text-sm font-bold text-slate-800">{tk('food_not_found')}</h3>
+            <p className="text-xs text-slate-500 mt-1">{tk('food_not_found_hint')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -186,9 +188,9 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
 
                   <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Mức giá</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('food_price_label')}</p>
                       <p className="text-xs font-black text-orange-600">
-                        {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : 'Bình dân'}
+                        {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : tk('food_budget_default')}
                         {poi.priceRangeMax ? ` - ${poi.priceRangeMax.toLocaleString()}đ` : ''}
                       </p>
                     </div>
@@ -200,7 +202,7 @@ export default function FoodTab({ onOpenMap }: FoodTabProps) {
                       }}
                       className="bg-orange-50 text-orange-700 hover:bg-orange-600 hover:text-white text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
                     >
-                      Xem thực đơn →
+                      {tk('food_view_menu')}
                     </button>
                   </div>
                 </div>

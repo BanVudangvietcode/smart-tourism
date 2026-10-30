@@ -21,6 +21,7 @@ import {
   askAi,
 } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import FormattedAiText from '@/components/common/FormattedAiText';
 
 interface PoiDetailModalProps {
@@ -32,6 +33,7 @@ interface PoiDetailModalProps {
 
 export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, onNavigate }: PoiDetailModalProps) {
   const { user, deviceId } = useAuth();
+  const { tk } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>(initialTab);
 
@@ -336,7 +338,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-            <span>Chỉ đường</span>
+            <span>{tk('poi_btn_navigate')}</span>
           </button>
 
           {/* Nút Audio Thuyết minh */}
@@ -351,12 +353,12 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
             {isPlayingAudio ? (
               <>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                <span>Tạm dừng</span>
+                <span>{tk('poi_btn_pause')}</span>
               </>
             ) : (
               <>
                 <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <span>Nghe Audio Thuyết minh</span>
+                <span>{tk('poi_btn_audio')}</span>
               </>
             )}
           </button>
@@ -368,7 +370,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
             className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs transition active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
           >
             <span>🎯</span>
-            <span>{checkingIn ? 'Đang đo GPS...' : 'Check-in 30m'}</span>
+            <span>{checkingIn ? tk('poi_btn_checkin_loading') : tk('poi_btn_checkin')}</span>
           </button>
 
           {/* Nút Lưu yêu thích */}
@@ -377,7 +379,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
             className={`p-2 rounded-xl border transition shrink-0 cursor-pointer ${
               isFav ? 'bg-rose-50 border-rose-300 text-rose-600' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'
             }`}
-            title="Lưu vào danh sách"
+            title={tk('poi_btn_save')}
           >
             <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -388,7 +390,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
         {/* Thanh audio timeline nếu đang bật */}
         {isPlayingAudio && audioDuration > 0 && (
           <div className="bg-emerald-50 px-4 py-1.5 border-b border-emerald-100 flex items-center justify-between text-[11px] text-emerald-900">
-            <span className="font-semibold">🎧 Đang phát thuyết minh tự động</span>
+            <span className="font-semibold">{tk('poi_audio_playing')}</span>
             <span>{Math.floor(audioProgress)}s / {Math.floor(audioDuration)}s</span>
           </div>
         )}
@@ -415,7 +417,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
               activeTab === 'info' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Thông tin
+            {tk('poi_tab_info')}
           </button>
           {menu && menu.categories && menu.categories.length > 0 && (
             <button
@@ -424,7 +426,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                 activeTab === 'menu' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Thực đơn ({menu.totalDishes})
+              {tk('poi_tab_menu')} ({menu.totalDishes})
             </button>
           )}
           <button
@@ -433,7 +435,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
               activeTab === 'reviews' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Đánh giá {reviewsData ? `(${reviewsData.totalCount})` : ''}
+            {tk('poi_tab_reviews')} {reviewsData ? `(${reviewsData.totalCount})` : ''}
           </button>
           <button
             onClick={() => setActiveTab('ai')}
@@ -441,7 +443,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
               activeTab === 'ai' ? 'border-purple-600 text-purple-600 bg-purple-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            ✨ Hỏi AI
+            {tk('poi_tab_ai')}
           </button>
         </div>
 
@@ -450,7 +452,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
               <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs font-medium">Đang đồng bộ dữ liệu...</span>
+              <span className="text-xs font-medium">{tk('poi_syncing')}</span>
             </div>
           ) : (
             <>
@@ -459,7 +461,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                 <div className="space-y-4">
                   {/* Mô tả */}
                   <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Giới thiệu</h3>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{tk('poi_section_intro')}</h3>
                     <p className="text-sm text-slate-700 leading-relaxed">
                       {detail.description?.replace(/<!--pin:.*?-->/g, '').trim() || 'Chưa có mô tả chi tiết cho địa điểm này.'}
                     </p>
@@ -472,8 +474,8 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                         ⏰
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Giờ mở cửa</p>
-                        <p className="text-xs font-extrabold text-slate-800">{detail.openingHours || 'Đang cập nhật'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_opening_hours')}</p>
+                        <p className="text-xs font-extrabold text-slate-800">{detail.openingHours || tk('poi_opening_tbd')}</p>
                       </div>
                     </div>
 
@@ -482,7 +484,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                         💵
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Mức giá</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_price')}</p>
                         <p className="text-xs font-extrabold text-slate-800">
                           {detail.priceRangeMin ? `${detail.priceRangeMin.toLocaleString()}đ` : 'Miễn phí'}
                           {detail.priceRangeMax ? ` - ${detail.priceRangeMax.toLocaleString()}đ` : ''}
@@ -495,7 +497,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                         📞
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Điện thoại</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_phone')}</p>
                         <p className="text-xs font-extrabold text-slate-800">{detail.phone || '0903 123 456'}</p>
                       </div>
                     </div>
@@ -505,7 +507,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
                         📍
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Tọa độ PostGIS</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_coords')}</p>
                         <p className="text-xs font-mono font-bold text-slate-700">
                           {detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}
                         </p>

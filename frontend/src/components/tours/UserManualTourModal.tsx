@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchPois, createTour } from '@/services/api';
 import { PoiSummary, CreateTourInput } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserManualTourModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface UserManualTourModalProps {
 }
 
 export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: UserManualTourModalProps) {
+  const { tk } = useLanguage();
   const [pois, setPois] = useState<PoiSummary[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -156,8 +158,8 @@ export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: 
               ✍️
             </div>
             <div>
-              <h3 className="text-base font-black">Tự Thiết Kế Tuyến Tour Khám Phá</h3>
-              <p className="text-xs text-purple-100">Chọn quán ăn, di tích và sắp xếp lịch trình theo gu của riêng bạn</p>
+              <h3 className="text-base font-black">{tk('manual_tour_title')}</h3>
+              <p className="text-xs text-purple-100">{tk('manual_tour_subtitle')}</p>
             </div>
           </div>
           <button

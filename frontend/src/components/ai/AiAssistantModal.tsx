@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { askAi, recommendDishesByBudget } from '@/services/api';
 import { AiRecommendDishResponse } from '@/types';
 import FormattedAiText from '@/components/common/FormattedAiText';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AiAssistantModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAssistantModalProps) {
+  const { tk } = useLanguage();
   const [activeTab, setActiveTab] = useState<'chat' | 'budget'>('chat');
 
   // Chat State
@@ -134,12 +136,12 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black">Trợ Lý AI Saigon Whispers</h3>
+                <h3 className="text-base font-black">{tk('ai_title')}</h3>
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-green-400 text-green-950 uppercase tracking-wider">
-                  Trực tuyến
+                  {tk('ai_online')}
                 </span>
               </div>
-              <p className="text-xs text-purple-100">Hỏi đáp ẩm thực & di tích lịch sử Quận 4</p>
+              <p className="text-xs text-purple-100">{tk('ai_subtitle')}</p>
             </div>
           </div>
           <button
@@ -161,7 +163,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             }`}
           >
             <span>💬</span>
-            <span>Hỏi Đáp Trực Tiếp</span>
+            <span>{tk('ai_tab_chat')}</span>
           </button>
           <button
             onClick={() => setActiveTab('budget')}
@@ -172,7 +174,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             }`}
           >
             <span>💰</span>
-            <span>Gợi Ý Theo Ví Tiền</span>
+            <span>{tk('ai_tab_budget')}</span>
           </button>
         </div>
 
@@ -242,7 +244,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                     <span className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce [animation-delay:0.2s]"></span>
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.4s]"></span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-600">AI đang suy nghĩ...</span>
+                  <span className="text-xs font-semibold text-slate-600">{tk('ai_thinking')}</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -261,7 +263,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                   type="text"
                   value={inputQuestion}
                   onChange={(e) => setInputQuestion(e.target.value)}
-                  placeholder="Hỏi về quán ốc, di tích, giờ mở cửa..."
+                  placeholder={tk('ai_chat_placeholder')}
                   disabled={chatLoading}
                   className="flex-1 text-xs sm:text-sm bg-slate-100 border border-slate-200 focus:bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2.5 outline-hidden transition"
                 />
@@ -270,7 +272,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                   disabled={!inputQuestion.trim() || chatLoading}
                   className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>Gửi</span>
+                  <span>{tk('ai_btn_send')}</span>
                   <span>➤</span>
                 </button>
               </form>
@@ -284,7 +286,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             {/* Controls */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700">Ngân sách dự kiến:</label>
+                <label className="text-xs font-bold text-slate-700">{tk('ai_budget_label')}</label>
                 <span className="text-sm font-black text-purple-700">
                   {budget.toLocaleString()} VNĐ
                 </span>
@@ -305,7 +307,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <label className="text-xs font-bold text-slate-700">Số lượng người:</label>
+                <label className="text-xs font-bold text-slate-700">{tk('ai_people_label')}</label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 4, 6].map((size) => (
                     <button
@@ -317,7 +319,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {size} người
+                      {size} {tk('ai_people_unit')}
                     </button>
                   ))}
                 </div>
@@ -328,7 +330,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                 disabled={budgetLoading}
                 className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md shadow-purple-500/20 active:scale-98 cursor-pointer disabled:opacity-50"
               >
-                {budgetLoading ? 'AI đang phân tích thực đơn...' : '✨ Tạo Gợi Ý Món Ăn Tối Ưu'}
+                {budgetLoading ? tk('ai_analyzing') : tk('ai_btn_recommend')}
               </button>
             </div>
 
@@ -338,14 +340,14 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                 <div className="bg-purple-50 border border-purple-200 p-3.5 rounded-2xl">
                   <p className="text-xs font-bold text-purple-900">{recommendation.summary}</p>
                   <div className="flex items-center gap-4 mt-2 text-[11px] font-semibold text-purple-800">
-                    <span>💰 Tổng cộng: <b>{recommendation.totalEstimatedPrice.toLocaleString()}đ</b></span>
-                    <span>💵 Dư: <b>{recommendation.budgetRemaining.toLocaleString()}đ</b></span>
+                    <span>💰 {tk('ai_total')} <b>{recommendation.totalEstimatedPrice.toLocaleString()}đ</b></span>
+                    <span>💵 {tk('ai_remaining')} <b>{recommendation.budgetRemaining.toLocaleString()}đ</b></span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Món gợi ý chọn lọc
+                    {tk('ai_dishes_title')}
                   </h4>
                   {recommendation.dishes.map((dish) => (
                     <div
