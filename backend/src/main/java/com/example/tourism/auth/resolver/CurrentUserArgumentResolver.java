@@ -67,10 +67,25 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             }
         }
 
-        // 3. Chế độ quyền bình thường / khách dùng thử không bắt buộc đăng nhập
+        // 3. Người chưa đăng nhập không được tự động cấp quyền
         if (userId == null) {
-            userId = 1L;
-            role = "ADMIN";
+            CurrentUser currentUser =
+                    parameter.getParameterAnnotation(CurrentUser.class);
+        
+            CurrentUserId currentUserId =
+                    parameter.getParameterAnnotation(CurrentUserId.class);
+        
+            boolean required =
+                    (currentUser != null && currentUser.required())
+                    || (currentUserId != null && currentUserId.required());
+        
+            if (required) {
+                throw new SecurityException(
+                    "Bạn cần đăng nhập để thực hiện chức năng này."
+                );
+            }
+        
+            return null;
         }
 
         // 4. Trả về đúng kiểu dữ liệu của tham số hàm
