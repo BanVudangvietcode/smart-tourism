@@ -28,7 +28,11 @@ public class AdminPoiController {
     }
 
     private void requireAdmin(AuthUser user) {
-        // Cho phép chế độ quyền bình thường / khách dùng thử mà không bắt buộc đăng nhập
+        if (user == null || !user.isAdmin()) {
+            throw new SecurityException(
+                "Yêu cầu quyền Quản trị viên (ROLE_ADMIN) để thực hiện thao tác này."
+            );
+        }
     }
 
     /**
