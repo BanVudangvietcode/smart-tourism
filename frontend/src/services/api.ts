@@ -534,9 +534,11 @@ export const loginAsAdmin = async (): Promise<AuthV1Response> => {
     throw new Error(err.error || 'Lỗi đăng nhập tài khoản Quản trị');
   }
   const data: AuthV1Response = await res.json();
+  
   if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('sw_token', data.token);
   }
+  
   return data;
 };
 
