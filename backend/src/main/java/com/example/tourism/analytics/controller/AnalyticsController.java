@@ -23,7 +23,13 @@ public class AnalyticsController {
     public AnalyticsController(AnalyticsService analyticsService) {
         this.analyticsService = analyticsService;
     }
-
+    private void requireAdmin(AuthUser user) {
+        if (user == null || !user.isAdmin()) {
+            throw new SecurityException(
+                "Yêu cầu quyền Quản trị viên để xem dữ liệu thống kê."
+            );
+        }
+    }
     /**
      * GET /api/v1/analytics/realtime/visitors
      * Server-Sent Events (SSE) stream kết nối thời gian thực cho trang Admin.
@@ -92,7 +98,12 @@ public class AnalyticsController {
             @CurrentUser(required = false) AuthUser user,
             @RequestParam(defaultValue = "30") int minDwellSeconds,
             @RequestParam(defaultValue = "500") int limit) {
-        HeatmapGeoJsonResponse response = analyticsService.getHeatmap(minDwellSeconds, limit);
+    
+        requireAdmin(user);
+    
+        HeatmapGeoJsonResponse response =
+                analyticsService.getHeatmap(minDwellSeconds, limit);
+    
         return ResponseEntity.ok(response);
     }
 
@@ -103,7 +114,12 @@ public class AnalyticsController {
     @GetMapping("/dashboard-summary")
     public ResponseEntity<DashboardSummaryResponse> getDashboardSummary(
             @CurrentUser(required = false) AuthUser user) {
-        DashboardSummaryResponse response = analyticsService.getDashboardSummary();
+    
+        requireAdmin(user);
+    
+        DashboardSummaryResponse response =
+                analyticsService.getDashboardSummary();
+    
         return ResponseEntity.ok(response);
     }
 }
