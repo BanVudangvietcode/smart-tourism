@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-
+import { useAuth } from '@/contexts/AuthContext';
 const LocationPickerMap = dynamic(() => import('@/components/map/LocationPickerMap'), {
   ssr: false,
   loading: () => (
@@ -42,7 +42,6 @@ import {
   createPoiType,
   updatePoiType,
   deletePoiType,
-  loginAsAdmin,
   getDashboardSummary,
   getHeatmap,
   adminCreatePoi,
@@ -69,6 +68,7 @@ const inferPoiTypeFromCategory = (catName?: string, catSlug?: string): string =>
 };
 
 export default function AdminPage() {
+  const { user, isLoading: authLoading } = useAuth();
   // Sidebar visibility: hidden by default or toggleable via the 3-dots / hamburger button
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -80,7 +80,6 @@ export default function AdminPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
   // Auth & Admin Data
-  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [activeVisitors, setActiveVisitors] = useState<number>(1);
   const [heatmapData, setHeatmapData] = useState<any>(null);
@@ -565,6 +564,14 @@ export default function AdminPage() {
 
   // Initialize Admin Session & Fetch Data (Chế độ quyền bình thường / không bắt buộc đăng nhập)
   useEffect(() => {
+        if (authLoading) return;
+    
+    if (user?.role !== 'ADMIN') {
+        setLoading(false);
+        setDashboardData(null);
+        setHeatmapData(null);
+        return;
+    }
     const initData = async () => {
       setLoading(true);
       try {
@@ -598,7 +605,7 @@ export default function AdminPage() {
     };
 
     initData();
-  }, []);
+  }, [authLoading, user?.role]);
 
   // Kết nối Server-Sent Events (SSE) theo thời gian thực - PUSH trực tiếp từ server, không cần polling 10s
   useEffect(() => {
@@ -871,7 +878,29 @@ export default function AdminPage() {
     totalFavorites: 0,
     activeVisitors: 1,
   };
-
+  // Kiểm tra trạng thái đăng nhập
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Đang kiểm tra quyền truy cập...
+      </div>
+    );
+  }
+  
+  // Kiểm tra quyền ADMIN
+  if (user?.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <h1 className="text-2xl font-bold">
+          Bạn không có quyền truy cập
+        </h1>
+  
+        <p>Vui lòng đăng nhập bằng tài khoản quản trị viên.</p>
+  
+        <Link href="/login">Đăng nhập</Link>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-slate-800 flex flex-col font-sans antialiased">
       {/* ========================================================================= */}
