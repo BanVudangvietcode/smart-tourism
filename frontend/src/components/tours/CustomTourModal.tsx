@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { generateCustomTour, createTour } from '@/services/api';
 import { CustomPlanResponse } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CustomTourModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface CustomTourModalProps {
 }
 
 export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCreated }: CustomTourModalProps) {
+  const { tk } = useLanguage();
   const [minutes, setMinutes] = useState<number>(90);
   const [budget, setBudget] = useState<number>(200000);
   const [tourName, setTourName] = useState<string>('Tour khám phá nhanh Quận 4');
@@ -89,8 +91,8 @@ export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCr
               🧭
             </div>
             <div>
-              <h3 className="text-base font-black">Thiết Kế Tuyến Tour Theo Ý Bạn</h3>
-              <p className="text-xs text-blue-100">Thuật toán PostGIS tự tối ưu đường đi & thời gian</p>
+              <h3 className="text-base font-black">{tk('custom_tour_title')}</h3>
+              <p className="text-xs text-blue-100">{tk('custom_tour_subtitle')}</p>
             </div>
           </div>
           <button

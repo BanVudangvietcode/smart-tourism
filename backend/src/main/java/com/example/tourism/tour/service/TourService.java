@@ -56,15 +56,17 @@ public class TourService {
      * Retrieve list of tours matching filters.
      * Supports public curated tours and user-owned private tours.
      */
-    public List<TourSummaryResponse> getTours(String theme, Boolean isPublic, Long userId, String search) {
+    public List<TourSummaryResponse> getTours(String theme, Boolean isPublic, Long userId, String search, String lang) {
         List<Tour> tours = tourRepository.findTours(theme, isPublic, userId, search);
         return tours.stream().map(t -> {
             int stopCount = tourRepository.countStopsByTourId(t.getId());
+            String name = com.example.tourism.common.util.I18nUtils.resolve(t.getName(), t.getNameEn(), lang);
+            String desc = com.example.tourism.common.util.I18nUtils.resolve(t.getDescription(), t.getDescriptionEn(), lang);
             return new TourSummaryResponse(
                     t.getId(),
-                    t.getName(),
+                    name,
                     t.getSlug(),
-                    t.getDescription(),
+                    desc,
                     t.getTheme(),
                     t.getEstimatedDurationMinutes(),
                     t.getEstimatedCost(),
@@ -80,10 +82,14 @@ public class TourService {
         }).toList();
     }
 
+    public List<TourSummaryResponse> getTours(String theme, Boolean isPublic, Long userId, String search) {
+        return getTours(theme, isPublic, userId, search, "vi");
+    }
+
     /**
      * Retrieve complete tour details by ID or Slug.
      */
-    public TourDetailResponse getTourByIdOrSlug(String idOrSlug, Long currentUserId) {
+    public TourDetailResponse getTourByIdOrSlug(String idOrSlug, Long currentUserId, String lang) {
         Tour tour = null;
         try {
             Long id = Long.parseLong(idOrSlug);
@@ -107,22 +113,27 @@ public class TourService {
 
         for (TourStop s : stops) {
             Poi poi = poiRepository.findById(s.getPoiId()).orElse(null);
-            PoiSummaryResponse poiSummary = poi != null ? toPoiSummary(poi, null) : null;
+            PoiSummaryResponse poiSummary = poi != null ? toPoiSummary(poi, null, lang) : null;
+            String rec = com.example.tourism.common.util.I18nUtils.resolve(s.getRecommendedDishOrActivity(), s.getRecommendedDishOrActivityEn(), lang);
+            String note = com.example.tourism.common.util.I18nUtils.resolve(s.getNote(), s.getNoteEn(), lang);
             stopResponses.add(new TourStopDetailResponse(
                     s.getId(),
                     s.getStopOrder(),
                     s.getEstimatedDurationMinutes(),
-                    s.getRecommendedDishOrActivity(),
-                    s.getNote(),
+                    rec,
+                    note,
                     poiSummary
             ));
         }
 
+        String tourName = com.example.tourism.common.util.I18nUtils.resolve(tour.getName(), tour.getNameEn(), lang);
+        String tourDesc = com.example.tourism.common.util.I18nUtils.resolve(tour.getDescription(), tour.getDescriptionEn(), lang);
+
         return new TourDetailResponse(
                 tour.getId(),
-                tour.getName(),
+                tourName,
                 tour.getSlug(),
-                tour.getDescription(),
+                tourDesc,
                 tour.getTheme(),
                 tour.getEstimatedDurationMinutes(),
                 tour.getEstimatedCost(),
@@ -136,6 +147,10 @@ public class TourService {
                 tour.getUpdatedAt(),
                 stopResponses
         );
+    }
+
+    public TourDetailResponse getTourByIdOrSlug(String idOrSlug, Long currentUserId) {
+        return getTourByIdOrSlug(idOrSlug, currentUserId, "vi");
     }
 
     /**
@@ -436,13 +451,15 @@ public class TourService {
 
     // ── Helper methods ────────────────────────────────────────────────
 
-    private PoiSummaryResponse toPoiSummary(Poi p, Double distanceMeters) {
-        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId());
+    private PoiSummaryResponse toPoiSummary(Poi p, Double distanceMeters, String lang) {
+        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
+        String name = com.example.tourism.common.util.I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
+        String address = com.example.tourism.common.util.I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
         return new PoiSummaryResponse(
                 p.getId(),
-                p.getName(),
+                name,
                 p.getSlug(),
-                p.getAddress(),
+                address,
                 p.getThumbnailUrl(),
                 p.getAvgRating(),
                 p.getReviewCount(),
@@ -454,6 +471,10 @@ public class TourService {
                 p.getLatitude(),
                 distanceMeters != null ? Math.round(distanceMeters * 10.0) / 10.0 : null
         );
+    }
+
+    private PoiSummaryResponse toPoiSummary(Poi p, Double distanceMeters) {
+        return toPoiSummary(p, distanceMeters, "vi");
     }
 
     private int getDefaultDurationForPoi(Poi poi) {

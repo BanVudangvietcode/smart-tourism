@@ -8,14 +8,18 @@ public class Dish {
     private Long menuCategoryId;
     private String menuCategoryName;
     private String name;
+    private String nameEn;
     private String slug;
     private String description;
+    private String descriptionEn;
     private int price;
     private Integer originalPrice;
     private String unit;
+    private String unitEn;
     private boolean isSignature;
     private String thumbnailUrl;
     private String ingredients;
+    private String ingredientsEn;
     private String allergens;
     private boolean hasPeanuts;
     private boolean hasSeafood;
@@ -42,11 +46,17 @@ public class Dish {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getNameEn() { return nameEn; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
+
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getDescriptionEn() { return descriptionEn; }
+    public void setDescriptionEn(String descriptionEn) { this.descriptionEn = descriptionEn; }
 
     public int getPrice() { return price; }
     public void setPrice(int price) { this.price = price; }
@@ -57,6 +67,9 @@ public class Dish {
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
 
+    public String getUnitEn() { return unitEn; }
+    public void setUnitEn(String unitEn) { this.unitEn = unitEn; }
+
     public boolean isSignature() { return isSignature; }
     public void setSignature(boolean signature) { isSignature = signature; }
 
@@ -65,6 +78,9 @@ public class Dish {
 
     public String getIngredients() { return ingredients; }
     public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+
+    public String getIngredientsEn() { return ingredientsEn; }
+    public void setIngredientsEn(String ingredientsEn) { this.ingredientsEn = ingredientsEn; }
 
     public String getAllergens() { return allergens; }
     public void setAllergens(String allergens) { this.allergens = allergens; }

@@ -20,41 +20,51 @@ public class AudioController {
 
     /**
      * GET /api/v1/audio/stream/{poiId}
-     * Headers: Range: bytes=start-end
+     * Headers: Range: bytes=start-end, Accept-Language: vi|en
+     * Query: lang=vi|en
      * Streams audio in chunks with HTTP 206 Partial Content for instant loudspeaker playback.
      */
     @GetMapping("/stream/{poiId}")
     public ResponseEntity<byte[]> streamAudio(
             @PathVariable Long poiId,
+            @RequestParam(value = "lang", required = false) String langParam,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String langHeader,
             @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) {
-        return audioService.streamAudio(poiId, rangeHeader);
+        String lang = (langParam != null && !langParam.isBlank()) ? langParam : langHeader;
+        return audioService.streamAudio(poiId, lang, rangeHeader);
     }
 
     /**
      * GET /api/v1/audio/metadata/{poiId}
      * Returns audio guide metadata: duration in seconds, file size, voice/narrator,
      * full transcript, and timed subtitle cues for mobile scrolling subtitles.
-     * Results cached in Redis.
+     * Results cached in Redis per language.
      */
     @GetMapping("/metadata/{poiId}")
-    public ResponseEntity<AudioMetadataResponse> getMetadata(@PathVariable Long poiId) {
-        return audioService.getAudioMetadata(poiId)
+    public ResponseEntity<AudioMetadataResponse> getMetadata(
+            @PathVariable Long poiId,
+            @RequestParam(value = "lang", required = false) String langParam,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String langHeader) {
+        String lang = (langParam != null && !langParam.isBlank()) ? langParam : langHeader;
+        return audioService.getAudioMetadata(poiId, lang)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /**
      * GET /api/v1/audio/offline-pack
-     * Params: zone (default: "quan4")
+     * Params: zone (default: "quan4"), lang (default: "vi")
      * Downloads a compressed .zip package of all POI audio files and transcripts
-     * in the specified zone for offline listening when tourists lose signal in alleys.
+     * in the specified zone and language for offline listening when tourists lose signal in alleys.
      */
     @GetMapping("/offline-pack")
-    public ResponseEntity<byte[]> getOfflinePack(@RequestParam(defaultValue = "quan4") String zone) {
-        return audioService.generateOfflinePack(zone)
+    public ResponseEntity<byte[]> getOfflinePack(
+            @RequestParam(defaultValue = "quan4") String zone,
+            @RequestParam(defaultValue = "vi") String lang) {
+        return audioService.generateOfflinePack(zone, lang)
                 .map(bytes -> ResponseEntity.ok()
                         .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audio_pack_" + zone + ".zip\"")
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audio_pack_" + zone + "_" + lang + ".zip\"")
                         .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length))
                         .body(bytes))
                 .orElse(ResponseEntity.notFound().build());

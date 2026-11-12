@@ -20,14 +20,29 @@ import {
 } from '@/types';
 
 const isServer = typeof window === 'undefined';
+const rawBackend = (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 const API_V1 = isServer
-  ? (process.env.INTERNAL_API_URL || 'http://localhost:8080/api/v1')
+  ? (rawBackend.endsWith('/api/v1') ? rawBackend : `${rawBackend}/api/v1`)
   : '/api/v1';
 
 // Lấy token từ localStorage một cách an toàn
 const getAuthHeader = (customToken?: string | null): Record<string, string> => {
   const token = customToken || (typeof window !== 'undefined' ? localStorage.getItem('sw_token') : null);
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+// Lấy ngôn ngữ hiện tại từ localStorage
+const getLanguageHeader = (): Record<string, string> => {
+  const lang = typeof window !== 'undefined' ? (localStorage.getItem('sw_language') || 'vi') : 'vi';
+  return { 'Accept-Language': lang };
+};
+
+// Kết hợp headers bao gồm ngôn ngữ và auth
+const getCommonHeaders = (customToken?: string | null): Record<string, string> => {
+  return {
+    ...getLanguageHeader(),
+    ...getAuthHeader(customToken),
+  };
 };
 
 // ─── 1. Health & Status ─────────────────────────────────────────
@@ -47,7 +62,9 @@ export const checkHealth = async (): Promise<HealthStatus> => {
 
 // ─── 2. Categories ──────────────────────────────────────────────
 export const fetchCategories = async (): Promise<Category[]> => {
-  const res = await fetch(`${API_V1}/categories`);
+  const res = await fetch(`${API_V1}/categories`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải danh mục');
   return res.json();
 };
@@ -112,7 +129,9 @@ export const deleteCategory = async (id: number): Promise<void> => {
 
 // ─── 2.1 POI Types (Phân loại hệ thống) ─────────────────────────
 export const fetchPoiTypes = async (): Promise<PoiTypeItem[]> => {
-  const res = await fetch(`${API_V1}/poi-types`);
+  const res = await fetch(`${API_V1}/poi-types`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải danh sách phân loại hệ thống');
   return res.json();
 };
@@ -195,26 +214,34 @@ export const fetchPois = async (params: SearchPoiParams = {}): Promise<PoiSummar
   if (params.lat !== undefined) query.set('lat', params.lat.toString());
   if (params.lng !== undefined) query.set('lng', params.lng.toString());
 
-  const res = await fetch(`${API_V1}/pois/search?${query.toString()}`);
+  const res = await fetch(`${API_V1}/pois/search?${query.toString()}`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tìm kiếm địa điểm');
   return res.json();
 };
 
 export const fetchPoiDetail = async (id: number | string): Promise<PoiDetail> => {
-  const res = await fetch(`${API_V1}/pois/${id}`);
+  const res = await fetch(`${API_V1}/pois/${id}`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error(`Không tìm thấy chi tiết địa điểm ID ${id}`);
   return res.json();
 };
 
 export const fetchNearbyPois = async (lat: number, lng: number, radiusInMeters = 1000): Promise<PoiSummary[]> => {
-  const res = await fetch(`${API_V1}/pois/nearby?lat=${lat}&lng=${lng}&radiusInMeters=${radiusInMeters}`);
+  const res = await fetch(`${API_V1}/pois/nearby?lat=${lat}&lng=${lng}&radiusInMeters=${radiusInMeters}`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải địa điểm lân cận');
   return res.json();
 };
 
 // ─── 4. Dishes & Menu ───────────────────────────────────────────
 export const fetchPoiMenu = async (poiId: number | string): Promise<PoiMenuResponse> => {
-  const res = await fetch(`${API_V1}/pois/${poiId}/menu`);
+  const res = await fetch(`${API_V1}/pois/${poiId}/menu`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải thực đơn món ăn');
   return res.json();
 };
@@ -226,7 +253,7 @@ export const fetchTours = async (theme?: string, search?: string): Promise<TourS
   if (search) query.set('search', search);
 
   const res = await fetch(`${API_V1}/tours?${query.toString()}`, {
-    headers: { ...getAuthHeader() },
+    headers: getCommonHeaders(),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách tour');
   return res.json();
@@ -234,7 +261,7 @@ export const fetchTours = async (theme?: string, search?: string): Promise<TourS
 
 export const fetchTourDetail = async (tourIdOrSlug: number | string): Promise<TourDetail> => {
   const res = await fetch(`${API_V1}/tours/${tourIdOrSlug}`, {
-    headers: { ...getAuthHeader() },
+    headers: getCommonHeaders(),
   });
   if (!res.ok) throw new Error('Không thể tải chi tiết tuyến tour');
   return res.json();
@@ -299,7 +326,9 @@ export const generateCustomTour = async (params: CustomTourPlanParams): Promise<
 
 // ─── 6. Community & Reviews ─────────────────────────────────────
 export const fetchPoiReviews = async (poiId: number | string, page = 0, size = 10): Promise<ReviewPageResponse> => {
-  const res = await fetch(`${API_V1}/pois/${poiId}/reviews?page=${page}&size=${size}`);
+  const res = await fetch(`${API_V1}/pois/${poiId}/reviews?page=${page}&size=${size}`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải đánh giá');
   return res.json();
 };
@@ -312,7 +341,7 @@ export const postReview = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeader(),
+      ...getCommonHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -324,7 +353,9 @@ export const postReview = async (
 };
 
 export const fetchTourReviews = async (tourId: number | string): Promise<TourReviewListResponse> => {
-  const res = await fetch(`${API_V1}/tours/${tourId}/reviews`);
+  const res = await fetch(`${API_V1}/tours/${tourId}/reviews`, {
+    headers: getCommonHeaders(),
+  });
   if (!res.ok) throw new Error('Không thể tải đánh giá tuyến tour');
   return res.json();
 };
@@ -337,7 +368,7 @@ export const postTourReview = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeader(),
+      ...getCommonHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -390,8 +421,9 @@ export const fetchMyFavorites = async (): Promise<PoiSummary[]> => {
 };
 
 // ─── 7. Audio Guide & Streaming ─────────────────────────────────
-export const getAudioStreamUrl = (poiId: number | string): string => {
-  return `${API_V1}/audio/stream/${poiId}`;
+export const getAudioStreamUrl = (poiId: number | string, lang?: string): string => {
+  const currentLang = lang || (typeof window !== 'undefined' ? (localStorage.getItem('sw_language') || 'vi') : 'vi');
+  return `${API_V1}/audio/stream/${poiId}?lang=${currentLang}`;
 };
 
 export const trackAudioListen = async (data: {
@@ -424,7 +456,7 @@ export const askAi = async (data: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeader(),
+      ...getCommonHeaders(),
     },
     body: JSON.stringify(data),
   });
@@ -446,7 +478,7 @@ export const recommendDishesByBudget = async (data: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeader(),
+      ...getCommonHeaders(),
     },
     body: JSON.stringify(data),
   });

@@ -4,12 +4,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Category, PoiSummary } from '@/types';
 import { fetchCategories, fetchPois } from '@/services/api';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PlacesTabProps {
   onOpenMap: (poiId?: string | number) => void;
 }
 
 export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
+  const { language, tk } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [places, setPlaces] = useState<PoiSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   const filteredPlaces = useMemo(() => {
     return places.filter((p) => {
@@ -63,13 +65,13 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1.5">
-                Cơ sở dữ liệu PostGIS Quận 4
+                {tk('places_db_badge')}
               </p>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Địa Điểm Du Lịch & Di Tích Lịch Sử
+                {tk('places_title')}
               </h1>
               <p className="text-sm text-slate-600 mt-1 max-w-xl">
-                Khám phá {places.length} di tích lịch sử, bảo tàng, chùa chiền và các điểm check-in ven sông Bến Nghé.
+                {tk('places_subtitle')}
               </p>
             </div>
 
@@ -77,7 +79,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
             <div className="relative w-full md:w-80">
               <input
                 type="text"
-                placeholder="Tìm tên địa điểm, di tích, đường..."
+                placeholder={tk('places_search_placeholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 suppressHydrationWarning
@@ -109,7 +111,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
                   : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'
               }`}
             >
-              Tất cả ({places.length})
+              {tk('places_all')} ({places.length})
             </button>
             {categories.map((cat) => (
               <button
@@ -133,13 +135,13 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold">Đang tải danh sách địa điểm từ Backend...</span>
+            <span className="text-xs font-semibold">{tk('places_loading')}</span>
           </div>
         ) : filteredPlaces.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
             <p className="text-3xl mb-2">🔍</p>
-            <h3 className="text-sm font-bold text-slate-800">Không tìm thấy địa điểm nào</h3>
-            <p className="text-xs text-slate-500 mt-1">Thử đổi từ khóa tìm kiếm hoặc chọn danh mục khác.</p>
+            <h3 className="text-sm font-bold text-slate-800">{tk('places_not_found')}</h3>
+            <p className="text-xs text-slate-500 mt-1">{tk('places_not_found_hint')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -190,7 +192,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
 
                   <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs font-black text-blue-600">
-                      {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : 'Miễn phí vé vào'}
+                      {poi.priceRangeMin ? `${poi.priceRangeMin.toLocaleString()}đ` : tk('places_free_entry')}
                     </span>
 
                     <button
@@ -200,7 +202,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
                       }}
                       className="text-xs font-bold text-slate-700 group-hover:text-blue-600 flex items-center gap-1 hover:underline cursor-pointer"
                     >
-                      <span>Xem bản đồ</span>
+                      <span>{tk('places_view_map')}</span>
                       <span>→</span>
                     </button>
                   </div>
@@ -216,7 +218,7 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
         <PoiDetailModal
           poiId={selectedPoiId}
           onClose={() => setSelectedPoiId(null)}
-          onNavigate={(p) => onOpenMap(selectedPoiId)}
+          onNavigate={() => onOpenMap(selectedPoiId)}
         />
       )}
     </div>

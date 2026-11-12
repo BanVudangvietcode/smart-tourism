@@ -11,6 +11,7 @@ import { createPoiIcon, createUserLocationIcon, createDestinationIcon } from '@/
 import { fetchRoute, getDistance } from '@/lib/routing';
 import { fetchPois, getAudioStreamUrl, trackAudioListen } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
 
 // ─── Các thành phần phụ trợ của Bản đồ (Map Sub-components) ───
@@ -92,6 +93,7 @@ export default function Map({
   onToggleAutoPlay,
 }: MapProps) {
   const { deviceId } = useAuth();
+  const { language, tk } = useLanguage();
   const mapRef = useRef<L.Map | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasInitializedGPS = useRef(false);
@@ -162,7 +164,7 @@ export default function Map({
     setIsPlayingAudio(true);
     setAudioProgress(0);
 
-    const streamUrl = getAudioStreamUrl(poi.id);
+    const streamUrl = getAudioStreamUrl(poi.id, language);
 
     if (audioRef.current) {
       audioRef.current.src = streamUrl;
@@ -189,7 +191,7 @@ export default function Map({
       completed: false,
       triggerType: 'AUTO',
     });
-  }, [deviceId]);
+  }, [deviceId, language]);
 
   // Xử lý khi bài audio hiện tại kết thúc -> Tự động lấy điểm tiếp theo trong hàng đợi
   const handleAudioEnded = useCallback(() => {
@@ -391,7 +393,7 @@ export default function Map({
       }
     };
     loadBackendPois();
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     onNavChange?.(isNav);
@@ -670,7 +672,7 @@ export default function Map({
               <button
                 onClick={handleSkipTrack}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer"
-                title="Bỏ qua / Kế tiếp"
+                title={tk('map_skip_audio')}
               >
                 ⏭️
               </button>
@@ -678,7 +680,7 @@ export default function Map({
               <button
                 onClick={handleStopAudio}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-500/30 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
-                title="Dừng phát"
+                title={tk('map_stop_audio')}
               >
                 ✕
               </button>
@@ -705,10 +707,12 @@ export default function Map({
           {audioQueue.length > 0 && (
             <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
               <div className="flex items-center gap-1.5 text-amber-300 truncate">
-                <span>📋 <b>Hàng đợi ({audioQueue.length}):</b></span>
+                <span>📋 <b>{language === 'en' ? `Queue (${audioQueue.length}):` : `Hàng đợi (${audioQueue.length}):`}</b></span>
                 <span className="truncate">{audioQueue.map((p) => p.name).join(' → ')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 shrink-0 ml-2">Tự phát tiếp</span>
+              <span className="text-[9px] text-slate-400 shrink-0 ml-2">
+                {language === 'en' ? 'Auto-play next' : 'Tự phát tiếp'}
+              </span>
             </div>
           )}
         </div>
@@ -722,7 +726,7 @@ export default function Map({
             {loading ? (
               <div className="px-5 py-4 flex items-center gap-3 text-white">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="font-bold text-sm">Đang tính tuyến đường...</span>
+                <span className="font-bold text-sm">{tk('map_calculating_route')}</span>
               </div>
             ) : cur ? (
               <div className="flex items-stretch">
@@ -741,8 +745,8 @@ export default function Map({
           {/* Bottom bar: route info */}
           <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.15)] rounded-t-3xl pb-safe">
             <div className="flex border-b border-gray-100">
-              <button onClick={() => changeMode('driving')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 ${mode === 'driving' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent'}`}>🚗 Xe</button>
-              <button onClick={() => changeMode('walking')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 ${mode === 'walking' ? 'text-emerald-600 border-emerald-600' : 'text-gray-500 border-transparent'}`}>🚶 Đi bộ</button>
+              <button onClick={() => changeMode('driving')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 ${mode === 'driving' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent'}`}>{tk('map_driving')}</button>
+              <button onClick={() => changeMode('walking')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 ${mode === 'walking' ? 'text-emerald-600 border-emerald-600' : 'text-gray-500 border-transparent'}`}>{tk('map_walking')}</button>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -755,11 +759,11 @@ export default function Map({
                   <p className="text-[10px] text-gray-500 truncate max-w-[120px]">{dest?.name}</p>
                 </div>
               </div>
-              <button onClick={stopNav} className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-2 px-5 rounded-full shadow transition shrink-0 cursor-pointer">Kết thúc</button>
+              <button onClick={stopNav} className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-2 px-5 rounded-full shadow transition shrink-0 cursor-pointer">{tk('map_nav_end')}</button>
             </div>
             <div className="border-t border-gray-100 py-2.5 flex justify-center bg-gray-50/50">
               <button onClick={() => { setOverview(!overview); if (overview) setIsTracking(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1.5 px-4 py-1 rounded-full hover:bg-blue-50 transition active:scale-95 cursor-pointer">
-                {overview ? '📍 Quay lại dẫn đường' : '🗺️ Xem tổng quan'}
+                {overview ? tk('map_return_nav') : tk('map_overview')}
               </button>
             </div>
           </div>
@@ -768,12 +772,12 @@ export default function Map({
             <button
               onClick={() => recenterToUser(17)}
               className="absolute bottom-36 right-4 z-[1000] bg-white text-blue-600 px-3.5 py-2.5 rounded-full shadow-2xl border border-gray-200 active:scale-95 transition-all flex items-center gap-1.5 font-bold text-xs cursor-pointer"
-              title="Quay lại vị trí của mình"
+              title={tk('map_nav_recenter')}
             >
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12 0a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              <span>Về vị trí</span>
+              <span>{tk('map_nav_recenter')}</span>
             </button>
           )}
         </>

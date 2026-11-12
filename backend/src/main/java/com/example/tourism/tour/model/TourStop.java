@@ -12,7 +12,9 @@ public class TourStop {
     private int stopOrder;
     private int estimatedDurationMinutes;
     private String recommendedDishOrActivity;
+    private String recommendedDishOrActivityEn;
     private String note;
+    private String noteEn;
     private LocalDateTime createdAt;
 
     public TourStop() {}
@@ -35,8 +37,14 @@ public class TourStop {
     public String getRecommendedDishOrActivity() { return recommendedDishOrActivity; }
     public void setRecommendedDishOrActivity(String recommendedDishOrActivity) { this.recommendedDishOrActivity = recommendedDishOrActivity; }
 
+    public String getRecommendedDishOrActivityEn() { return recommendedDishOrActivityEn; }
+    public void setRecommendedDishOrActivityEn(String recommendedDishOrActivityEn) { this.recommendedDishOrActivityEn = recommendedDishOrActivityEn; }
+
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    public String getNoteEn() { return noteEn; }
+    public void setNoteEn(String noteEn) { this.noteEn = noteEn; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

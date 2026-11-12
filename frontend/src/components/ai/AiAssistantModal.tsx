@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { askAi, recommendDishesByBudget } from '@/services/api';
 import { AiRecommendDishResponse } from '@/types';
 import FormattedAiText from '@/components/common/FormattedAiText';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AiAssistantModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ interface ChatMessage {
   followUps?: string[];
 }
 
-const QUICK_QUESTIONS = [
+const QUICK_QUESTIONS_VI = [
   '🔥 Quán ốc nào ngon & đông nhất Vĩnh Khánh?',
   '🏛️ Bến Nhà Rồng mở cửa khung giờ nào?',
   '🥣 Phá lấu bò Cô Thảo có gì đặc biệt?',
@@ -28,26 +29,54 @@ const QUICK_QUESTIONS = [
   '📸 Cầu Mống chụp ảnh lúc nào đẹp nhất?',
 ];
 
-export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAssistantModalProps) {
-  const [activeTab, setActiveTab] = useState<'chat' | 'budget'>('chat');
+const QUICK_QUESTIONS_EN = [
+  '🔥 Which snail stall is best & busiest on Vinh Khanh?',
+  '🏛️ What are the opening hours of Dragon Wharf?',
+  '🥣 What makes Co Thao beef offal stew special?',
+  '🌙 Famous late-night foodie spots in District 4',
+  '📸 When is the best time to take photos at Mong Bridge?',
+];
 
-  // Chat State
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'ai',
-      text: 'Chào bạn! Mình là Trợ lý AI Du Lịch & Ẩm Thực Quận 4 (Saigon Whispers). Bạn muốn tìm quán ốc ngon, hỏi về lịch sử Bến Nhà Rồng hay tìm món ăn hợp túi tiền hôm nay? Cứ hỏi mình nhé! 🌟',
-      time: 'Vừa xong',
-      followUps: [
+const getWelcomeMessage = (lang: string): ChatMessage => ({
+  id: 'welcome',
+  sender: 'ai',
+  text: lang === 'en'
+    ? 'Hello! I am your District 4 Tourism & Food AI Assistant (Saigon Whispers). Looking for delicious seafood, learning about Dragon Wharf history, or finding budget-friendly dishes today? Feel free to ask me! 🌟'
+    : 'Chào bạn! Mình là Trợ lý AI Du Lịch & Ẩm Thực Quận 4 (Saigon Whispers). Bạn muốn tìm quán ốc ngon, hỏi về lịch sử Bến Nhà Rồng hay tìm món ăn hợp túi tiền hôm nay? Cứ hỏi mình nhé! 🌟',
+  time: lang === 'en' ? 'Just now' : 'Vừa xong',
+  followUps: lang === 'en'
+    ? [
+        'Which snail stall is best on Vinh Khanh?',
+        'What time does Dragon Wharf open?',
+        'What are the specialty foods of District 4?',
+      ]
+    : [
         'Quán ốc nào ngon nhất Vĩnh Khánh?',
         'Bến Nhà Rồng mở cửa mấy giờ?',
         'Quận 4 có món gì đặc sản?',
       ],
-    },
-  ]);
+});
+
+export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAssistantModalProps) {
+  const { language, tk } = useLanguage();
+  const [activeTab, setActiveTab] = useState<'chat' | 'budget'>('chat');
+  const quickQuestions = language === 'en' ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS_VI;
+
+  // Chat State
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [getWelcomeMessage(language)]);
   const [inputQuestion, setInputQuestion] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Cập nhật câu chào nếu đổi ngôn ngữ và chưa chat
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [getWelcomeMessage(language)];
+      }
+      return prev;
+    });
+  }, [language]);
 
   // Budget State
   const [budget, setBudget] = useState<number>(100000);
@@ -77,7 +106,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
       id: Date.now().toString(),
       sender: 'user',
       text: q,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -90,7 +119,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
         id: (Date.now() + 1).toString(),
         sender: 'ai',
         text: res.answer,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
         followUps: res.suggestedFollowUps,
       };
       setMessages((prev) => [...prev, aiMsg]);
@@ -98,8 +127,8 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
       const errMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: err.message || 'Trợ lý AI đang có chút trục trặc kết nối, bạn vui lòng thử lại nhé!',
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        text: err.message || (language === 'en' ? 'AI Assistant is having a brief connection issue, please try again!' : 'Trợ lý AI đang có chút trục trặc kết nối, bạn vui lòng thử lại nhé!'),
+        time: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
@@ -117,7 +146,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
       });
       setRecommendation(res);
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi tính toán gợi ý');
+      alert(err.message || (language === 'en' ? 'Error calculating suggestions' : 'Lỗi khi tính toán gợi ý'));
     } finally {
       setBudgetLoading(false);
     }
@@ -134,12 +163,12 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black">Trợ Lý AI Saigon Whispers</h3>
+                <h3 className="text-base font-black">{tk('ai_title')}</h3>
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-green-400 text-green-950 uppercase tracking-wider">
-                  Trực tuyến
+                  {tk('ai_online')}
                 </span>
               </div>
-              <p className="text-xs text-purple-100">Hỏi đáp ẩm thực & di tích lịch sử Quận 4</p>
+              <p className="text-xs text-purple-100">{tk('ai_subtitle')}</p>
             </div>
           </div>
           <button
@@ -161,7 +190,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             }`}
           >
             <span>💬</span>
-            <span>Hỏi Đáp Trực Tiếp</span>
+            <span>{tk('ai_tab_chat')}</span>
           </button>
           <button
             onClick={() => setActiveTab('budget')}
@@ -172,7 +201,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             }`}
           >
             <span>💰</span>
-            <span>Gợi Ý Theo Ví Tiền</span>
+            <span>{tk('ai_tab_budget')}</span>
           </button>
         </div>
 
@@ -181,7 +210,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
           <div className="flex-1 flex flex-col min-h-0 bg-slate-50/40">
             {/* Quick Suggestions */}
             <div className="p-2.5 bg-purple-50/60 border-b border-purple-100/60 overflow-x-auto flex gap-1.5 no-scrollbar shrink-0">
-              {QUICK_QUESTIONS.map((q, idx) => (
+              {quickQuestions.map((q, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSendQuestion(q)}
@@ -215,7 +244,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                   {m.followUps && m.followUps.length > 0 && (
                     <div className="mt-2 space-y-1 w-full max-w-[85%]">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Gợi ý hỏi tiếp:
+                        {tk('ai_follow_ups')}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {m.followUps.map((fu, fi) => (
@@ -242,7 +271,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                     <span className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce [animation-delay:0.2s]"></span>
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.4s]"></span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-600">AI đang suy nghĩ...</span>
+                  <span className="text-xs font-semibold text-slate-600">{tk('ai_thinking')}</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -261,7 +290,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                   type="text"
                   value={inputQuestion}
                   onChange={(e) => setInputQuestion(e.target.value)}
-                  placeholder="Hỏi về quán ốc, di tích, giờ mở cửa..."
+                  placeholder={tk('ai_chat_placeholder')}
                   disabled={chatLoading}
                   className="flex-1 text-xs sm:text-sm bg-slate-100 border border-slate-200 focus:bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2.5 outline-hidden transition"
                 />
@@ -270,7 +299,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                   disabled={!inputQuestion.trim() || chatLoading}
                   className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>Gửi</span>
+                  <span>{tk('ai_btn_send')}</span>
                   <span>➤</span>
                 </button>
               </form>
@@ -284,7 +313,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
             {/* Controls */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700">Ngân sách dự kiến:</label>
+                <label className="text-xs font-bold text-slate-700">{tk('ai_budget_label')}</label>
                 <span className="text-sm font-black text-purple-700">
                   {budget.toLocaleString()} VNĐ
                 </span>
@@ -305,7 +334,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <label className="text-xs font-bold text-slate-700">Số lượng người:</label>
+                <label className="text-xs font-bold text-slate-700">{tk('ai_people_label')}</label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 4, 6].map((size) => (
                     <button
@@ -317,7 +346,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {size} người
+                      {size} {tk('ai_people_unit')}
                     </button>
                   ))}
                 </div>
@@ -328,7 +357,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                 disabled={budgetLoading}
                 className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md shadow-purple-500/20 active:scale-98 cursor-pointer disabled:opacity-50"
               >
-                {budgetLoading ? 'AI đang phân tích thực đơn...' : '✨ Tạo Gợi Ý Món Ăn Tối Ưu'}
+                {budgetLoading ? tk('ai_analyzing') : tk('ai_btn_recommend')}
               </button>
             </div>
 
@@ -338,14 +367,14 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                 <div className="bg-purple-50 border border-purple-200 p-3.5 rounded-2xl">
                   <p className="text-xs font-bold text-purple-900">{recommendation.summary}</p>
                   <div className="flex items-center gap-4 mt-2 text-[11px] font-semibold text-purple-800">
-                    <span>💰 Tổng cộng: <b>{recommendation.totalEstimatedPrice.toLocaleString()}đ</b></span>
-                    <span>💵 Dư: <b>{recommendation.budgetRemaining.toLocaleString()}đ</b></span>
+                    <span>💰 {tk('ai_total')} <b>{recommendation.totalEstimatedPrice.toLocaleString()}đ</b></span>
+                    <span>💵 {tk('ai_remaining')} <b>{recommendation.budgetRemaining.toLocaleString()}đ</b></span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Món gợi ý chọn lọc
+                    {tk('ai_dishes_title')}
                   </h4>
                   {recommendation.dishes.map((dish) => (
                     <div
@@ -387,7 +416,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
                             }}
                             className="text-[10px] font-bold text-blue-600 hover:underline mt-1 block"
                           >
-                            Xem quán →
+                            {tk('ai_view_spot')}
                           </button>
                         )}
                       </div>
@@ -397,7 +426,7 @@ export default function AiAssistantModal({ isOpen, onClose, onSelectPoi }: AiAss
 
                 {recommendation.tips && (
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-amber-900 text-xs">
-                    💡 <b>Mẹo từ thổ địa:</b> {recommendation.tips}
+                    <b>{tk('ai_tip')}</b> {recommendation.tips}
                   </div>
                 )}
               </div>

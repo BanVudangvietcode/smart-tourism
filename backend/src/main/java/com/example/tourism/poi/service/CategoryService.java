@@ -17,16 +17,24 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<CategoryResponse> getAllCategories() {
+    public List<CategoryResponse> getAllCategories(String lang) {
         return categoryRepository.findAll().stream()
-                .map(this::toResponse)
+                .map(c -> toResponse(c, lang))
                 .toList();
     }
 
-    public CategoryResponse getCategoryById(Long id) {
+    public List<CategoryResponse> getAllCategories() {
+        return getAllCategories("vi");
+    }
+
+    public CategoryResponse getCategoryById(Long id, String lang) {
         return categoryRepository.findById(id)
-                .map(this::toResponse)
+                .map(c -> toResponse(c, lang))
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy danh mục id=" + id));
+    }
+
+    public CategoryResponse getCategoryById(Long id) {
+        return getCategoryById(id, "vi");
     }
 
     public CategoryResponse createCategory(CategoryRequest req) {
@@ -53,7 +61,12 @@ public class CategoryService {
         categoryRepository.delete(id);
     }
 
+    private CategoryResponse toResponse(Category c, String lang) {
+        String name = com.example.tourism.common.util.I18nUtils.resolve(c.getName(), c.getNameEn(), lang);
+        return new CategoryResponse(c.getId(), name, c.getSlug(), c.getIconUrl(), c.getSortOrder());
+    }
+
     private CategoryResponse toResponse(Category c) {
-        return new CategoryResponse(c.getId(), c.getName(), c.getSlug(), c.getIconUrl(), c.getSortOrder());
+        return toResponse(c, "vi");
     }
 }

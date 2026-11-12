@@ -25,9 +25,12 @@ public class PoiRepository {
         Poi p = new Poi();
         p.setId(rs.getLong("id"));
         p.setName(rs.getString("name"));
+        try { p.setNameEn(rs.getString("name_en")); } catch (Exception ignored) {}
         p.setSlug(rs.getString("slug"));
         p.setDescription(rs.getString("description"));
+        try { p.setDescriptionEn(rs.getString("description_en")); } catch (Exception ignored) {}
         p.setAddress(rs.getString("address"));
+        try { p.setAddressEn(rs.getString("address_en")); } catch (Exception ignored) {}
         p.setDistrict(rs.getString("district"));
         p.setWard(rs.getString("ward"));
         p.setPhone(rs.getString("phone"));
@@ -71,7 +74,7 @@ public class PoiRepository {
      */
     public List<Poi> findInViewport(double minLng, double minLat, double maxLng, double maxLat) {
         String sql = """
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -93,7 +96,7 @@ public class PoiRepository {
      */
     public List<Poi> findNearby(double lat, double lng, double radiusInMeters, int limit) {
         String sql = """
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -128,7 +131,7 @@ public class PoiRepository {
 
     public Optional<Poi> findById(Long id) {
         String sql = """
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -150,7 +153,7 @@ public class PoiRepository {
 
     public List<Poi> findAll() {
         String sql = """
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -164,7 +167,7 @@ public class PoiRepository {
 
     public List<Poi> findCandidates(List<Long> categoryIds, List<String> poiTypes) {
         StringBuilder sql = new StringBuilder("""
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -217,7 +220,7 @@ public class PoiRepository {
     public List<Poi> findByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
         StringBuilder sql = new StringBuilder("""
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -236,13 +239,19 @@ public class PoiRepository {
         return jdbcTemplate.query(sql.toString(), poiRowMapper, params.toArray());
     }
 
-    public String findCategoryNameById(Long categoryId) {
+    public String findCategoryNameById(Long categoryId, String lang) {
         if (categoryId == null) return null;
         List<String> results = jdbcTemplate.query(
-                "SELECT name FROM categories WHERE id = ?",
-                (rs, rowNum) -> rs.getString("name"), categoryId
+                "SELECT COALESCE(CASE WHEN LOWER(?) = 'en' AND name_en IS NOT NULL AND name_en <> '' THEN name_en ELSE name END, name) AS name FROM categories WHERE id = ?",
+                (rs, rowNum) -> rs.getString("name"),
+                lang != null ? lang : "vi",
+                categoryId
         );
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    public String findCategoryNameById(Long categoryId) {
+        return findCategoryNameById(categoryId, "vi");
     }
 
     // ── Full-text + geo search ─────────────────────────────────────
@@ -257,7 +266,7 @@ public class PoiRepository {
         List<Object> params = new ArrayList<>();
 
         sql.append("""
-                SELECT p.id, p.name, p.slug, p.description, p.address, p.district, p.ward,
+                SELECT p.id, p.name, p.name_en, p.slug, p.description, p.description_en, p.address, p.address_en, p.district, p.ward,
                        p.phone, p.opening_hours, p.price_range_min, p.price_range_max,
                        p.avg_rating, p.review_count, p.popularity, p.audio_url, p.thumbnail_url,
                        p.category_id, p.poi_type, p.created_at, p.updated_at,
@@ -274,9 +283,10 @@ public class PoiRepository {
 
         sql.append("FROM pois p\nWHERE 1=1\n");
 
-        // Full-text search filter
+        // Full-text search filter (bilingual)
         if (keyword != null && !keyword.isBlank()) {
-            sql.append("AND to_tsvector('simple', p.name) @@ plainto_tsquery('simple', ?)\n");
+            sql.append("AND (to_tsvector('simple', p.name) @@ plainto_tsquery('simple', ?) OR to_tsvector('simple', COALESCE(p.name_en, '')) @@ plainto_tsquery('simple', ?))\n");
+            params.add(keyword.trim());
             params.add(keyword.trim());
         }
 
@@ -329,7 +339,8 @@ public class PoiRepository {
         sql.append("FROM pois p\nWHERE 1=1\n");
 
         if (keyword != null && !keyword.isBlank()) {
-            sql.append("AND to_tsvector('simple', p.name) @@ plainto_tsquery('simple', ?)\n");
+            sql.append("AND (to_tsvector('simple', p.name) @@ plainto_tsquery('simple', ?) OR to_tsvector('simple', COALESCE(p.name_en, '')) @@ plainto_tsquery('simple', ?))\n");
+            params.add(keyword.trim());
             params.add(keyword.trim());
         }
         if (categoryId != null) {

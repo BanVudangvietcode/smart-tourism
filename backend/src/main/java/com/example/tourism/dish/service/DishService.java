@@ -1,5 +1,6 @@
 package com.example.tourism.dish.service;
 
+import com.example.tourism.common.util.I18nUtils;
 import com.example.tourism.dish.dto.*;
 import com.example.tourism.dish.model.Dish;
 import com.example.tourism.dish.model.DishImage;
@@ -42,14 +43,15 @@ public class DishService {
      * with Best-seller (is_signature) flag.
      * Cached in Redis with 15-minute TTL.
      */
-    public Optional<PoiMenuResponse> getMenuByPoiId(Long poiId) {
-        String cacheKey = MENU_CACHE_PREFIX + poiId;
+    public Optional<PoiMenuResponse> getMenuByPoiId(Long poiId, String lang) {
+        String effectiveLang = (lang != null && !lang.isBlank()) ? lang.toLowerCase() : "vi";
+        String cacheKey = MENU_CACHE_PREFIX + poiId + ":" + effectiveLang;
 
         // 1. Try Redis cache first
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                log.debug("Cache HIT for POI menu {}", poiId);
+                log.debug("Cache HIT for POI menu {} [lang={}]", poiId, effectiveLang);
                 String json = objectMapper.writeValueAsString(cached);
                 return Optional.of(objectMapper.readValue(json, PoiMenuResponse.class));
             }
@@ -58,7 +60,7 @@ public class DishService {
         }
 
         // 2. Fetch POI name & existence check
-        Optional<String> poiNameOpt = dishRepository.findPoiNameById(poiId);
+        Optional<String> poiNameOpt = dishRepository.findPoiNameById(poiId, effectiveLang);
         if (poiNameOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -73,7 +75,7 @@ public class DishService {
         List<DishSummaryResponse> uncategorizedDishes = new ArrayList<>();
 
         for (Dish dish : dishes) {
-            DishSummaryResponse summary = toSummary(dish);
+            DishSummaryResponse summary = toSummary(dish, effectiveLang);
             if (dish.getMenuCategoryId() != null) {
                 dishesByCategory.computeIfAbsent(dish.getMenuCategoryId(), k -> new ArrayList<>()).add(summary);
             } else {
@@ -87,9 +89,10 @@ public class DishService {
         // Group according to defined categories
         for (MenuCategory cat : categories) {
             List<DishSummaryResponse> catDishes = dishesByCategory.getOrDefault(cat.getId(), List.of());
+            String catName = I18nUtils.resolve(cat.getName(), cat.getNameEn(), effectiveLang);
             categoryGroups.add(new MenuCategoryGroupResponse(
                     cat.getId(),
-                    cat.getName(),
+                    catName,
                     cat.getSortOrder(),
                     catDishes
             ));
@@ -99,13 +102,14 @@ public class DishService {
         // Include any category that has dishes but wasn't in categories table
         for (Map.Entry<Long, List<DishSummaryResponse>> entry : dishesByCategory.entrySet()) {
             if (!processedCategoryIds.contains(entry.getKey())) {
-                String catName = entry.getValue().isEmpty() ? "Mục khác" :
+                String fallbackOther = "en".equals(effectiveLang) ? "Other Items" : "Mục khác";
+                String catName = entry.getValue().isEmpty() ? fallbackOther :
                         dishes.stream()
                                 .filter(d -> Objects.equals(d.getMenuCategoryId(), entry.getKey()))
-                                .map(Dish::getMenuCategoryName)
+                                .map(d -> I18nUtils.resolve(d.getMenuCategoryName(), null, effectiveLang))
                                 .filter(Objects::nonNull)
                                 .findFirst()
-                                .orElse("Mục khác");
+                                .orElse(fallbackOther);
                 categoryGroups.add(new MenuCategoryGroupResponse(
                         entry.getKey(),
                         catName,
@@ -117,9 +121,10 @@ public class DishService {
 
         // Include uncategorized dishes if any
         if (!uncategorizedDishes.isEmpty()) {
+            String uncategorizedName = "en".equals(effectiveLang) ? "Other Dishes" : "Món khác";
             categoryGroups.add(new MenuCategoryGroupResponse(
                     null,
-                    "Món khác",
+                    uncategorizedName,
                     1000,
                     uncategorizedDishes
             ));
@@ -135,7 +140,7 @@ public class DishService {
         // 4. Cache in Redis
         try {
             redisTemplate.opsForValue().set(cacheKey, response, MENU_CACHE_TTL);
-            log.debug("Cached POI menu {} in Redis", poiId);
+            log.debug("Cached POI menu {} in Redis [lang={}]", poiId, effectiveLang);
         } catch (Exception e) {
             log.warn("Failed to cache POI menu {} in Redis", poiId, e);
         }
@@ -143,19 +148,24 @@ public class DishService {
         return Optional.of(response);
     }
 
+    public Optional<PoiMenuResponse> getMenuByPoiId(Long poiId) {
+        return getMenuByPoiId(poiId, "vi");
+    }
+
     /**
      * Get detailed dish information: description, close-up images,
      * primary ingredients, and allergen warnings (peanuts, seafood, gluten).
      * Cached in Redis with 30-minute TTL.
      */
-    public Optional<DishDetailResponse> getDishDetail(Long dishId) {
-        String cacheKey = DISH_CACHE_PREFIX + dishId;
+    public Optional<DishDetailResponse> getDishDetail(Long dishId, String lang) {
+        String effectiveLang = (lang != null && !lang.isBlank()) ? lang.toLowerCase() : "vi";
+        String cacheKey = DISH_CACHE_PREFIX + dishId + ":" + effectiveLang;
 
         // 1. Try Redis cache first
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                log.debug("Cache HIT for Dish detail {}", dishId);
+                log.debug("Cache HIT for Dish detail {} [lang={}]", dishId, effectiveLang);
                 String json = objectMapper.writeValueAsString(cached);
                 return Optional.of(objectMapper.readValue(json, DishDetailResponse.class));
             }
@@ -170,15 +180,15 @@ public class DishService {
         }
 
         Dish dish = dishOpt.get();
-        String poiName = dishRepository.findPoiNameById(dish.getPoiId()).orElse(null);
+        String poiName = dishRepository.findPoiNameById(dish.getPoiId(), effectiveLang).orElse(null);
         List<DishImage> images = dishRepository.findImagesByDishId(dishId);
 
-        DishDetailResponse detail = toDetail(dish, poiName, images);
+        DishDetailResponse detail = toDetail(dish, poiName, images, effectiveLang);
 
         // 3. Cache in Redis
         try {
             redisTemplate.opsForValue().set(cacheKey, detail, DISH_CACHE_TTL);
-            log.debug("Cached Dish detail {} in Redis", dishId);
+            log.debug("Cached Dish detail {} in Redis [lang={}]", dishId, effectiveLang);
         } catch (Exception e) {
             log.warn("Failed to cache Dish detail {} in Redis", dishId, e);
         }
@@ -186,17 +196,25 @@ public class DishService {
         return Optional.of(detail);
     }
 
-    private DishSummaryResponse toSummary(Dish d) {
+    public Optional<DishDetailResponse> getDishDetail(Long dishId) {
+        return getDishDetail(dishId, "vi");
+    }
+
+    private DishSummaryResponse toSummary(Dish d, String lang) {
+        String name = I18nUtils.resolve(d.getName(), d.getNameEn(), lang);
+        String description = I18nUtils.resolve(d.getDescription(), d.getDescriptionEn(), lang);
+        String unit = I18nUtils.resolve(d.getUnit(), d.getUnitEn(), lang);
+
         return new DishSummaryResponse(
                 d.getId(),
                 d.getPoiId(),
                 d.getMenuCategoryId(),
-                d.getName(),
+                name,
                 d.getSlug(),
-                d.getDescription(),
+                description,
                 d.getPrice(),
                 d.getOriginalPrice(),
-                d.getUnit(),
+                unit,
                 d.isSignature(),
                 d.getThumbnailUrl(),
                 parseList(d.getAllergens()),
@@ -206,7 +224,12 @@ public class DishService {
         );
     }
 
-    private DishDetailResponse toDetail(Dish d, String poiName, List<DishImage> images) {
+    private DishDetailResponse toDetail(Dish d, String poiName, List<DishImage> images, String lang) {
+        String name = I18nUtils.resolve(d.getName(), d.getNameEn(), lang);
+        String description = I18nUtils.resolve(d.getDescription(), d.getDescriptionEn(), lang);
+        String unit = I18nUtils.resolve(d.getUnit(), d.getUnitEn(), lang);
+        String ingredientsRaw = I18nUtils.resolve(d.getIngredients(), d.getIngredientsEn(), lang);
+
         List<DishImageResponse> imageResponses = images.stream()
                 .map(img -> new DishImageResponse(
                         img.getId(),
@@ -223,15 +246,15 @@ public class DishService {
                 poiName,
                 d.getMenuCategoryId(),
                 d.getMenuCategoryName(),
-                d.getName(),
+                name,
                 d.getSlug(),
-                d.getDescription(),
+                description,
                 d.getPrice(),
                 d.getOriginalPrice(),
-                d.getUnit(),
+                unit,
                 d.isSignature(),
                 d.getThumbnailUrl(),
-                parseList(d.getIngredients()),
+                parseList(ingredientsRaw),
                 parseList(d.getAllergens()),
                 d.isHasPeanuts(),
                 d.isHasSeafood(),

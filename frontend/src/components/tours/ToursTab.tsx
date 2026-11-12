@@ -6,12 +6,14 @@ import { fetchTours, fetchTourDetail, fetchTourReviews, postTourReview } from '@
 import CustomTourModal from '@/components/tours/CustomTourModal';
 import UserManualTourModal from '@/components/tours/UserManualTourModal';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ToursTabProps {
   onOpenMap: (poiId?: string | number) => void;
 }
 
 export default function ToursTab({ onOpenMap }: ToursTabProps) {
+  const { language, tk } = useLanguage();
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTourDetail, setActiveTourDetail] = useState<TourDetail | null>(null);
@@ -45,7 +47,12 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
 
   useEffect(() => {
     loadTours();
-  }, []);
+    if (activeTourDetail) {
+      fetchTourDetail(activeTourDetail.id)
+        .then((detail) => setActiveTourDetail(detail))
+        .catch(() => {});
+    }
+  }, [language]);
 
   const handleOpenDetail = async (tourId: number) => {
     setLoadingDetailId(tourId);
@@ -97,13 +104,13 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1.5">
-                Lộ Trình Được Thiết Kế Chuyên Nghiệp
+                {tk('tours_badge')}
               </p>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Tuyến Tour Thuyết Minh Tự Động
+                {tk('tours_title')}
               </h1>
               <p className="text-sm text-slate-600 mt-1 max-w-xl">
-                Trải nghiệm {tours.length} tour di sản, ẩm thực đường phố và ngắm cảnh ven sông với chỉ đường thông minh và audio GPS.
+                {tk('tours_subtitle')}
               </p>
             </div>
 
@@ -113,7 +120,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
               className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:to-purple-700 active:scale-95 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition cursor-pointer self-start md:self-auto shrink-0"
             >
               <span>🧭</span>
-              <span>+ Thiết Kế Tuyến Tour Mới</span>
+              <span>{tk('tours_btn_create')}</span>
             </button>
           </div>
         </div>
@@ -124,7 +131,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold">Đang tải tuyến tour từ Backend...</span>
+            <span className="text-xs font-semibold">{tk('tours_loading')}</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -167,24 +174,24 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
 
                   <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-center">
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Thời gian</p>
-                      <p className="text-xs font-black text-slate-800 mt-0.5">{tour.estimatedDurationMinutes} phút</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('tours_duration')}</p>
+                      <p className="text-xs font-black text-slate-800 mt-0.5">{tour.estimatedDurationMinutes} {tk('tours_minutes')}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Cự ly</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('tours_distance')}</p>
                       <p className="text-xs font-black text-slate-800 mt-0.5">{(tour.totalDistanceMeters / 1000).toFixed(1)} km</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Chi phí</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('tours_cost')}</p>
                       <p className="text-xs font-black text-indigo-600 mt-0.5">
-                        {tour.estimatedCost ? `${tour.estimatedCost.toLocaleString()}đ` : 'Miễn phí'}
+                        {tour.estimatedCost ? `${tour.estimatedCost.toLocaleString()}đ` : tk('tours_free')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-xs font-bold text-slate-500">
-                      📍 {tour.stopCount} điểm dừng chân
+                      📍 {tour.stopCount} {tk('tours_stops_count')}
                     </span>
 
                     <button
@@ -192,7 +199,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
                       disabled={loadingDetailId === tour.id}
                       className="bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 font-bold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-1.5"
                     >
-                      {loadingDetailId === tour.id ? 'Đang tải...' : 'Xem lộ trình chi tiết →'}
+                      {loadingDetailId === tour.id ? tk('tours_loading_detail') : tk('tours_view_detail')}
                     </button>
                   </div>
                 </div>
@@ -209,7 +216,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
             {/* Header */}
             <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Chi tiết lộ trình</span>
+                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{tk('tours_route_detail')}</span>
                 <h3 className="text-base font-extrabold text-slate-900 leading-tight">{activeTourDetail.name}</h3>
               </div>
               <button
@@ -231,7 +238,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <span>📍 Lộ trình các điểm dừng ({activeTourDetail.stops.length})</span>
+                <span>📍 {tk('tours_tab_stops')} ({activeTourDetail.stops.length})</span>
               </button>
               <button
                 type="button"
@@ -242,7 +249,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <span>⭐ Đánh giá tuyến tour {tourReviews ? `(${tourReviews.totalCount})` : ''}</span>
+                <span>⭐ {tk('tours_tab_reviews')} {tourReviews ? `(${tourReviews.totalCount})` : ''}</span>
               </button>
             </div>
 
@@ -250,7 +257,7 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
             {tourDetailTab === 'stops' && (
               <div className="p-5 overflow-y-auto space-y-4 flex-1">
                 <div className="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-2xl flex items-center justify-between text-xs text-indigo-900">
-                  <span>⏱️ <b>{activeTourDetail.estimatedDurationMinutes} phút</b></span>
+                  <span>⏱️ <b>{activeTourDetail.estimatedDurationMinutes} {tk('tours_minutes')}</b></span>
                   <span>📏 <b>{(activeTourDetail.totalDistanceMeters / 1000).toFixed(1)} km</b></span>
                   <span>💰 <b>{activeTourDetail.estimatedCost?.toLocaleString()}đ</b></span>
                 </div>

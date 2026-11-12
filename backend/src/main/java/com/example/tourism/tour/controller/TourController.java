@@ -36,10 +36,11 @@ public class TourController {
             @RequestParam(required = false) Boolean isPublic,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String search,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang,
             @CurrentUser AuthUser authUser) {
 
         Long effectiveUserId = userId != null ? userId : (authUser != null ? authUser.id() : null);
-        List<TourSummaryResponse> results = tourService.getTours(theme, isPublic, effectiveUserId, search);
+        List<TourSummaryResponse> results = tourService.getTours(theme, isPublic, effectiveUserId, search, lang);
         return ResponseEntity.ok(results);
     }
 
@@ -51,10 +52,11 @@ public class TourController {
     @GetMapping("/{tourId}")
     public ResponseEntity<TourDetailResponse> getTourById(
             @PathVariable String tourId,
+            @RequestHeader(value = "Accept-Language", defaultValue = "vi") String lang,
             @CurrentUser AuthUser authUser) {
 
         Long currentUserId = authUser != null ? authUser.id() : null;
-        TourDetailResponse detail = tourService.getTourByIdOrSlug(tourId, currentUserId);
+        TourDetailResponse detail = tourService.getTourByIdOrSlug(tourId, currentUserId, lang);
         return ResponseEntity.ok(detail);
     }
 

@@ -45,16 +45,22 @@ public class AiService {
     }
 
     public AiAskResponse askPoi(AiAskRequest request) {
+        return askPoi(request, "vi");
+    }
+
+    public AiAskResponse askPoi(AiAskRequest request, String lang) {
         if (request.getQuestion() == null || request.getQuestion().trim().isBlank()) {
             throw new IllegalArgumentException("Nội dung câu hỏi không được để trống.");
         }
+
+        final boolean isEn = "en".equalsIgnoreCase(lang);
 
         final String conversationId = (request.getConversationId() != null && !request.getConversationId().isBlank())
                 ? request.getConversationId()
                 : UUID.randomUUID().toString();
 
         if (request.getPoiId() == null) {
-            return askGeneral(request, conversationId);
+            return askGeneral(request, conversationId, isEn);
         }
 
         AiContextRepository.PoiDetailContext poi = contextRepository
@@ -65,20 +71,35 @@ public class AiService {
                 ? calculateHaversine(request.getUserLat(), request.getUserLng(), poi.lat, poi.lng)
                 : null;
 
-        String systemPrompt = buildAskSystemPrompt(poi, distanceMeters);
+        String systemPrompt = buildAskSystemPrompt(poi, distanceMeters, isEn);
         String userPrompt = request.getQuestion().trim();
 
         String answer = geminiClient.generateText(systemPrompt, userPrompt)
-                .orElseGet(() -> generateFallbackAnswer(poi, userPrompt, distanceMeters));
+                .orElseGet(() -> generateFallbackAnswer(poi, userPrompt, distanceMeters, isEn));
 
-        List<String> followUps = generateFollowUps(poi);
+        List<String> followUps = generateFollowUps(poi, isEn);
 
         return new AiAskResponse(answer, poi.id, poi.name, conversationId, distanceMeters, followUps);
     }
 
-    private AiAskResponse askGeneral(AiAskRequest request, String conversationId) {
+    private AiAskResponse askGeneral(AiAskRequest request, String conversationId, boolean isEn) {
         String userPrompt = request.getQuestion().trim();
-        String systemPrompt = """
+        String systemPrompt = isEn ? """
+            You are the Virtual Tour Guide & AI Assistant of District 4, Ho Chi Minh City (Saigon Whispers).
+            District 4 is an island-like vibrant district of Saigon, famous for:
+            - Street food culture: Vinh Khanh Seafood Street, Ton Dan Food Street, Xom Chieu 200 Market.
+            - Key landmarks:
+              1. Oc Oanh (534 Vinh Khanh): Busiest seafood stall, famous for spicy roasted sea snails and grilled clams.
+              2. Co Thao Beef Offal Stew (243/29G Ton Dan): Rich coconut milk broth with fresh bread.
+              3. Thuan Hieu Herbal Duck Noodle (Hoang Dieu): Tender herbal duck leg with chewy egg noodles.
+              4. Bai Rac Broken Rice (77 Le Van Linh): Famous late-night broken rice with succulent grilled pork ribs.
+              5. Dragon Wharf - Ho Chi Minh Museum (01 Nguyen Tat Thanh): Historic landmark where President Ho Chi Minh departed in 1911.
+              6. Mong Bridge: Turquoise historic 120-year-old iron bridge across Ben Nghe canal, ideal for sunset views.
+              7. Kim Lien Pagoda (109 Doan Van Bo): Peaceful Mahayana Buddhist temple.
+              8. Xom Chieu Church (Le Van Linh): 160-year-old historic church.
+            Tone: Friendly, welcoming, knowledgeable, concise, and helpful.
+            LANGUAGE REQUIREMENT: You MUST reply entirely in English.
+            """ : """
             Bạn là Trợ lý Ảo Du Lịch & Hướng Dẫn Viên Thông Minh của Quận 4, TP. Hồ Chí Minh (Saigon Whispers).
             Quận 4 là một cù lao tam giác đặc biệt của Sài Gòn, nổi tiếng với:
             - Văn hóa ẩm thực đường phố sôi động: Phố ẩm thực Vĩnh Khánh (thánh địa các món ốc), Phố Tôn Đản, Chợ Xóm Chiếu (thiên đường ăn vặt).
@@ -95,9 +116,13 @@ public class AiService {
             """;
 
         String answer = geminiClient.generateText(systemPrompt, userPrompt)
-                .orElseGet(() -> generateGeneralFallbackAnswer(userPrompt));
+                .orElseGet(() -> generateGeneralFallbackAnswer(userPrompt, isEn));
 
-        List<String> followUps = List.of(
+        List<String> followUps = isEn ? List.of(
+                "Which snail stall is the best and busiest on Vinh Khanh?",
+                "What days is Dragon Wharf open and how much is admission?",
+                "Are there good late-night food spots on Ton Dan street?"
+        ) : List.of(
                 "Quán ốc nào ngon và đông khách nhất ở Vĩnh Khánh?",
                 "Bến Nhà Rồng mở cửa những ngày nào và giá vé bao nhiêu?",
                 "Có món ăn đêm nào ngon ở đường Tôn Đản không?"
@@ -106,8 +131,27 @@ public class AiService {
         return new AiAskResponse(answer, null, "Quận 4 - Saigon Whispers", conversationId, null, followUps);
     }
 
-    private String generateGeneralFallbackAnswer(String prompt) {
+    private String generateGeneralFallbackAnswer(String prompt, boolean isEn) {
         String pLower = prompt.toLowerCase(Locale.ROOT);
+        if (isEn) {
+            if (pLower.contains("snail") || pLower.contains("seafood") || pLower.contains("vinh khanh") || pLower.contains("ốc")) {
+                return "When visiting District 4, you definitely cannot miss **Vinh Khanh Seafood Street**! Most famous is **Oc Oanh** (534 Vinh Khanh) known for chili salt roasted sea snails and grilled blood clams. Open from 3 PM to 2 AM with a vibrant street atmosphere!";
+            }
+            if (pLower.contains("offal") || pLower.contains("pha lau") || pLower.contains("ton dan") || pLower.contains("phá lấu")) {
+                return "The quintessential street specialty of District 4 is **Co Thao Beef Offal Stew** in alley 243 Ton Dan. Rich coconut milk broth, tender offal dipped in sweet-and-sour calamansi chili sauce, served with warm crispy bread!";
+            }
+            if (pLower.contains("history") || pLower.contains("dragon wharf") || pLower.contains("museum") || pLower.contains("bến nhà rồng")) {
+                return "**Dragon Wharf (Ho Chi Minh Museum)** at 01 Nguyen Tat Thanh is a historic national landmark where young Nguyen Tat Thanh departed aboard an admiral ship in 1911. Open 7:30 - 11:30 and 13:30 - 17:00 (Tuesday to Sunday).";
+            }
+            if (pLower.contains("photo") || pLower.contains("mong bridge") || pLower.contains("cầu mống")) {
+                return "For scenic skyline photos and sunsets over the Ben Nghe canal looking towards Bitexco, visit **Mong Bridge** - a turquoise historical iron bridge over 120 years old connecting District 1 and 4. Great river breezes in late afternoon!";
+            }
+            if (pLower.contains("night") || pLower.contains("late") || pLower.contains("broken rice") || pLower.contains("cơm tấm")) {
+                return "District 4 night owls flock to **Bai Rac Broken Rice** (77 Le Van Linh behind Xom Chieu Market) open from 4:30 PM to 2 AM with succulent grilled pork ribs and egg meatloaf, or herbal duck noodle stalls along Hoang Dieu.";
+            }
+            return "Hello! I am your Saigon Whispers District 4 AI Travel Assistant. District 4 is famous for street food on **Vinh Khanh Seafood Street**, **Ton Dan Offal Stew**, **Xom Chieu Market**, as well as heritage landmarks like **Dragon Wharf** and **Mong Bridge**. Which spot or dish would you like to explore?";
+        }
+
         if (pLower.contains("ốc") || pLower.contains("hải sản") || pLower.contains("vĩnh khánh")) {
             return "Nhắc đến Quận 4 thì chắc chắn phải ghé ngay **Phố Ốc Vĩnh Khánh**! Nổi tiếng nhất là **Quán Ốc Oanh** (534 Vĩnh Khánh) với món ốc hương rang muối ớt đậm đà thơm nức mũi, hoặc ghé Ốc Vũ, Ốc Đào. Các quán thường mở cửa từ 15h đến 2h sáng, không khí cực kỳ náo nhiệt!";
         }
@@ -212,6 +256,11 @@ public class AiService {
     }
 
     public AiRecommendDishResponse recommendDishes(AiRecommendDishRequest request) {
+        return recommendDishes(request, "vi");
+    }
+
+    public AiRecommendDishResponse recommendDishes(AiRecommendDishRequest request, String lang) {
+        final boolean isEn = "en".equalsIgnoreCase(lang);
         int budget = (request.getBudget() != null && request.getBudget() > 0) ? request.getBudget() : 100000;
         int groupSize = (request.getGroupSize() != null && request.getGroupSize() > 0) ? request.getGroupSize() : 1;
         List<String> tastePreferences = request.getTastePreferences() != null ? request.getTastePreferences() : new ArrayList<>();
@@ -220,7 +269,7 @@ public class AiService {
                 request.getUserLat(), request.getUserLng()
         );
 
-        String systemPrompt = buildRecommendSystemPrompt();
+        String systemPrompt = buildRecommendSystemPrompt(isEn);
         String userPrompt = buildRecommendUserPrompt(candidates, budget, groupSize, tastePreferences, request.getUserLat(), request.getUserLng());
 
         Optional<String> jsonResponse = geminiClient.generateJson(systemPrompt, userPrompt);
@@ -236,12 +285,12 @@ public class AiService {
             }
         }
 
-        return generateFallbackRecommendations(candidates, budget, groupSize, tastePreferences);
+        return generateFallbackRecommendations(candidates, budget, groupSize, tastePreferences, isEn);
     }
 
     // ─── HELPER METHODS ──────────────────────────────────────────────
 
-    private String buildAskSystemPrompt(AiContextRepository.PoiDetailContext poi, Double distanceMeters) {
+    private String buildAskSystemPrompt(AiContextRepository.PoiDetailContext poi, Double distanceMeters, boolean isEn) {
         StringBuilder sb = new StringBuilder();
         boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
                 || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
@@ -280,6 +329,9 @@ public class AiService {
             sb.append("1. Trả lời trực tiếp vào câu hỏi, nêu bật giá trị lịch sử, kiến trúc hoặc nét đẹp văn hóa.\n");
             sb.append("2. Nếu khách hỏi về viếng thăm, hãy nhắc nhở trang phục lịch sự (quần dài, áo có tay) và giữ trang nghiêm khi vào chùa/nhà thờ.\n");
             sb.append("3. Gợi ý các góc chụp ảnh đẹp, thời điểm ngắm hoàng hôn hoặc mẹo tham quan hữu ích nếu phù hợp.\n");
+            if (isEn) {
+                sb.append("4. LANGUAGE REQUIREMENT: You MUST reply entirely in English. Use natural, engaging English.\n");
+            }
             return sb.toString();
         }
 
@@ -313,16 +365,37 @@ public class AiService {
         sb.append("1. Trả lời trực tiếp vào trọng tâm câu hỏi của du khách.\n");
         sb.append("2. Khéo léo nhắc đến các món signature đặc sắc hoặc mẹo ăn ngon nếu liên quan.\n");
         sb.append("3. Nếu du khách hỏi về dị ứng, hãy căn cứ chính xác vào thông tin dị ứng được cung cấp.\n");
+        if (isEn) {
+            sb.append("4. LANGUAGE REQUIREMENT: You MUST reply entirely in English. Use natural, engaging English.\n");
+        }
         return sb.toString();
     }
 
-    private String generateFallbackAnswer(AiContextRepository.PoiDetailContext poi, String question, Double distanceMeters) {
+    private String generateFallbackAnswer(AiContextRepository.PoiDetailContext poi, String question, Double distanceMeters, boolean isEn) {
         String qLower = question.toLowerCase(Locale.ROOT);
         boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
                 || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
                 || "LANDMARK".equalsIgnoreCase(poi.poiType);
 
         if (isLandmark) {
+            if (isEn) {
+                if (qLower.contains("open") || qLower.contains("hours") || qLower.contains("giờ") || qLower.contains("mở")) {
+                    return String.format("%s is open during: %s. We recommend visiting during daylight hours for the best lighting!",
+                            poi.name, poi.openingHours);
+                }
+                if (qLower.contains("dress") || qLower.contains("wear") || qLower.contains("trang phục")) {
+                    return String.format("When visiting %s, please wear respectful clothing (long pants or long skirts, sleeved shirts) and keep solemn decorum.",
+                            poi.name);
+                }
+                if (qLower.contains("history") || qLower.contains("architect") || qLower.contains("lịch sử")) {
+                    if (poi.audioTranscript != null && !poi.audioTranscript.isBlank()) {
+                        return poi.audioTranscript;
+                    }
+                }
+                return String.format("Hello! %s is a prominent landmark located at %s. Have a wonderful and meaningful visit!",
+                        poi.name, poi.address);
+            }
+
             if (qLower.contains("mở cửa") || qLower.contains("giờ")) {
                 return String.format("%s mở cửa vào khung giờ: %s. Bạn nên sắp xếp thời gian đến vào ban ngày để có ánh sáng đẹp nhất nhé!",
                         poi.name, poi.openingHours);
@@ -338,6 +411,28 @@ public class AiService {
             }
             return String.format("Chào bạn! %s là địa điểm văn hóa nổi bật tại %s. %s Chúc bạn có một chuyến tham quan đầy ý nghĩa!",
                     poi.name, poi.address, (poi.description != null ? poi.description : ""));
+        }
+
+        if (isEn) {
+            if (qLower.contains("open") || qLower.contains("hours") || qLower.contains("mở") || qLower.contains("giờ")) {
+                return String.format("%s is open during: %s. We suggest arriving early in the evening to secure the best table!",
+                        poi.name, poi.openingHours);
+            }
+            if (qLower.contains("best") || qLower.contains("signature") || qLower.contains("try") || qLower.contains("ngon")) {
+                List<String> signatures = poi.dishes.stream()
+                        .filter(d -> Boolean.TRUE.equals(d.isSignature))
+                        .map(d -> String.format("%s (%,d %s)", d.name, d.price, d.unit))
+                        .toList();
+                if (!signatures.isEmpty()) {
+                    return String.format("The must-try signature delicacy of %s is: %s. Dipped with hot crispy bread, it provides an unforgettable culinary experience!",
+                            poi.name, String.join(", ", signatures));
+                }
+            }
+            if (qLower.contains("allergy") || qLower.contains("peanut") || qLower.contains("seafood") || qLower.contains("dị ứng")) {
+                return String.format("At %s, dishes may contain seafood allergens, roasted peanuts, or butter. Please inform the restaurant staff before ordering!", poi.name);
+            }
+            return String.format("Hello! %s is located at %s (%s). The venue is renowned for District 4 street food culture. Would you like to check out any specific dish?",
+                    poi.name, poi.address, poi.openingHours);
         }
 
         if (qLower.contains("mở cửa") || qLower.contains("giờ")) {
@@ -365,26 +460,70 @@ public class AiService {
                 (poi.description != null ? poi.description : ""));
     }
 
-    private List<String> generateFollowUps(AiContextRepository.PoiDetailContext poi) {
+    private List<String> generateFollowUps(AiContextRepository.PoiDetailContext poi, boolean isEn) {
         boolean isLandmark = "HISTORICAL".equalsIgnoreCase(poi.poiType)
                 || "RELIGIOUS".equalsIgnoreCase(poi.poiType)
                 || "LANDMARK".equalsIgnoreCase(poi.poiType);
 
         List<String> list = new ArrayList<>();
         if (isLandmark) {
-            list.add("Địa điểm này có quy định trang phục gì không?");
-            list.add("Thời điểm lý tưởng nhất trong ngày để ghé thăm?");
-            list.add("Ý nghĩa lịch sử và nét kiến trúc nơi đây có gì đặc biệt?");
+            if (isEn) {
+                list.add("Are there any dress code requirements here?");
+                list.add("What is the best time of day to visit?");
+                list.add("What makes the history and architecture here special?");
+            } else {
+                list.add("Địa điểm này có quy định trang phục gì không?");
+                list.add("Thời điểm lý tưởng nhất trong ngày để ghé thăm?");
+                list.add("Ý nghĩa lịch sử và nét kiến trúc nơi đây có gì đặc biệt?");
+            }
             return list;
         }
 
-        list.add("Món nào là Best-seller nên thử nhất?");
-        list.add("Quán mở cửa đến mấy giờ?");
-        list.add("Có món nào không cay cho người không ăn được cay?");
+        if (isEn) {
+            list.add("Which dish is the must-try best-seller?");
+            list.add("What time does this place close?");
+            list.add("Are there non-spicy options for guests who cannot eat spicy food?");
+        } else {
+            list.add("Món nào là Best-seller nên thử nhất?");
+            list.add("Quán mở cửa đến mấy giờ?");
+            list.add("Có món nào không cay cho người không ăn được cay?");
+        }
         return list;
     }
 
-    private String buildRecommendSystemPrompt() {
+    private String buildRecommendSystemPrompt(boolean isEn) {
+        if (isEn) {
+            return """
+                You are the Smart Culinary AI Advisor of District 4, Ho Chi Minh City.
+                Your task is to select exactly 3 best-fitting dishes from the system based on:
+                1. Guest total maximum budget.
+                2. Group size.
+                3. Taste preferences (spicy, seafood, snacks, refreshing,...).
+                4. Closest user distance.
+
+                LANGUAGE REQUIREMENT: 'summary', 'reason', and 'tips' MUST be written in English.
+                MUST RETURN EXACT JSON FORMAT AS FOLLOWS:
+                {
+                  "summary": "Short and appetizing summary of why this combo was chosen (1-2 sentences)",
+                  "totalEstimatedPrice": 95000,
+                  "budgetRemaining": 5000,
+                  "tips": "Useful local dining tip (e.g., dip warm crispy bread in the savory sauce)",
+                  "dishes": [
+                    {
+                      "dishId": 1,
+                      "dishName": "Dish Name",
+                      "poiId": 1,
+                      "poiName": "Spot Name",
+                      "price": 65000,
+                      "unit": "portion",
+                      "imageUrl": "image url",
+                      "isSignature": true,
+                      "reason": "Why this dish matches the budget and taste"
+                    }
+                  ]
+                }
+                """;
+        }
         return """
             Bạn là Chuyên Gia Tư Vấn Ẩm Thực Thông Minh của Quận 4, TP.HCM.
             Nhiệm vụ của bạn là chọn đúng 3 món ăn phù hợp nhất từ danh sách các món trong hệ thống dựa trên:
@@ -499,7 +638,8 @@ public class AiService {
 
 
     private AiRecommendDishResponse generateFallbackRecommendations(List<AiContextRepository.DishSummary> candidates,
-                                                                    int budget, int groupSize, List<String> tastePreferences) {
+                                                                    int budget, int groupSize, List<String> tastePreferences,
+                                                                    boolean isEn) {
         List<AiContextRepository.DishSummary> sorted = new ArrayList<>(candidates);
 
         // Ưu tiên món theo khẩu vị
@@ -521,10 +661,12 @@ public class AiService {
         for (AiContextRepository.DishSummary d : sorted) {
             if (chosen.size() >= 3) break;
             if (currentTotal + d.price <= budget) {
+                String reason = isEn
+                        ? String.format("Signature delicacy of %s, perfectly matching your budget and preferences.", d.poiName)
+                        : String.format("Món ngon đặc sắc của %s, phù hợp ngân sách và khẩu vị yêu thích.", d.poiName);
                 chosen.add(new RecommendedDishItem(
                         d.id, d.name, d.poiId, d.poiName, d.price, d.unit,
-                        d.thumbnailUrl, d.isSignature,
-                        String.format("Món ngon đặc sắc của %s, phù hợp ngân sách và khẩu vị yêu thích.", d.poiName)
+                        d.thumbnailUrl, d.isSignature, reason
                 ));
                 currentTotal += d.price;
             }
@@ -536,10 +678,12 @@ public class AiService {
                 if (chosen.size() >= 3) break;
                 if (chosen.stream().noneMatch(c -> c.getDishId().equals(d.id))) {
                     if (currentTotal + d.price <= budget || chosen.isEmpty()) {
+                        String sideReason = isEn
+                                ? "Refreshing side dish to balance your meal flavors."
+                                : "Món ăn kèm thanh mát giúp cân bằng hương vị bữa ăn.";
                         chosen.add(new RecommendedDishItem(
                                 d.id, d.name, d.poiId, d.poiName, d.price, d.unit,
-                                d.thumbnailUrl, d.isSignature,
-                                "Món ăn kèm thanh mát giúp cân bằng hương vị bữa ăn."
+                                d.thumbnailUrl, d.isSignature, sideReason
                         ));
                         currentTotal += d.price;
                     }
@@ -547,11 +691,13 @@ public class AiService {
             }
         }
 
-
         int remaining = Math.max(0, budget - currentTotal);
-        String summary = String.format("Gợi ý combo 3 món ăn chuẩn vị Quận 4 cho %d người với ngân sách %,d đ.",
-                groupSize, budget);
-        String tips = "Bạn có thể gọi thêm bánh mì nóng giòn để chấm nước sốt béo ngậy!";
+        String summary = isEn
+                ? String.format("Recommended 3-dish District 4 culinary combo for %d person(s) within %,d đ budget.", groupSize, budget)
+                : String.format("Gợi ý combo 3 món ăn chuẩn vị Quận 4 cho %d người với ngân sách %,d đ.", groupSize, budget);
+        String tips = isEn
+                ? "You can order extra hot crispy bread to dip in the rich savory sauces!"
+                : "Bạn có thể gọi thêm bánh mì nóng giòn để chấm nước sốt béo ngậy!";
 
         return new AiRecommendDishResponse(summary, currentTotal, remaining, chosen, tips);
     }

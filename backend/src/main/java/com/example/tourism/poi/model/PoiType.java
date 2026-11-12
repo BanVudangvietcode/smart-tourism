@@ -5,8 +5,10 @@ import java.time.LocalDateTime;
 public class PoiType {
     private String code;
     private String name;
+    private String nameEn;
     private String icon;
     private String description;
+    private String descriptionEn;
     private int sortOrder;
     private LocalDateTime createdAt;
 
@@ -27,11 +29,17 @@ public class PoiType {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getNameEn() { return nameEn; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
+
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getDescriptionEn() { return descriptionEn; }
+    public void setDescriptionEn(String descriptionEn) { this.descriptionEn = descriptionEn; }
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }

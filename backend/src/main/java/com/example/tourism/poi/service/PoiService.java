@@ -1,5 +1,6 @@
 package com.example.tourism.poi.service;
 
+import com.example.tourism.common.util.I18nUtils;
 import com.example.tourism.poi.dto.*;
 import com.example.tourism.poi.model.Poi;
 import com.example.tourism.poi.model.PoiImage;
@@ -35,38 +36,49 @@ public class PoiService {
     // ── Viewport (bounding box) ────────────────────────────────────────
 
     public GeoJsonFeatureCollection getInViewport(double minLng, double minLat,
-                                                   double maxLng, double maxLat, int zoom) {
+                                                   double maxLng, double maxLat, int zoom, String lang) {
         List<Poi> pois = poiRepository.findInViewport(minLng, minLat, maxLng, maxLat);
         List<GeoJsonFeature> features = pois.stream()
-                .map(p -> toGeoJsonFeature(p, null))
+                .map(p -> toGeoJsonFeature(p, null, lang))
                 .toList();
         return new GeoJsonFeatureCollection(features);
+    }
+
+    public GeoJsonFeatureCollection getInViewport(double minLng, double minLat,
+                                                   double maxLng, double maxLat, int zoom) {
+        return getInViewport(minLng, minLat, maxLng, maxLat, zoom, "vi");
     }
 
     // ── Nearby (radius) ────────────────────────────────────────────────
 
     public List<PoiSummaryResponse> getNearby(double lat, double lng,
-                                               double radiusInMeters, int limit) {
+                                               double radiusInMeters, int limit, String lang) {
         List<Poi> pois = poiRepository.findNearby(lat, lng, radiusInMeters, limit);
         List<Double> distances = poiRepository.findNearbyDistances(lat, lng, radiusInMeters, limit);
 
         List<PoiSummaryResponse> results = new ArrayList<>();
         for (int i = 0; i < pois.size(); i++) {
             Double dist = i < distances.size() ? distances.get(i) : null;
-            results.add(toSummary(pois.get(i), dist));
+            results.add(toSummary(pois.get(i), dist, lang));
         }
         return results;
     }
 
+    public List<PoiSummaryResponse> getNearby(double lat, double lng,
+                                               double radiusInMeters, int limit) {
+        return getNearby(lat, lng, radiusInMeters, limit, "vi");
+    }
+
     // ── Detail (single POI, cached in Redis) ───────────────────────────
 
-    public Optional<PoiDetailResponse> getById(Long id) {
+    public Optional<PoiDetailResponse> getById(Long id, String lang) {
+        String effectiveLang = (lang != null && !lang.isBlank()) ? lang.toLowerCase() : "vi";
         // Try Redis cache first
-        String cacheKey = POI_CACHE_PREFIX + id;
+        String cacheKey = POI_CACHE_PREFIX + id + ":" + effectiveLang;
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                log.debug("Cache HIT for POI {}", id);
+                log.debug("Cache HIT for POI {} [lang={}]", id, effectiveLang);
                 String json = objectMapper.writeValueAsString(cached);
                 return Optional.of(objectMapper.readValue(json, PoiDetailResponse.class));
             }
@@ -74,7 +86,7 @@ public class PoiService {
             log.warn("Redis cache read failed for POI {}, falling back to DB", id, e);
         }
 
-        log.debug("Cache MISS for POI {}", id);
+        log.debug("Cache MISS for POI {} [lang={}]", id, effectiveLang);
 
         // Fetch from database
         Optional<Poi> poiOpt = poiRepository.findById(id);
@@ -84,14 +96,14 @@ public class PoiService {
 
         Poi poi = poiOpt.get();
         List<PoiImage> images = poiRepository.findImagesByPoiId(id);
-        String categoryName = poiRepository.findCategoryNameById(poi.getCategoryId());
+        String categoryName = poiRepository.findCategoryNameById(poi.getCategoryId(), effectiveLang);
 
-        PoiDetailResponse detail = toDetail(poi, categoryName, images);
+        PoiDetailResponse detail = toDetail(poi, categoryName, images, effectiveLang);
 
         // Store in Redis cache
         try {
             redisTemplate.opsForValue().set(cacheKey, detail, POI_CACHE_TTL);
-            log.debug("Cached POI {} in Redis", id);
+            log.debug("Cached POI {} in Redis [lang={}]", id, effectiveLang);
         } catch (Exception e) {
             log.warn("Failed to cache POI {} in Redis", id, e);
         }
@@ -99,11 +111,15 @@ public class PoiService {
         return Optional.of(detail);
     }
 
+    public Optional<PoiDetailResponse> getById(Long id) {
+        return getById(id, "vi");
+    }
+
     // ── Search ─────────────────────────────────────────────────────────
 
     public List<PoiSummaryResponse> search(String keyword, Long categoryId,
                                             String districtWard, String sortBy,
-                                            Double userLat, Double userLng) {
+                                            Double userLat, Double userLng, String lang) {
         List<Poi> pois = poiRepository.search(keyword, categoryId, districtWard,
                                               sortBy, userLat, userLng);
 
@@ -113,25 +129,34 @@ public class PoiService {
             List<PoiSummaryResponse> results = new ArrayList<>();
             for (int i = 0; i < pois.size(); i++) {
                 Double dist = i < distances.size() ? distances.get(i) : null;
-                results.add(toSummary(pois.get(i), dist));
+                results.add(toSummary(pois.get(i), dist, lang));
             }
             return results;
         }
 
         return pois.stream()
-                .map(p -> toSummary(p, null))
+                .map(p -> toSummary(p, null, lang))
                 .toList();
+    }
+
+    public List<PoiSummaryResponse> search(String keyword, Long categoryId,
+                                            String districtWard, String sortBy,
+                                            Double userLat, Double userLng) {
+        return search(keyword, categoryId, districtWard, sortBy, userLat, userLng, "vi");
     }
 
     // ── Mapping helpers ────────────────────────────────────────────────
 
-    private GeoJsonFeature toGeoJsonFeature(Poi p, Double distanceMeters) {
-        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId());
+    private GeoJsonFeature toGeoJsonFeature(Poi p, Double distanceMeters, String lang) {
+        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
+        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
+        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+
         Map<String, Object> props = new LinkedHashMap<>();
         props.put("id", p.getId());
-        props.put("name", p.getName());
+        props.put("name", name);
         props.put("slug", p.getSlug());
-        props.put("address", p.getAddress());
+        props.put("address", address);
         props.put("thumbnailUrl", p.getThumbnailUrl());
         props.put("avgRating", p.getAvgRating());
         props.put("reviewCount", p.getReviewCount());
@@ -148,10 +173,13 @@ public class PoiService {
         );
     }
 
-    private PoiSummaryResponse toSummary(Poi p, Double distanceMeters) {
-        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId());
+    private PoiSummaryResponse toSummary(Poi p, Double distanceMeters, String lang) {
+        String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
+        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
+        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+
         return new PoiSummaryResponse(
-                p.getId(), p.getName(), p.getSlug(), p.getAddress(),
+                p.getId(), name, p.getSlug(), address,
                 p.getThumbnailUrl(), p.getAvgRating(), p.getReviewCount(),
                 p.getPriceRangeMin(), p.getPriceRangeMax(), categoryName,
                 p.getPoiType(),
@@ -160,14 +188,18 @@ public class PoiService {
         );
     }
 
-    private PoiDetailResponse toDetail(Poi p, String categoryName, List<PoiImage> images) {
+    private PoiDetailResponse toDetail(Poi p, String categoryName, List<PoiImage> images, String lang) {
+        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
+        String description = I18nUtils.resolve(p.getDescription(), p.getDescriptionEn(), lang);
+        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+
         List<PoiImageResponse> imageResponses = images.stream()
                 .map(img -> new PoiImageResponse(img.getId(), img.getUrl(), img.getCaption(), img.getSortOrder()))
                 .toList();
 
         return new PoiDetailResponse(
-                p.getId(), p.getName(), p.getSlug(), p.getDescription(),
-                p.getAddress(), p.getDistrict(), p.getWard(), p.getPhone(),
+                p.getId(), name, p.getSlug(), description,
+                address, p.getDistrict(), p.getWard(), p.getPhone(),
                 p.getOpeningHours(), p.getPriceRangeMin(), p.getPriceRangeMax(),
                 p.getAvgRating(), p.getReviewCount(), p.getPopularity(),
                 p.getAudioUrl(), p.getThumbnailUrl(), categoryName,

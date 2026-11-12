@@ -6,6 +6,7 @@ public class MenuCategory {
     private Long id;
     private Long poiId;
     private String name;
+    private String nameEn;
     private int sortOrder;
     private LocalDateTime createdAt;
 
@@ -26,6 +27,9 @@ public class MenuCategory {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getNameEn() { return nameEn; }
+    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
