@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { generateCustomTour, createTour } from '@/services/api';
-import { CustomPlanResponse } from '@/types';
+import { CustomPlanResponse, TourDetail } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CustomTourModalProps {
@@ -10,9 +10,10 @@ interface CustomTourModalProps {
   onClose: () => void;
   onSelectPoi?: (poiId: number) => void;
   onTourCreated?: () => void;
+  onStartTour?: (tour: TourDetail) => void;
 }
 
-export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCreated }: CustomTourModalProps) {
+export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCreated, onStartTour }: CustomTourModalProps) {
   const { tk } = useLanguage();
   const [minutes, setMinutes] = useState<number>(90);
   const [budget, setBudget] = useState<number>(200000);
@@ -45,6 +46,36 @@ export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCr
     }
   };
 
+  const handleStartTourNow = () => {
+    if (!plan || !onStartTour) return;
+    const tourDetail: TourDetail = {
+      id: plan.tourId || Date.now(),
+      name: tourName || plan.tourName || `Tour khám phá (${minutes} phút)`,
+      slug: '',
+      description: `Lộ trình ${minutes} phút tối ưu tự động bởi PostGIS & AI`,
+      theme: plan.theme || 'FOOD',
+      estimatedDurationMinutes: plan.totalDurationMinutes,
+      estimatedCost: plan.estimatedCost ?? plan.totalEstimatedCost ?? 100000,
+      totalDistanceMeters: plan.totalDistanceMeters,
+      thumbnailUrl: null,
+      isPublic: isPublicTour,
+      stops: plan.stops.map((s, idx) => ({
+        id: idx + 1,
+        stopOrder: s.stopOrder || idx + 1,
+        estimatedDurationMinutes: s.estimatedDurationMinutes || s.suggestedDurationMinutes || 30,
+        recommendedDishOrActivity: s.recommendedDishOrActivity || s.notes || '',
+        note: s.note || s.notes || '',
+        poi: s.poi,
+        poiId: s.poi?.id || s.poiId,
+        poiName: s.poi?.name,
+        latitude: s.poi?.latitude,
+        longitude: s.poi?.longitude,
+      })),
+    };
+    onStartTour(tourDetail);
+    onClose();
+  };
+
   const handleSaveTour = async () => {
     if (!plan || plan.stops.length === 0) return;
     setSavingTour(true);
@@ -57,7 +88,7 @@ export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCr
         note: s.note || s.notes || '',
       }));
       const cost = plan.estimatedCost ?? plan.totalEstimatedCost ?? 100000;
-      await createTour({
+      const created = await createTour({
         name: tourName || plan.tourName || `Tour Cá Nhân Hóa (${minutes} phút)`,
         description: `Lộ trình tham quan tối ưu tự động bằng AI & PostGIS dựa trên quỹ thời gian ${minutes} phút tại Quận 4.`,
         theme: plan.theme || 'FOOD',
@@ -71,9 +102,13 @@ export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCr
       setSaveSuccess(true);
       if (onTourCreated) onTourCreated();
       setTimeout(() => {
-        onClose();
+        if (onStartTour) {
+          onStartTour(created);
+        } else {
+          onClose();
+        }
         setSaveSuccess(false);
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       alert(`Lỗi khi lưu tour: ${err.message}`);
     } finally {
@@ -250,8 +285,19 @@ export default function CustomTourModal({ isOpen, onClose, onSelectPoi, onTourCr
                   </div>
                 </div>
 
-                {/* Button Save As Tour */}
-                <div className="pt-2">
+                {/* Button Save As Tour & Start Immediately */}
+                <div className="pt-2 space-y-2">
+                  {onStartTour && (
+                    <button
+                      type="button"
+                      onClick={handleStartTourNow}
+                      className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:to-purple-700 active:scale-98 text-white font-extrabold text-xs py-3 rounded-xl shadow-md shadow-indigo-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>🧭</span>
+                      <span>Bắt Đầu Đi Theo Lộ Trình Này Trên Bản Đồ ➔</span>
+                    </button>
+                  )}
+
                   {saveSuccess ? (
                     <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs p-3 rounded-xl text-center flex items-center justify-center gap-1.5 animate-fadeIn">
                       <span>✅</span>

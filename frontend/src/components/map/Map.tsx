@@ -1,15 +1,15 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
-import { MapPOI, NavStep, RouteInfo, PoiSummary } from '@/types';
+import { MapPOI, NavStep, RouteInfo, PoiSummary, TourDetail } from '@/types';
 import { D4_CENTER, POI_LIST } from '@/lib/map-data';
-import { createPoiIcon, createUserLocationIcon, createDestinationIcon } from '@/lib/map-icons';
-import { fetchRoute, getDistance } from '@/lib/routing';
-import { fetchPois, getAudioStreamUrl, trackAudioListen } from '@/services/api';
+import { createPoiIcon, createUserLocationIcon, createDestinationIcon, createTourStopIcon } from '@/lib/map-icons';
+import { fetchRoute, fetchMultiStopRoute, getDistance } from '@/lib/routing';
+import { fetchPois, fetchTourDetail, getAudioStreamUrl, trackAudioListen } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
@@ -81,6 +81,8 @@ interface MapProps {
   isActive?: boolean;
   onNavChange?: (isNav: boolean) => void;
   targetPoiId?: number | string | null;
+  activeTour?: TourDetail | null;
+  onClearActiveTour?: () => void;
   autoPlayEnabled?: boolean;
   onToggleAutoPlay?: () => void;
 }
@@ -89,6 +91,8 @@ export default function Map({
   isActive = true,
   onNavChange,
   targetPoiId,
+  activeTour,
+  onClearActiveTour,
   autoPlayEnabled = true,
   onToggleAutoPlay,
 }: MapProps) {
@@ -128,6 +132,74 @@ export default function Map({
   const [mapPois, setMapPois] = useState<MapPOI[]>(POI_LIST);
   const [modalPoiId, setModalPoiId] = useState<number | string | null>(null);
   const [showSimPanel, setShowSimPanel] = useState(false);
+
+  // ─── TUYẾN TOUR ĐANG THEO DÕI (ACTIVE TOUR) ───────────────
+  const [localizedTour, setLocalizedTour] = useState<TourDetail | null>(activeTour || null);
+  const [currentTourStopIdx, setCurrentTourStopIdx] = useState<number>(0);
+  const [tourRouteCoords, setTourRouteCoords] = useState<[number, number][]>([]);
+  const [loadingTourRoute, setLoadingTourRoute] = useState(false);
+
+  useEffect(() => {
+    setLocalizedTour(activeTour || null);
+  }, [activeTour]);
+
+  // Cập nhật lại thông tin tour đa ngôn ngữ khi người dùng chuyển đổi ngôn ngữ
+  useEffect(() => {
+    if (!activeTour?.id) return;
+    fetchTourDetail(activeTour.id)
+      .then((fresh) => {
+        if (fresh) setLocalizedTour(fresh);
+      })
+      .catch(() => {});
+  }, [language, activeTour?.id]);
+
+  // Phân giải các điểm dừng trên tour khớp với tọa độ và dữ liệu POI
+  const resolvedTourStops = useMemo(() => {
+    if (!localizedTour?.stops?.length) return [];
+    const sorted = [...localizedTour.stops].sort((a, b) => a.stopOrder - b.stopOrder);
+
+    return sorted.map((stop, idx) => {
+      const poiId = stop.poi?.id ?? stop.poiId ?? idx + 1;
+      const matched = mapPois.find((p) => String(p.id) === String(poiId));
+
+      const lat = stop.poi?.latitude ?? stop.latitude ?? matched?.lat ?? 10.7613;
+      const lng = stop.poi?.longitude ?? stop.longitude ?? matched?.lng ?? 106.7056;
+      const name = matched?.name ?? stop.poi?.name ?? stop.poiName ?? `${tk('map_tour_stop_prefix')}${stop.stopOrder || idx + 1}${tk('map_tour_stop_suffix')}`;
+      const address = matched?.rawPoi?.address ?? stop.poi?.address ?? stop.address ?? 'Quận 4, TP. Hồ Chí Minh';
+      const durationMinutes = stop.estimatedDurationMinutes ?? stop.suggestedDurationMinutes ?? 30;
+      const recommendedDish = stop.recommendedDishOrActivity || '';
+      const note = stop.note || stop.notes || '';
+      const thumbnailUrl = matched?.thumbnailUrl ?? stop.poi?.thumbnailUrl ?? stop.thumbnailUrl ?? null;
+
+      const synthPoi: MapPOI = matched || {
+        id: poiId,
+        name,
+        category: stop.poi?.categoryName || 'Tour Stop',
+        lat,
+        lng,
+        desc: note || address,
+        color: '#6366F1',
+        emoji: '📍',
+        thumbnailUrl: thumbnailUrl || undefined,
+      };
+
+      return {
+        stopOrder: stop.stopOrder || idx + 1,
+        poiId,
+        name,
+        lat,
+        lng,
+        address,
+        durationMinutes,
+        recommendedDish,
+        note,
+        thumbnailUrl,
+        poi: synthPoi,
+      };
+    });
+  }, [localizedTour, mapPois, tk]);
+
+  const currentTourStop = resolvedTourStops[currentTourStopIdx] || null;
 
   // ─── TỰ ĐỘNG PHÁT & HÀNG ĐỢI ÂM THANH (AUTO-PLAY & QUEUE) ───
   const [currentAudioPoi, setCurrentAudioPoi] = useState<MapPOI | null>(null);
@@ -479,6 +551,78 @@ export default function Map({
   const changeMode = (m: 'driving' | 'walking') => { setMode(m); if (dest) calcRoute(dest, m); };
   const stopNav = () => { setIsNav(false); setDest(null); setRouteCoords([]); setRouteInfo(null); setSteps([]); setStepIdx(0); setOverview(false); setIsTracking(false); };
 
+  // Xử lý khi có targetPoiId truyền vào từ các tab khác
+  useEffect(() => {
+    if (!targetPoiId || !isActive || activeTour) return;
+    const found = mapPois.find((p) => String(p.id) === String(targetPoiId));
+    if (found) {
+      mapRef.current?.setView([found.lat, found.lng], 17, { animate: true });
+      startNav(found);
+    }
+  }, [targetPoiId, isActive, mapPois, activeTour]);
+
+  // Xử lý khi có activeTour: căn bản đồ hiển thị toàn bộ lộ trình và tính route đa trạm
+  useEffect(() => {
+    if (!resolvedTourStops.length) {
+      setTourRouteCoords([]);
+      setCurrentTourStopIdx(0);
+      return;
+    }
+
+    setCurrentTourStopIdx(0);
+    setLoadingTourRoute(true);
+
+    const coords: [number, number][] = resolvedTourStops.map((s) => [s.lat, s.lng]);
+
+    // Fit map bounds to show the entire tour route and all stops!
+    if (mapRef.current && coords.length > 0) {
+      try {
+        const bounds = L.latLngBounds(coords);
+        mapRef.current.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
+      } catch {
+        /* map may not be ready */
+      }
+    }
+
+    fetchMultiStopRoute(coords, mode)
+      .then((res) => {
+        setTourRouteCoords(res.coords);
+      })
+      .catch((err) => {
+        console.warn('Lỗi khi fetch route đa điểm:', err);
+        setTourRouteCoords(coords);
+      })
+      .finally(() => {
+        setLoadingTourRoute(false);
+      });
+  }, [resolvedTourStops, mode]);
+
+  const goToNextTourStop = () => {
+    if (currentTourStopIdx < resolvedTourStops.length - 1) {
+      const nextIdx = currentTourStopIdx + 1;
+      setCurrentTourStopIdx(nextIdx);
+      const nextStop = resolvedTourStops[nextIdx];
+      mapRef.current?.panTo([nextStop.lat, nextStop.lng], { animate: true });
+      if (isNav) {
+        startNav(nextStop.poi);
+      }
+    } else {
+      showToast(tk('map_toast_tour_done'));
+    }
+  };
+
+  const goToPrevTourStop = () => {
+    if (currentTourStopIdx > 0) {
+      const prevIdx = currentTourStopIdx - 1;
+      setCurrentTourStopIdx(prevIdx);
+      const prevStop = resolvedTourStops[prevIdx];
+      mapRef.current?.panTo([prevStop.lat, prevStop.lng], { animate: true });
+      if (isNav) {
+        startNav(prevStop.poi);
+      }
+    }
+  };
+
   const recenterToUser = (targetZoom = 17) => {
     if (!hasRealGPS) {
       if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
@@ -538,7 +682,7 @@ export default function Map({
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-2 cursor-pointer"
           >
             <span className="text-base">🔊</span>
-            <span>Bấm vào đây để Nghe Âm Thanh Thuyết Minh {currentAudioPoi.name}</span>
+            <span>{tk('map_audio_tap_to_listen')}: {currentAudioPoi.name}</span>
           </button>
         </div>
       )}
@@ -575,9 +719,88 @@ export default function Map({
         {/* User marker (chỉ hiện khi có GPS thật) */}
         {hasRealGPS && (
           <Marker position={userPos} icon={createUserLocationIcon(heading)}>
-            <Popup><p className="text-blue-600 font-bold text-sm text-center">Vị trí của bạn</p></Popup>
+            <Popup><p className="text-blue-600 font-bold text-sm text-center">{tk('map_user_location')}</p></Popup>
           </Marker>
         )}
+
+        {/* ── Tuyến đường của tour đa điểm dừng (Tour Multi-Stop Route) ── */}
+        {localizedTour && tourRouteCoords.length > 0 && (
+          <>
+            <Polyline
+              positions={tourRouteCoords}
+              pathOptions={{ color: '#312E81', weight: 10, opacity: 0.22, lineCap: 'round', lineJoin: 'round' }}
+            />
+            <Polyline
+              positions={tourRouteCoords}
+              pathOptions={{
+                color: '#6366F1',
+                weight: 6,
+                opacity: 0.95,
+                dashArray: mode === 'walking' ? '6, 8' : '10, 6',
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </>
+        )}
+
+        {/* ── Các điểm dừng trên tuyến tour (đánh số thứ tự 1, 2, 3...) ── */}
+        {activeTour && resolvedTourStops.map((stop, idx) => (
+          <Marker
+            key={`tour-stop-${stop.stopOrder}-${stop.poiId}`}
+            position={[stop.lat, stop.lng]}
+            icon={createTourStopIcon(stop.stopOrder, idx === currentTourStopIdx)}
+            zIndexOffset={idx === currentTourStopIdx ? 1200 : 600}
+            eventHandlers={{
+              click: () => {
+                setCurrentTourStopIdx(idx);
+              },
+            }}
+          >
+            <Popup className="rounded-2xl overflow-hidden shadow-2xl p-0">
+              <div className="p-3.5 max-w-[260px]">
+                {stop.thumbnailUrl && (
+                  <div className="h-24 w-full rounded-xl overflow-hidden mb-2 bg-slate-100">
+                    <img src={stop.thumbnailUrl} alt={stop.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                    {tk('map_tour_stop_prefix')}{stop.stopOrder}{tk('map_tour_stop_suffix')}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500">~{stop.durationMinutes} {tk('map_tour_mins')}</span>
+                </div>
+                <h4 className="font-extrabold text-gray-900 text-xs leading-snug truncate">{stop.name}</h4>
+                <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">📍 {stop.address}</p>
+                {stop.recommendedDish && (
+                  <p className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 p-1.5 rounded-lg mt-1.5 border border-indigo-100">
+                    🍲 {stop.recommendedDish}
+                  </p>
+                )}
+                {stop.note && (
+                  <p className="text-[10px] italic text-slate-500 mt-1">💡 {stop.note}</p>
+                )}
+                <div className="mt-3 space-y-1.5">
+                  <button
+                    onClick={() => {
+                      setCurrentTourStopIdx(idx);
+                      startNav(stop.poi);
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>{tk('map_tour_nav_to_stop')} #{stop.stopOrder}</span>
+                  </button>
+                  <button
+                    onClick={() => playPoiAudio(stop.poi)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>{tk('map_tour_listen_stop')}</span>
+                  </button>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* POI markers */}
         {mapPois.map((p) => (
@@ -611,7 +834,7 @@ export default function Map({
                     }}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <span>▶️ Phát thuyết minh ngay</span>
+                    <span>{tk('map_poi_play_now')}</span>
                   </button>
 
                   <button
@@ -622,7 +845,7 @@ export default function Map({
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    <span>Chỉ đường tới đây</span>
+                    <span>{tk('map_poi_nav_here')}</span>
                   </button>
 
                   <button
@@ -632,7 +855,7 @@ export default function Map({
                     }}
                     className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>🎧 Chi tiết & Check-in 30m</span>
+                    <span>{tk('map_poi_detail_checkin')}</span>
                   </button>
                 </div>
               </div>
@@ -643,7 +866,7 @@ export default function Map({
 
       {/* ── THANH MINI-PLAYER PHÁT THUYẾT MINH & HÀNG ĐỢI (QUEUE) ── */}
       {currentAudioPoi && (
-        <div className="absolute bottom-20 lg:bottom-6 left-4 right-4 sm:left-6 sm:right-auto sm:w-96 z-[1200] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-slate-700 backdrop-blur-md animate-fadeIn">
+        <div className={`absolute ${localizedTour ? 'bottom-40 lg:bottom-28' : 'bottom-20 lg:bottom-6'} left-4 right-4 sm:left-6 sm:right-auto sm:w-96 z-[1200] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-slate-700 backdrop-blur-md animate-fadeIn`}>
           {/* Header Track */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -652,7 +875,7 @@ export default function Map({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Đang tự động phát</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{tk('map_audio_autoplaying')}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
                 <h4 className="text-xs font-black truncate">{currentAudioPoi.name}</h4>
@@ -664,7 +887,7 @@ export default function Map({
               <button
                 onClick={togglePlayPause}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer"
-                title={isPlayingAudio ? 'Tạm dừng' : 'Phát tiếp'}
+                title={isPlayingAudio ? tk('map_audio_pause') : tk('map_audio_play')}
               >
                 {isPlayingAudio ? '⏸️' : '▶️'}
               </button>
@@ -707,11 +930,11 @@ export default function Map({
           {audioQueue.length > 0 && (
             <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
               <div className="flex items-center gap-1.5 text-amber-300 truncate">
-                <span>📋 <b>{language === 'en' ? `Queue (${audioQueue.length}):` : `Hàng đợi (${audioQueue.length}):`}</b></span>
+                <span>📋 <b>{tk('map_audio_queue')} ({audioQueue.length}):</b></span>
                 <span className="truncate">{audioQueue.map((p) => p.name).join(' → ')}</span>
               </div>
               <span className="text-[9px] text-slate-400 shrink-0 ml-2">
-                {language === 'en' ? 'Auto-play next' : 'Tự phát tiếp'}
+                {tk('map_audio_autoplay_next')}
               </span>
             </div>
           )}
@@ -736,7 +959,7 @@ export default function Map({
                 </div>
                 <div className="flex-1 px-4 py-3 min-w-0">
                   <p className="text-white font-bold text-[15px] leading-snug truncate">{cur.instruction}</p>
-                  {nxt && <p className="text-white/70 text-xs mt-1 truncate">Sau đó: {nxt.instruction}</p>}
+                  {nxt && <p className="text-white/70 text-xs mt-1 truncate">{tk('map_nav_then')}: {nxt.instruction}</p>}
                 </div>
               </div>
             ) : null}
@@ -755,7 +978,7 @@ export default function Map({
                   <p className="text-[10px] text-gray-500">{routeInfo?.distance}</p>
                 </div>
                 <div className="border-l border-gray-200 pl-3">
-                  <p className="text-xs font-bold text-gray-900">Đến lúc {eta}</p>
+                  <p className="text-xs font-bold text-gray-900">{tk('map_arrive_at')} {eta}</p>
                   <p className="text-[10px] text-gray-500 truncate max-w-[120px]">{dest?.name}</p>
                 </div>
               </div>
@@ -783,17 +1006,112 @@ export default function Map({
         </>
       )}
 
+      {/* ── TOP TOUR CARD: HIỂN THỊ THÔNG TIN TUYẾN TOUR ─────────── */}
+      {localizedTour && resolvedTourStops.length > 0 && !isNav && (
+        <div className="absolute top-[68px] sm:top-20 left-3 right-3 sm:left-4 sm:right-auto sm:w-[390px] z-[1050] bg-white/95 backdrop-blur-md rounded-2xl p-3.5 shadow-2xl border border-indigo-200 animate-fadeIn text-left">
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-2xl">🗺️</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                    {tk('map_tour_following')}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    {resolvedTourStops.length} {tk('map_tour_stops_count')}
+                  </span>
+                </div>
+                <h3 className="text-xs font-black text-slate-900 truncate mt-0.5">{localizedTour.name}</h3>
+              </div>
+            </div>
+            {onClearActiveTour && (
+              <button
+                onClick={onClearActiveTour}
+                className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold px-2 py-1 rounded-xl transition cursor-pointer shrink-0"
+                title={tk('map_tour_exit')}
+              >
+                {tk('map_tour_exit')}
+              </button>
+            )}
+          </div>
+
+          {currentTourStop && (
+            <div className="pt-2 flex items-center justify-between text-xs">
+              <div className="min-w-0 pr-2">
+                <p className="text-[10px] font-bold text-indigo-600">
+                  {tk('map_tour_current_stop')} ({currentTourStopIdx + 1}/{resolvedTourStops.length}):
+                </p>
+                <p className="font-extrabold text-slate-900 truncate">{currentTourStop.name}</p>
+                {currentTourStop.recommendedDish && (
+                  <p className="text-[10px] text-slate-500 truncate">🍲 {currentTourStop.recommendedDish}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => startNav(currentTourStop.poi)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1"
+                >
+                  <span>{tk('map_tour_btn_nav')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BOTTOM TOUR CONTROLS: ĐIỀU HƯỚNG TỪNG TRẠM DỪNG ───────── */}
+      {localizedTour && resolvedTourStops.length > 0 && !isNav && (
+        <div className="absolute bottom-20 lg:bottom-6 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-[480px] z-[1050] bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-slate-700 flex items-center justify-between gap-2 animate-fadeIn">
+          <button
+            onClick={goToPrevTourStop}
+            disabled={currentTourStopIdx === 0}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold transition cursor-pointer shrink-0"
+          >
+            {tk('map_tour_prev')}
+          </button>
+
+          <div className="flex-1 text-center min-w-0 px-1">
+            <span className="text-[9px] text-amber-400 font-extrabold uppercase tracking-wider block">
+              {tk('map_tour_stop_prefix')}{currentTourStopIdx + 1}{tk('map_tour_stop_suffix')} / {resolvedTourStops.length}
+            </span>
+            <span className="text-xs font-black truncate block">{currentTourStop?.name}</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => currentTourStop && playPoiAudio(currentTourStop.poi)}
+              className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition cursor-pointer shadow-xs"
+              title={tk('map_tour_listen_stop')}
+            >
+              🎧
+            </button>
+            <button
+              onClick={() => currentTourStop && startNav(currentTourStop.poi)}
+              className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+            >
+              {tk('map_tour_nav_btn')}
+            </button>
+            <button
+              onClick={goToNextTourStop}
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer shrink-0"
+            >
+              {currentTourStopIdx < resolvedTourStops.length - 1 ? tk('map_tour_next') : tk('map_tour_done')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── FLOATING CONTROLS (GPS RECENTER & SIMULATOR) ──── */}
       {!isNav && (
         <>
           {/* Nút bật Panel Giả Lập Vị Trí GPS (Testing Tool) */}
-          <div className="absolute top-[68px] sm:top-20 left-3 sm:left-4 z-[1000]">
+          <div className={`absolute ${localizedTour ? 'top-[168px] sm:top-56' : 'top-[68px] sm:top-20'} left-3 sm:left-4 z-[1000]`}>
             <button
               onClick={() => setShowSimPanel(!showSimPanel)}
               className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-extrabold text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-1.5 active:scale-95 transition cursor-pointer"
             >
               <span>🧪</span>
-              <span className="hidden sm:inline">Thử Nghiệm Tự Phát & Hàng Đợi</span>
+              <span className="hidden sm:inline">{tk('map_test_gps')}</span>
               <span className="sm:hidden text-[10px] font-bold">Test GPS</span>
             </button>
             {isInsecureOrigin && !hasRealGPS && (
@@ -903,7 +1221,7 @@ export default function Map({
             className={`absolute bottom-24 lg:bottom-6 right-4 z-[1000] p-3.5 rounded-full shadow-xl border transition-all active:scale-95 cursor-pointer ${
               isTracking ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
             }`}
-            title="Quay về vị trí của tôi"
+            title={tk('map_nav_recenter')}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12 0a4 4 0 11-8 0 4 4 0 018 0z" />

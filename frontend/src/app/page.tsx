@@ -12,6 +12,7 @@ import AiAssistantModal from '@/components/ai/AiAssistantModal';
 import FavoritesModal from '@/components/poi/FavoritesModal';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TourDetail } from '@/types';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -31,6 +32,7 @@ function MainApp() {
   const currentTab = searchParams.get('tab') || 'home';
   const [isNavigating, setIsNavigating] = useState(false);
   const [targetPoiId, setTargetPoiId] = useState<string | number | null>(null);
+  const [activeTour, setActiveTour] = useState<TourDetail | null>(null);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [selectedPoiDetailId, setSelectedPoiDetailId] = useState<number | null>(null);
@@ -40,8 +42,11 @@ function MainApp() {
     router.push(`/?tab=${tab}`, { scroll: false });
   };
 
-  const goToMap = (poiId?: string | number) => {
-    if (poiId) {
+  const goToMap = (poiId?: string | number, tour?: TourDetail) => {
+    if (tour) {
+      setActiveTour(tour);
+      setTargetPoiId(null);
+    } else if (poiId) {
       setTargetPoiId(poiId);
     }
     setCurrentTab('map');
@@ -157,6 +162,8 @@ function MainApp() {
             isActive={currentTab === 'map'}
             onNavChange={setIsNavigating}
             targetPoiId={targetPoiId}
+            activeTour={activeTour}
+            onClearActiveTour={() => setActiveTour(null)}
             autoPlayEnabled={autoPlayEnabled}
             onToggleAutoPlay={() => setAutoPlayEnabled(!autoPlayEnabled)}
           />

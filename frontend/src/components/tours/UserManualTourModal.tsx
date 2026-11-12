@@ -2,16 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchPois, createTour } from '@/services/api';
-import { PoiSummary, CreateTourInput } from '@/types';
+import { PoiSummary, CreateTourInput, TourDetail } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserManualTourModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTourCreated?: () => void;
+  onStartTour?: (tour: TourDetail) => void;
 }
 
-export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: UserManualTourModalProps) {
+export default function UserManualTourModal({ isOpen, onClose, onTourCreated, onStartTour }: UserManualTourModalProps) {
   const { language, tk } = useLanguage();
   const [pois, setPois] = useState<PoiSummary[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
@@ -134,13 +135,17 @@ export default function UserManualTourModal({ isOpen, onClose, onTourCreated }: 
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      await createTour(tourData);
+      const created = await createTour(tourData);
       setSuccess(true);
       if (onTourCreated) onTourCreated();
       setTimeout(() => {
-        onClose();
+        if (onStartTour) {
+          onStartTour(created);
+        } else {
+          onClose();
+        }
         setSuccess(false);
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi khi tạo tuyến tour');
     } finally {

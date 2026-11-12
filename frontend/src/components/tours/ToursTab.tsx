@@ -9,7 +9,7 @@ import PoiDetailModal from '@/components/poi/PoiDetailModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ToursTabProps {
-  onOpenMap: (poiId?: string | number) => void;
+  onOpenMap: (poiId?: string | number, tour?: TourDetail) => void;
 }
 
 export default function ToursTab({ onOpenMap }: ToursTabProps) {
@@ -490,11 +490,8 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
               </span>
               <button
                 onClick={() => {
-                  const firstStopPoiId = activeTourDetail.stops[0]?.poi?.id || activeTourDetail.stops[0]?.poiId;
-                  if (firstStopPoiId) {
-                    onOpenMap(firstStopPoiId);
-                    setActiveTourDetail(null);
-                  }
+                  onOpenMap(undefined, activeTourDetail);
+                  setActiveTourDetail(null);
                 }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
               >
@@ -578,6 +575,10 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
         onTourCreated={loadTours}
+        onStartTour={(tour) => {
+          setIsManualModalOpen(false);
+          onOpenMap(undefined, tour);
+        }}
       />
 
       {/* CUSTOM TOUR MODAL */}
@@ -588,6 +589,10 @@ export default function ToursTab({ onOpenMap }: ToursTabProps) {
         onSelectPoi={(id) => {
           setSelectedPoiId(id);
           setIsCustomModalOpen(false);
+        }}
+        onStartTour={(tour) => {
+          setIsCustomModalOpen(false);
+          onOpenMap(undefined, tour);
         }}
       />
 

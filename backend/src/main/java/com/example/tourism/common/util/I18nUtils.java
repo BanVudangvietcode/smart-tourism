@@ -13,7 +13,7 @@ public final class I18nUtils {
      * @return English text if lang == "en" and enText is non-blank; otherwise viText
      */
     public static String resolve(String viText, String enText, String lang) {
-        if ("en".equalsIgnoreCase(lang) && enText != null && !enText.isBlank()) {
+        if (lang != null && !"vi".equalsIgnoreCase(lang) && enText != null && !enText.isBlank()) {
             return enText;
         }
         return viText;

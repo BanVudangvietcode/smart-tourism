@@ -86,3 +86,43 @@ export async function fetchRoute(
   return { coords, info, steps };
 }
 
+// Gọi OSRM API tìm đường qua chuỗi nhiều điểm dừng (Multi-Stop Tour Route)
+export async function fetchMultiStopRoute(
+  stops: [number, number][],
+  mode: 'driving' | 'walking' = 'driving'
+): Promise<{ coords: [number, number][]; distanceMeters: number; durationMinutes: number }> {
+  if (stops.length < 2) {
+    return { coords: stops, distanceMeters: 0, durationMinutes: 0 };
+  }
+
+  const server = mode === 'driving' ? 'car' : 'foot';
+  const routingProfile = mode === 'driving' ? 'driving' : 'walking';
+  const coordString = stops.map(([lat, lng]) => `${lng},${lat}`).join(';');
+
+  try {
+    const res = await fetch(
+      `https://routing.openstreetmap.de/routed-${server}/route/v1/${routingProfile}/${coordString}?overview=full&geometries=geojson&steps=false`
+    );
+    const data = await res.json();
+
+    if (data.routes?.length) {
+      const route = data.routes[0];
+      const coords: [number, number][] = route.geometry.coordinates.map((pt: [number, number]) => [pt[1], pt[0]]);
+      return {
+        coords,
+        distanceMeters: Math.round(route.distance),
+        durationMinutes: Math.ceil(route.duration / 60),
+      };
+    }
+  } catch (err) {
+    console.warn('Lỗi khi fetch route OSRM đa trạm, dùng nối thẳng các trạm:', err);
+  }
+
+  // Fallback nếu OSRM lỗi hoặc offline: nối thẳng các trạm
+  return {
+    coords: stops,
+    distanceMeters: 0,
+    durationMinutes: 0,
+  };
+}
+

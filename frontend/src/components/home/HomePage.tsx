@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PoiSummary, TourSummary, HealthStatus } from '@/types';
-import { fetchPois, fetchTours, checkHealth } from '@/services/api';
+import { PoiSummary, TourSummary, HealthStatus, TourDetail } from '@/types';
+import { fetchPois, fetchTours, fetchTourDetail, checkHealth } from '@/services/api';
 import PoiDetailModal from '@/components/poi/PoiDetailModal';
 import AiAssistantModal from '@/components/ai/AiAssistantModal';
 import CustomTourModal from '@/components/tours/CustomTourModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface HomePageProps {
-  onOpenMap: (poiId?: string | number) => void;
+  onOpenMap: (poiId?: string | number, tour?: TourDetail) => void;
 }
 
 export default function HomePage({ onOpenMap }: HomePageProps) {
@@ -249,7 +249,14 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
                   </div>
 
                   <button
-                    onClick={() => onOpenMap()}
+                    onClick={async () => {
+                      try {
+                        const detail = await fetchTourDetail(tour.id);
+                        onOpenMap(undefined, detail);
+                      } catch {
+                        onOpenMap();
+                      }
+                    }}
                     className="w-full bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs py-2 rounded-xl transition text-center cursor-pointer"
                   >
                     {tk('home_tour_start')}
@@ -307,6 +314,10 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
         onSelectPoi={(id) => {
           setSelectedPoiId(id);
           setIsCustomTourOpen(false);
+        }}
+        onStartTour={(tour) => {
+          setIsCustomTourOpen(false);
+          onOpenMap(undefined, tour);
         }}
       />
     </div>
