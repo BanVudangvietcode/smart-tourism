@@ -24,23 +24,34 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-    registry.addMapping("/**")
-            .allowedOriginPatterns(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "http://192.168.1.15:*",
-                "*"
-            )
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-            .allowedHeaders("*")
-            .allowCredentials(true);
-}
+        registry.addMapping("/**")
+                .allowedOriginPatterns(
+                    "http://localhost:*",
+                    "http://127.0.0.1:*",
+                    "http://172.20.10.12:*",
+                    "http://172.20.10.*:*",
+                    "*"
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtAuthInterceptor)
-                // Only protect the user profile endpoints
-                .addPathPatterns("/api/v1/users/**");
+                .addPathPatterns("/api/v1/**")
+                .excludePathPatterns(
+                        "/api/v1/auth/**",
+                        "/api/v1/health",
+                        "/api/v1/categories/**",
+                        "/api/v1/pois/**",
+                        "/api/v1/tours/**",
+                        "/api/v1/routing/**",
+                        "/api/v1/ai/**",
+                        "/api/v1/weather/**",
+                        "/api/v1/analytics/realtime/**"
+                );
     }
 
     @Override

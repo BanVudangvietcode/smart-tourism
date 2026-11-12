@@ -480,7 +480,7 @@ export default function Map({
   const recenterToUser = (targetZoom = 17) => {
     if (!hasRealGPS) {
       if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
-        showToast('⚠️ Trình duyệt chặn GPS qua HTTP (192.168.1.15). Đang mở panel [Test GPS] để bạn thử nghiệm!');
+        showToast('⚠️ Trình duyệt chặn GPS qua HTTP (172.20.10.12). Đang mở panel [Test GPS] để bạn thử nghiệm!');
         setShowSimPanel(true);
       }
     }

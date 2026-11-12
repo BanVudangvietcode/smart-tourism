@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS pois (
     audio_url       TEXT,
     thumbnail_url   TEXT,
     category_id     BIGINT REFERENCES categories(id),
-    poi_type        VARCHAR(20) NOT NULL DEFAULT 'FOOD', -- 'FOOD', 'LANDMARK', 'RELIGIOUS', 'HISTORICAL'
+    poi_type        VARCHAR(50) NOT NULL DEFAULT 'FOOD' REFERENCES poi_types(code),
     location        GEOGRAPHY(Point, 4326) NOT NULL,
     is_active       BOOLEAN NOT NULL DEFAULT true,
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
@@ -97,6 +97,18 @@ CREATE INDEX IF NOT EXISTS idx_pois_type ON pois(poi_type);
 
 -- District/ward filter
 CREATE INDEX IF NOT EXISTS idx_pois_district_ward ON pois(district, ward);
+
+-- Migration an toan: Bo sung khoa ngoai fk_pois_poi_type cho database da ton tai
+DO $do$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_pois_poi_type' AND table_name = 'pois'
+    ) THEN
+        ALTER TABLE pois ALTER COLUMN poi_type TYPE VARCHAR(50);
+        ALTER TABLE pois ADD CONSTRAINT fk_pois_poi_type FOREIGN KEY (poi_type) REFERENCES poi_types(code);
+    END IF;
+END $do$;
 
 -- Seed categories
 INSERT INTO categories (id, name, slug, sort_order) VALUES

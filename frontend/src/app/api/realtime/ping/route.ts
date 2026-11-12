@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const count = realtimeHub.ping(deviceId);
 
     // Also forward to Spring Boot backend if running (async, fire-and-forget)
-    fetch('http://192.168.1.15:8080/api/v1/analytics/realtime/ping', {
+    fetch('http://172.20.10.12:8080/api/v1/analytics/realtime/ping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId }),
