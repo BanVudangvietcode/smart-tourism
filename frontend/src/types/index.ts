@@ -43,6 +43,22 @@ export interface PoiSummary {
   distanceMeters: number | null;
 }
 
+// Địa điểm yêu thích của người dùng (UserFavoritePoiResponse)
+export interface UserFavoritePoiResponse {
+  poiId: number;
+  name: string;
+  slug: string;
+  poiType?: string;
+  categoryName?: string;
+  address?: string;
+  thumbnailUrl?: string | null;
+  avgRating?: number;
+  reviewCount?: number;
+  latitude: number;
+  longitude: number;
+  favoritedAt?: string;
+}
+
 // Chi tiết địa điểm (PoiDetailResponse)
 export interface PoiDetail {
   id: number;

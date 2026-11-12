@@ -17,6 +17,7 @@ import {
   AiRecommendDishResponse,
   AuthV1Response,
   UserProfile,
+  UserFavoritePoiResponse,
 } from '@/types';
 
 const isServer = typeof window === 'undefined';
@@ -412,7 +413,7 @@ export const toggleFavorite = async (
   return res.json();
 };
 
-export const fetchMyFavorites = async (): Promise<PoiSummary[]> => {
+export const fetchMyFavorites = async (): Promise<UserFavoritePoiResponse[]> => {
   const res = await fetch(`${API_V1}/users/me/favorites`, {
     headers: { ...getAuthHeader() },
   });

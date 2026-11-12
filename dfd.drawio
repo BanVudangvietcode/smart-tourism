@@ -330,7 +330,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="dfd-2-3" name="5. DFD Mức 2 - 3.0 Ẩm thực &amp; Món ăn">
-        <mxGraphModel dx="1178" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="1161" dy="748" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -420,50 +420,48 @@
         </mxGraphModel>
     </diagram>
     <diagram id="dfd-2-4" name="6. DFD Mức 2 - 4.0 Tour &amp; Lộ trình">
-        <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="1161" dy="748" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="u_2_4" value="Khách du lịch" style="shape=rect;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="80" y="105" width="160" height="75" as="geometry"/>
+                <mxCell id="u_2_4" parent="1" style="shape=rect;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=12;fontStyle=1;align=center;" value="Khách du lịch" vertex="1">
+                    <mxGeometry height="75" width="160" x="80" y="105" as="geometry"/>
                 </mxCell>
-                <mxCell id="adm_2_4" value="Quản trị viên (Admin / BQL)" style="shape=rect;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="1040" y="340" width="160" height="75" as="geometry"/>
+                <mxCell id="adm_2_4" parent="1" style="shape=rect;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=12;fontStyle=1;align=center;" value="Quản trị viên (Admin / BQL)" vertex="1">
+                    <mxGeometry height="75" width="160" x="1040" y="340" as="geometry"/>
                 </mxCell>
-                <mxCell id="ds_tours_2_4" value="D4: Tour &amp; Lộ trình (tours, tour_stops, tour_reviews)" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="400" y="250" width="420" height="35" as="geometry"/>
+                <mxCell id="ds_tours_2_4" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;align=center;" value="D4: Tour &amp; Lộ trình (tours, tour_stops, tour_reviews)" vertex="1">
+                    <mxGeometry height="35" width="420" x="400" y="250" as="geometry"/>
                 </mxCell>
-                <mxCell id="ds_pois_2_4" value="D2: Điểm du lịch (pois - thông tin điểm dừng)" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="420" y="520" width="380" height="35" as="geometry"/>
+                <mxCell id="ds_pois_2_4" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;align=center;" value="D2: Điểm du lịch (pois - thông tin điểm dừng)" vertex="1">
+                    <mxGeometry height="35" width="380" x="420" y="520" as="geometry"/>
                 </mxCell>
-                <mxCell id="p4_1" value="4.1 Khám phá Tour theo chủ đề" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="380" y="85" width="110" height="110" as="geometry"/>
+                <mxCell id="p4_1" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" value="4.1 Khám phá Tour theo chủ đề" vertex="1">
+                    <mxGeometry height="110" width="110" x="380" y="85" as="geometry"/>
                 </mxCell>
-                <mxCell id="p4_2" value="4.2 Xem lộ trình &amp; Danh sách điểm dừng" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="770" y="85" width="110" height="110" as="geometry"/>
+                <mxCell id="p4_2" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" value="4.2 Xem lộ trình &amp; Danh sách điểm dừng" vertex="1">
+                    <mxGeometry height="110" width="110" x="770" y="85" as="geometry"/>
                 </mxCell>
-                <mxCell id="p4_3" value="4.3 Đánh giá &amp; Nhận xét Tour" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="380" y="340" width="110" height="110" as="geometry"/>
+                <mxCell id="p4_3" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" value="4.3 Đánh giá &amp; Nhận xét Tour" vertex="1">
+                    <mxGeometry height="110" width="110" x="380" y="340" as="geometry"/>
                 </mxCell>
-                <mxCell id="p4_4" value="4.4 Thiết kế lộ trình &amp; Quản lý Tour" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="770" y="340" width="110" height="110" as="geometry"/>
+                <mxCell id="p4_4" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.8;fontSize=11;fontStyle=1;align=center;" value="4.4 Thiết kế lộ trình &amp; Quản lý Tour" vertex="1">
+                    <mxGeometry height="110" width="110" x="770" y="340" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_u_1" value="Xem danh sách tour chủ đề" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="u_2_4" target="p4_1">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_u_1" edge="1" parent="1" source="u_2_4" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="p4_1" value="Xem danh sách tour chủ đề">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_1_ds" value="Đọc bảng tours" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_1" target="ds_tours_2_4">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_1_ds" edge="1" parent="1" source="p4_1" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="ds_tours_2_4" value="Đọc bảng tours">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_1_u" value="Danh sách tour tham quan" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_1" target="u_2_4">
+                <mxCell id="fl2_4_1_u" edge="1" parent="1" source="p4_1" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="u_2_4" value="Danh sách tour tham quan">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="290" y="160"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="fl2_4_u_2" value="Chọn tour xem lộ trình" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="u_2_4" target="p4_2">
+                <mxCell id="fl2_4_u_2" edge="1" parent="1" source="u_2_4" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="p4_2" value="Chọn tour xem lộ trình">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="280" y="50"/>
@@ -471,11 +469,10 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="fl2_4_2_ds4" value="Đọc tour_stops theo thứ tự" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_2" target="ds_tours_2_4">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_2_ds4" edge="1" parent="1" source="p4_2" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="ds_tours_2_4" value="Đọc tour_stops theo thứ tự">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_2_ds2" value="Lấy tọa độ điểm dừng từ pois" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_2" target="ds_pois_2_4">
+                <mxCell id="fl2_4_2_ds2" edge="1" parent="1" source="p4_2" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="ds_pois_2_4" value="Lấy tọa độ điểm dừng từ pois">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="930" y="250"/>
@@ -483,7 +480,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="fl2_4_2_u" value="Bản đồ lộ trình &amp; Các điểm dừng" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_2" target="u_2_4">
+                <mxCell id="fl2_4_2_u" edge="1" parent="1" source="p4_2" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="u_2_4" value="Bản đồ lộ trình &amp; Các điểm dừng">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="600" y="180"/>
@@ -491,24 +488,21 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="fl2_4_u_3" value="Gửi đánh giá &amp; Số sao tour" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="u_2_4" target="p4_3">
+                <mxCell id="fl2_4_u_3" edge="1" parent="1" source="u_2_4" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="p4_3" value="Gửi đánh giá &amp; Số sao tour">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="160" y="395"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="fl2_4_3_ds" value="Lưu vào tour_reviews" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_3" target="ds_tours_2_4">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_3_ds" edge="1" parent="1" source="p4_3" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="ds_tours_2_4" value="Lưu vào tour_reviews">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_adm_4" value="Tạo tour mới / Cấu hình stops" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="adm_2_4" target="p4_4">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_adm_4" edge="1" parent="1" source="adm_2_4" style="endArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="p4_4" value="Tạo tour mới / Cấu hình stops">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fl2_4_4_ds" value="Ghi dữ liệu tours &amp; tour_stops" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" edge="1" parent="1" source="p4_4" target="ds_tours_2_4">
-                    <mxGeometry relative="1" as="geometry">
-                    </mxGeometry>
+                <mxCell id="fl2_4_4_ds" edge="1" parent="1" source="p4_4" style="endArrow=block;startArrow=block;html=1;strokeColor=#000000;strokeWidth=1.2;fontSize=10;" target="ds_tours_2_4" value="Ghi dữ liệu tours &amp; tour_stops">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

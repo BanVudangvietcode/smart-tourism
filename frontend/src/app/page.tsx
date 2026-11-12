@@ -9,6 +9,8 @@ import ToursTab from '@/components/tours/ToursTab';
 import UserMenu from '@/components/auth/UserMenu';
 import LanguageSelector from '@/components/common/LanguageSelector';
 import AiAssistantModal from '@/components/ai/AiAssistantModal';
+import FavoritesModal from '@/components/poi/FavoritesModal';
+import PoiDetailModal from '@/components/poi/PoiDetailModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,6 +32,8 @@ function MainApp() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [targetPoiId, setTargetPoiId] = useState<string | number | null>(null);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
+  const [selectedPoiDetailId, setSelectedPoiDetailId] = useState<number | null>(null);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
 
   const setCurrentTab = (tab: string) => {
@@ -116,8 +120,18 @@ function MainApp() {
                 <span className="hidden sm:inline">{tk('btn_ai_assistant')}</span>
               </button>
 
+              {/* Nút Quán yêu thích */}
+              <button
+                onClick={() => setIsFavoritesOpen(true)}
+                className="bg-white/95 backdrop-blur-md hover:bg-rose-50 text-rose-600 p-2 sm:px-3 sm:py-2 rounded-2xl shadow-lg border border-rose-200/60 flex items-center gap-1.5 font-bold text-xs active:scale-95 transition cursor-pointer shrink-0"
+                title={tk('label_favorites')}
+              >
+                <span className="text-sm">❤️</span>
+                <span className="hidden sm:inline text-slate-700">{tk('label_favorites')}</span>
+              </button>
+
               <LanguageSelector />
-              <UserMenu />
+              <UserMenu onOpenFavorites={() => setIsFavoritesOpen(true)} />
             </div>
           </div>
         </div>
@@ -319,6 +333,23 @@ function MainApp() {
         onClose={() => setIsAiOpen(false)}
         onSelectPoi={goToMap}
       />
+
+      {/* FAVORITES MODAL */}
+      <FavoritesModal
+        isOpen={isFavoritesOpen}
+        onClose={() => setIsFavoritesOpen(false)}
+        onSelectPoi={(poi) => goToMap(poi.poiId)}
+        onOpenPoiDetail={(poiId) => setSelectedPoiDetailId(poiId)}
+      />
+
+      {/* POI DETAIL MODAL FROM FAVORITES */}
+      {selectedPoiDetailId && (
+        <PoiDetailModal
+          poiId={selectedPoiDetailId}
+          onClose={() => setSelectedPoiDetailId(null)}
+          onNavigate={() => goToMap(selectedPoiDetailId)}
+        />
+      )}
 
     </div>
   );

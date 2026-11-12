@@ -5,6 +5,8 @@ const BACKEND_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_
 const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: [
+    '192.168.11.33',
+    '192.168.11.33:3000',
     '172.20.10.12',
     '172.20.10.12:3000',
     '192.168.1.15',

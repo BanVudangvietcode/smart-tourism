@@ -8,7 +8,11 @@ import { loginWithGoogle } from '@/services/api';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
-export default function UserMenu() {
+interface UserMenuProps {
+  onOpenFavorites?: () => void;
+}
+
+export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
   const { user, login, logout } = useAuth();
   const { language, setLanguage, tk } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -132,6 +136,20 @@ export default function UserMenu() {
                 {user.role === 'GUEST' ? tk('label_guest') : tk('label_member')}
               </span>
             </div>
+
+            {onOpenFavorites && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenFavorites();
+                  setShowDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition flex items-center gap-2 cursor-pointer border-b border-gray-100"
+              >
+                <span>❤️</span>
+                <span>{tk('label_favorites')}</span>
+              </button>
+            )}
 
             <Link
               href="/admin"
