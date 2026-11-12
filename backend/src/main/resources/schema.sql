@@ -935,5 +935,57 @@ ON CONFLICT (poi_id, language) DO UPDATE SET
     transcript = EXCLUDED.transcript,
     voice = EXCLUDED.voice;
 
+-- ============================================================
+-- Multilingual Expansion Seed Data (zh, ja, ko, fr)
+-- ============================================================
+INSERT INTO poi_audios (poi_id, title, file_name, duration_seconds, file_size_bytes, voice, language, zone, transcript)
+VALUES
+    -- POI 1: Vinh Khanh / Oc Oanh
+    (1, '语音导览：永庆夜市海鲜街与阿英螺店', 'poi_1_zh.mp3', 64, 384192,
+     '中文 (标准普通话)', 'zh', 'quan4',
+     '欢迎来到第四郡永庆美食街——西贡最热闹的夜间海鲜天堂。展现在您眼前的是拥有15年历史的著名餐厅阿英螺店。这里的招牌名菜是鲜香浓郁的咸蛋黄炒香螺，搭配热气腾腾的香脆法棍面包享用。此外，香辣椒盐炒蟹钳和浓郁芝士烤扇贝也是不容错过的街头美味。大火翻炒的海鲜滋滋作响，伴随着蒜香黄油的扑鼻香气，将带给您难忘的西贡夜生活美食体验。'),
+    (1, '音声ガイド：ヴィンカイン通りとオック・オアン（巻き貝料理）', 'poi_1_ja.mp3', 64, 384192,
+     '日本語 (ナチュラル)', 'ja', 'quan4',
+     'サイゴン屈指の夜の海鮮天国、4区のヴィンカイン通りへようこそ。目の前にあるのは、15年以上にわたり地元民や旅行者に愛され続ける名店「オック・オアン」です。看板メニューは、濃厚でクリーミーな塩漬け卵黄ソースを絡めた新鮮なバイ貝料理で、焼きたてのフランスパンと一緒に食べるのが絶品です。強火で炒める海鮮の心地よい音とガーリックバターの芳醇な香りに包まれながら、本場サイゴンのストリートフードをご堪能ください。'),
+    (1, '오디오 가이드: 빈카인 야간 해산물 거리 및 옥오안 맛집', 'poi_1_ko.mp3', 64, 384192,
+     '한국어 (자연스러운)', 'ko', 'quan4',
+     '호치민시 4군에서 가장 활기찬 밤의 해산물 천국인 빈카인 먹자골목에 오신 것을 환영합니다. 여러분 바로 앞에 있는 곳은 15년 이상의 전통을 자랑하는 유명한 해산물 맛집 옥오안입니다. 대표 메뉴는 고소하고 진한 솔티드 에그 소스를 곁들인 바빌로니아 고둥 요리로, 따끈따끈한 바게트 빵을 소스에 찍어 먹는 별미입니다. 매콤한 고추 소금 게 집게발과 치즈 가리비 구이도 꼭 맛보셔야 할 대표 음식입니다.'),
+    (1, 'Guide Audio: Rue Gourmande Vinh Khanh et Restaurant Oc Oanh', 'poi_1_fr.mp3', 64, 384192,
+     'Français (Naturel)', 'fr', 'quan4',
+     'Bienvenue dans la rue Vinh Khanh, au 4ème arrondissement, le paradis nocturne des fruits de mer le plus animé de Saïgon. Devant vous se trouve le célèbre établissement Oc Oanh, réputé depuis plus de 15 ans. Sa spécialité emblématique reste les bulots frais nappés d une onctueuse sauce aux jaunes d oeufs salés, dégustés avec une baguette croustillante toute chaude. Laissez-vous séduire par les parfums exquis de beurre à l ail et la convivialité nocturne vietnamienne.'),
+
+    -- POI 3: Ben Nha Rong
+    (3, '语音导览：历史遗迹龙屋码头（胡志明博物馆）', 'poi_3_zh.mp3', 85, 510000,
+     '中文 (标准普通话)', 'zh', 'quan4',
+     '欢迎来到龙屋码头，现为胡志明博物馆胡志明市分馆。这座宏伟的建筑由法国海运公司于1863年建造，最独特的特征是屋顶上矗立着双龙戏珠的雕塑。1911年6月5日，年轻爱国者阮必成（即后来的胡志明主席）登上拉图什·特雷维尔号商船，踏上了长达30年的救国救民征程。参观博物馆各展厅时，请保持庄严并遵守参观礼仪。'),
+    (3, '音声ガイド：歴史的名所ベンニャーロン（龍屋埠頭）', 'poi_3_ja.mp3', 85, 510000,
+     '日本語 (ナチュラル)', 'ja', 'quan4',
+     '現在ホーチミン博物館ホーチミン市支部となっている歴史的名所「龍屋埠頭（ベンニャーロン）」へようこそ。1863年にフランスの海運会社によって建設されたこの建物は、屋根の上に飾られた二匹の龍の陶器像が特徴的です。1911年6月5日、若き日のホー・チ・ミン主席が祖国救済の道を求めてフランス船に乗り込み、30年間に及ぶ旅に出航した運命の場所です。館内見学の際は静粛にお過ごしください。'),
+    (3, '오디오 가이드: 역사적 명소 냐롱 부두 (호치민 박물관)', 'poi_3_ko.mp3', 85, 510000,
+     '한국어 (자연스러운)', 'ko', 'quan4',
+     '호치민 박물관 호치민 지부로 운영되고 있는 역사적 명소 냐롱 부두에 오신 것을 환영합니다. 1863년 프랑스 해운 회사에 의해 지어진 이 건물은 지붕 위에 장식된 두 마리의 용 도자기 조각이 인상적인 상징물입니다. 1911년 6월 5일, 스물한 살의 청년 응우옌 탓 타인(호치민 주석)이 조국 구원의 길을 찾아 30년간의 여정을 시작하며 배에 올랐던 역사적인 장소입니다.'),
+    (3, 'Guide Audio: Monument Historique Quai du Dragon (Ben Nha Rong)', 'poi_3_fr.mp3', 85, 510000,
+     'Français (Naturel)', 'fr', 'quan4',
+     'Bienvenue au Quai du Dragon, devenu aujourd hui la branche du Musée Hô Chi Minh de la ville. Édifié en 1863 par la Compagnie des Messageries Maritimes, ce magnifique bâtiment colonial est surmonté de deux dragons en faïence encadrant une lune. C est d ici, le 5 juin 1911, que le jeune patriote Nguyen Tat Thanh embarqua à bord du paquebot Amiral Latouche-Tréville pour un périple de 30 ans à travers le monde.'),
+
+    -- POI 5: Cau Mong
+    (5, '语音导览：历史悠久之芒桥（西贡彩虹桥）', 'poi_5_zh.mp3', 60, 360000,
+     '中文 (标准普通话)', 'zh', 'quan4',
+     '呈现在您面前的是芒桥，西贡最古老的历史钢桥之一，横跨美丽的滨义运河，将第一郡与第四郡紧密相连。该桥于1893年由法国埃菲尔公司设计建造，以标志性的彩虹拱形结构和青绿漆色闻名。如今，芒桥已改建为步行观光桥，是欣赏西贡河壮丽日落与现代摩天大楼天际线的最佳打卡地。'),
+    (5, '音声ガイド：歴史的建造物 モン橋（虹の橋）', 'poi_5_ja.mp3', 60, 360000,
+     '日本語 (ナチュラル)', 'ja', 'quan4',
+     'サイゴンで最も古い歴史ある鉄橋「モン橋」の前に立っています。ベンゲー運河を挟んで1区と4区を結ぶこの橋は、1893年にフランスのエッフェル社によって建設されました。美しい弧を描く虹のようなアーチと鮮やかなエメラルドグリーンが特徴です。現在は歩行者専用橋となっており、川の涼しい風を感じながら夕暮れの美しいスカイラインを眺める人気の散策スポットです。'),
+    (5, '오디오 가이드: 역사적인 몽 다리 (무지개 다리)', 'poi_5_ko.mp3', 60, 360000,
+     '한국어 (자연스러운)', 'ko', 'quan4',
+     '사이공에서 가장 유서 깊은 철교 중 하나인 몽 다리(무지개 다리)에 오신 것을 환영합니다. 1893년 프랑스 에펠 건설 회사에 의해 완공된 이 다리는 벤응에 운하를 가로질러 1군과 4군을 연결합니다. 독특한 아치형 곡선 모양과 청록색 외관으로 사랑받고 있으며, 현재는 시민과 여행객들이 황혼 무렵 사이공 강의 아름다운 일몰을 감상할 수 있는 보행자 전용 다리로 운영되고 있습니다.'),
+    (5, 'Guide Audio: Pont Historique des Messageries (Pont Mong)', 'poi_5_fr.mp3', 60, 360000,
+     'Français (Naturel)', 'fr', 'quan4',
+     'Vous vous trouvez devant le pont Mong, l un des plus anciens ponts métalliques historiques de Saïgon. Construit à la fin du 19ème siècle par la maison Levallois-Perret de Gustave Eiffel, ce pont suspendu enjambe le canal Ben Nghe pour relier le 1er et le 4ème arrondissement. Sa silhouette arquée caractéristique lui a valu le surnom populaire de pont arc-en-ciel. Aujourd hui réservé aux piétons, il offre une vue imprenable sur le coucher de soleil.')
+ON CONFLICT (poi_id, language) DO UPDATE SET
+    title = EXCLUDED.title,
+    transcript = EXCLUDED.transcript,
+    voice = EXCLUDED.voice;
+
+
 
 

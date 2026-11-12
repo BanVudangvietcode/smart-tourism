@@ -7,6 +7,7 @@ import PlacesTab from '@/components/places/PlacesTab';
 import FoodTab from '@/components/food/FoodTab';
 import ToursTab from '@/components/tours/ToursTab';
 import UserMenu from '@/components/auth/UserMenu';
+import LanguageSelector from '@/components/common/LanguageSelector';
 import AiAssistantModal from '@/components/ai/AiAssistantModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -115,6 +116,7 @@ function MainApp() {
                 <span className="hidden sm:inline">{tk('btn_ai_assistant')}</span>
               </button>
 
+              <LanguageSelector />
               <UserMenu />
             </div>
           </div>

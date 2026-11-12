@@ -1,8 +1,10 @@
 package com.example.tourism.audio.service;
 
+import com.example.tourism.ai.service.GeminiClient;
 import com.example.tourism.audio.dto.*;
 import com.example.tourism.audio.model.PoiAudio;
 import com.example.tourism.audio.repository.AudioRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -41,22 +44,50 @@ public class AudioService {
     private final TtsService ttsService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final GeminiClient geminiClient;
+
+    public static final Map<String, String> LANGUAGE_NAMES = Map.of(
+            "vi", "Tiếng Việt",
+            "en", "English",
+            "zh", "中文 (Chinese)",
+            "ja", "日本語 (Japanese)",
+            "ko", "한국어 (Korean)",
+            "fr", "Français (French)"
+    );
+
+    public static final Map<String, String> DEFAULT_VOICES = Map.of(
+            "vi", "Nữ miền Nam (Truyền cảm)",
+            "en", "English (Natural)",
+            "zh", "中文 (标准普通话)",
+            "ja", "日本語 (ナチュラル)",
+            "ko", "한국어 (자연스러운)",
+            "fr", "Français (Naturel)"
+    );
 
     public AudioService(AudioRepository audioRepository,
                         RedisTemplate<String, Object> redisTemplate,
                         ObjectMapper objectMapper) {
-        this(audioRepository, new TtsService(), redisTemplate, objectMapper);
+        this(audioRepository, new TtsService(), redisTemplate, objectMapper, null);
+    }
+
+    public AudioService(AudioRepository audioRepository,
+                        TtsService ttsService,
+                        RedisTemplate<String, Object> redisTemplate,
+                        ObjectMapper objectMapper) {
+        this(audioRepository, ttsService, redisTemplate, objectMapper, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public AudioService(AudioRepository audioRepository,
                         TtsService ttsService,
                         RedisTemplate<String, Object> redisTemplate,
-                        ObjectMapper objectMapper) {
+                        ObjectMapper objectMapper,
+                        @org.springframework.beans.factory.annotation.Autowired(required = false) GeminiClient geminiClient) {
         this.audioRepository = audioRepository;
         this.ttsService = ttsService != null ? ttsService : new TtsService();
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.geminiClient = geminiClient;
     }
 
     /**
@@ -429,6 +460,7 @@ public class AudioService {
 
         // 2. Lưu file vào ổ đĩa hệ thống
         saveAudioBytes(fileName, audioBytes);
+        saveAudioBytes("poi_" + request.getPoiId() + "_vi.mp3", audioBytes);
 
         // 3. Đo đạc độ dài
         int durationSeconds = ttsService.estimateDurationSeconds(transcript);
@@ -475,6 +507,174 @@ public class AudioService {
                 "/api/v1/audio/stream/" + request.getPoiId(),
                 "TEXT_TO_SPEECH",
                 cues
+        );
+    }
+
+    public record TranslatedScript(String title, String transcript) {}
+
+    /**
+     * Dịch tiêu đề và kịch bản thuyết minh du lịch sang ngôn ngữ đích sử dụng Gemini AI.
+     */
+    public TranslatedScript translateScript(String originalTitle, String originalTranscript, String targetLang) {
+        String langName = LANGUAGE_NAMES.getOrDefault(targetLang.toLowerCase(), targetLang);
+
+        if (geminiClient != null) {
+            try {
+                String systemPrompt = """
+                        You are an expert multilingual tourism translator for Saigon Whispers (Thì Thầm Sài Gòn), Vietnam.
+                        Your task is to translate an audio guide title and spoken transcript from Vietnamese into %s (language code: '%s').
+                        
+                        Requirements:
+                        1. Translate naturally, vividly, and engagingly as a spoken audio tour for international visitors.
+                        2. Keep landmark and dish names recognizable (e.g. "Bến Nhà Rồng", "Ốc Oanh", "Phá Lấu Bò", "Cầu Mống").
+                        3. Output MUST be valid JSON with exact keys: "title" and "transcript".
+                        4. Do NOT include markdown code blocks (```json) or extra explanation.
+                        """.formatted(langName, targetLang);
+
+                String userPrompt = """
+                        {
+                          "originalTitle": "%s",
+                          "originalTranscript": "%s"
+                        }
+                        """.formatted(
+                                originalTitle.replace("\"", "\\\"").replace("\n", " "),
+                                originalTranscript.replace("\"", "\\\"").replace("\n", " ")
+                        );
+
+                Optional<String> jsonOpt = geminiClient.generateJson(systemPrompt, userPrompt);
+                if (jsonOpt.isPresent()) {
+                    JsonNode node = objectMapper.readTree(jsonOpt.get());
+                    String title = node.has("title") ? node.get("title").asText() : originalTitle + " (" + langName + ")";
+                    String transcript = node.has("transcript") ? node.get("transcript").asText() : originalTranscript;
+                    if (!transcript.isBlank()) {
+                        return new TranslatedScript(title, transcript);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Gemini translation failed for language {}: {}", targetLang, e.getMessage());
+            }
+        }
+
+        // Fallback translation if Gemini is offline
+        String fallbackTitle = originalTitle + " [" + langName + "]";
+        String fallbackTranscript = originalTranscript;
+        return new TranslatedScript(fallbackTitle, fallbackTranscript);
+    }
+
+    /**
+     * Sinh bộ audio đa ngôn ngữ từ văn bản gốc (Phương án 1 - Pre-generate On-Save).
+     * Tạo audio tiếng Việt gốc, dịch bằng Gemini và sinh audio TTS cho các ngôn ngữ phổ biến (en, zh, ja, ko, fr).
+     */
+    public MultilingualAudioResponse generateMultilingualAudio(MultilingualAudioRequest request) {
+        if (request == null || request.getPoiId() == null) {
+            throw new IllegalArgumentException("poiId không được để trống.");
+        }
+        if (request.getTranscript() == null || request.getTranscript().trim().isBlank()) {
+            throw new IllegalArgumentException("transcript không được để trống.");
+        }
+
+        String poiName = audioRepository.findPoiNameById(request.getPoiId())
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy địa điểm với ID: " + request.getPoiId()));
+
+        String originalTitle = (request.getTitle() != null && !request.getTitle().trim().isBlank())
+                ? request.getTitle().trim()
+                : "Thuyết minh " + poiName;
+
+        String originalTranscript = request.getTranscript().trim();
+        String zone = (request.getZone() != null && !request.getZone().isBlank()) ? request.getZone().trim() : "quan4";
+        String viVoice = (request.getVoice() != null && !request.getVoice().isBlank()) ? request.getVoice().trim() : DEFAULT_VOICES.get("vi");
+
+        // 1. Sinh audio gốc tiếng Việt (vi)
+        AudioTextGenerateRequest viRequest = new AudioTextGenerateRequest(request.getPoiId(), originalTitle, originalTranscript, viVoice, zone);
+        AudioCreateResponse originalResponse = generateAudioFromText(viRequest);
+
+        // 2. Danh sách ngôn ngữ đích (mặc định: en, zh, ja, ko, fr)
+        List<String> targetLangs = request.getTargetLanguages();
+        if (targetLangs == null || targetLangs.isEmpty()) {
+            targetLangs = List.of("en", "zh", "ja", "ko", "fr");
+        }
+
+        List<AudioCreateResponse> translatedList = new ArrayList<>();
+        for (String rawLang : targetLangs) {
+            String lang = rawLang.trim().toLowerCase();
+            if ("vi".equals(lang)) continue; // đã tạo tiếng Việt ở bước 1
+
+            try {
+                // A. Dịch tiêu đề và kịch bản bằng Gemini AI
+                TranslatedScript translated = translateScript(originalTitle, originalTranscript, lang);
+                String langVoice = DEFAULT_VOICES.getOrDefault(lang, "Giọng đọc AI (" + lang + ")");
+
+                // B. Sinh âm thanh bằng TtsService cho ngôn ngữ đích
+                byte[] audioBytes = ttsService.generateSpeech(translated.transcript(), lang);
+                String fileName = "poi_" + request.getPoiId() + "_" + lang + ".mp3";
+
+                // C. Lưu file xuống đĩa cứng
+                saveAudioBytes(fileName, audioBytes);
+
+                // D. Đo đạc thời lượng & dung lượng
+                int durationSeconds = ttsService.estimateDurationSeconds(translated.transcript());
+                long fileSizeBytes = audioBytes.length;
+
+                // E. Lưu vào Database (UPSERT với poi_id và language)
+                PoiAudio audio = new PoiAudio();
+                audio.setPoiId(request.getPoiId());
+                audio.setTitle(translated.title());
+                audio.setFileName(fileName);
+                audio.setDurationSeconds(durationSeconds);
+                audio.setFileSizeBytes(fileSizeBytes);
+                audio.setVoice(langVoice);
+                audio.setLanguage(lang);
+                audio.setZone(zone);
+                audio.setTranscript(translated.transcript());
+
+                Long savedId = audioRepository.upsertAudio(audio);
+                audio.setId(savedId);
+
+                // F. Xóa Redis cache cho ngôn ngữ này
+                try {
+                    redisTemplate.delete(AUDIO_META_CACHE_PREFIX + request.getPoiId() + ":" + lang);
+                    redisTemplate.delete(AUDIO_META_CACHE_PREFIX + request.getPoiId());
+                } catch (Exception e) {
+                    log.warn("Failed to evict Redis cache for audio {}:{}", request.getPoiId(), lang);
+                }
+
+                List<SubtitleCue> cues = generateSubtitleCues(translated.transcript(), durationSeconds);
+                AudioCreateResponse langResponse = new AudioCreateResponse(
+                        savedId,
+                        request.getPoiId(),
+                        poiName,
+                        translated.title(),
+                        fileName,
+                        durationSeconds,
+                        formatDuration(durationSeconds),
+                        fileSizeBytes,
+                        formatFileSize(fileSizeBytes),
+                        langVoice,
+                        lang,
+                        zone,
+                        translated.transcript(),
+                        "/api/v1/audio/stream/" + request.getPoiId() + "?lang=" + lang,
+                        "AI_MULTILINGUAL_TRANSLATION",
+                        cues
+                );
+                translatedList.add(langResponse);
+                log.info("Successfully generated {} audio for POI {}: {}", lang, request.getPoiId(), translated.title());
+            } catch (Exception e) {
+                log.error("Failed to generate {} audio for POI {}: {}", lang, request.getPoiId(), e.getMessage());
+            }
+        }
+
+        int totalLangs = 1 + translatedList.size();
+        String summaryMsg = "Đã sinh thành công bộ âm thanh cho " + totalLangs + " ngôn ngữ (VI và " +
+                translatedList.stream().map(AudioCreateResponse::language).collect(Collectors.joining(", ")) + ").";
+
+        return new MultilingualAudioResponse(
+                request.getPoiId(),
+                poiName,
+                originalResponse,
+                translatedList,
+                totalLangs,
+                summaryMsg
         );
     }
 

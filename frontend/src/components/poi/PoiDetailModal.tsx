@@ -13,16 +13,19 @@ import {
   fetchPoiDetail,
   fetchPoiMenu,
   fetchPoiReviews,
-  postReview,
   checkinPoi,
   toggleFavorite,
   getAudioStreamUrl,
   trackAudioListen,
-  askAi,
 } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import FormattedAiText from '@/components/common/FormattedAiText';
+
+import PoiInfoTab from './tabs/PoiInfoTab';
+import PoiMenuTab from './tabs/PoiMenuTab';
+import PoiReviewsTab from './tabs/PoiReviewsTab';
+import PoiAiTab from './tabs/PoiAiTab';
+import PoiBadgeModal from './PoiBadgeModal';
 
 interface PoiDetailModalProps {
   poiId: number | string | null;
@@ -31,29 +34,18 @@ interface PoiDetailModalProps {
   onNavigate?: (poi: { lat: number; lng: number; name: string }) => void;
 }
 
-export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, onNavigate }: PoiDetailModalProps) {
+export default function PoiDetailModal({
+  poiId,
+  initialTab = 'info',
+  onClose,
+  onNavigate,
+}: PoiDetailModalProps) {
   const { user, deviceId } = useAuth();
   const { language, tk } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>(initialTab);
 
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab, poiId]);
-
-  useEffect(() => {
-    setIsPlayingAudio(false);
-    setAudioProgress(0);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  }, [poiId, language]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  // Data states
   const [detail, setDetail] = useState<PoiDetail | null>(null);
   const [menu, setMenu] = useState<PoiMenuResponse | null>(null);
   const [reviewsData, setReviewsData] = useState<ReviewPageResponse | null>(null);
@@ -72,101 +64,74 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
   const [checkinError, setCheckinError] = useState<string | null>(null);
   const [showBadgesModal, setShowBadgesModal] = useState<Badge[] | null>(null);
 
-  // Review Form State
-  const [userRating, setUserRating] = useState(5);
-  const [commentText, setCommentText] = useState('');
-  const [reviewIsPublic, setReviewIsPublic] = useState(true);
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [reviewSuccess, setReviewSuccess] = useState(false);
-
-  // AI Ask State
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-  const [aiFollowUps, setAiFollowUps] = useState<string[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Tải dữ liệu ban đầu
   useEffect(() => {
-    if (!poiId) return;
+    setActiveTab(initialTab);
+  }, [initialTab, poiId]);
 
-    let isMounted = true;
-    setLoading(true);
-
-    const loadData = async () => {
-      try {
-        const pDetail = await fetchPoiDetail(poiId);
-        if (isMounted) setDetail(pDetail);
-
-        // Tải thực đơn nếu là điểm ăn uống (song ngữ)
-        const cat = (pDetail.categoryName || '').toLowerCase();
-        if (
-          pDetail.poiType === 'FOOD' ||
-          cat.includes('ốc') ||
-          cat.includes('snail') ||
-          cat.includes('ẩm thực') ||
-          cat.includes('food') ||
-          cat.includes('seafood')
-        ) {
-          try {
-            const pMenu = await fetchPoiMenu(poiId);
-            if (isMounted) setMenu(pMenu);
-          } catch {
-            // Không có menu
-          }
-        }
-
-        // Tải reviews
-        try {
-          const revs = await fetchPoiReviews(poiId);
-          if (isMounted) setReviewsData(revs);
-        } catch {
-          // reviews rỗng
-        }
-      } catch (err) {
-        console.error('Lỗi khi tải chi tiết POI:', err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
+  useEffect(() => {
+    setIsPlayingAudio(false);
+    setAudioProgress(0);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
   }, [poiId, language]);
 
-  if (!poiId) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Toggle Favorite
+  // Fetch POI details, menu, reviews
+  useEffect(() => {
+    if (!poiId) return;
+    setLoading(true);
+    setCheckinResult(null);
+    setCheckinError(null);
+
+    Promise.all([
+      fetchPoiDetail(Number(poiId)),
+      fetchPoiMenu(Number(poiId)).catch(() => null),
+      fetchPoiReviews(Number(poiId)).catch(() => null),
+    ])
+      .then(([detailData, menuData, reviewsRes]) => {
+        setDetail(detailData);
+        setMenu(menuData);
+        setReviewsData(reviewsRes);
+        setIsFav(Boolean((detailData as any)?.isFavorite));
+      })
+      .catch((err) => {
+        console.error('Failed to load POI details:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [poiId]);
+
+  // Toggle favorite
   const handleToggleFav = async () => {
+    if (!poiId) return;
     try {
-      const nextState = !isFav;
-      setIsFav(nextState);
-      await toggleFavorite(poiId, nextState);
+      const res = await toggleFavorite(Number(poiId), !isFav);
+      setIsFav(res.isFavorite);
     } catch {
       setIsFav(!isFav);
     }
   };
 
-  // Audio Play / Pause
+  // Audio guide controls
   const togglePlayAudio = () => {
     if (!audioRef.current) return;
     if (isPlayingAudio) {
       audioRef.current.pause();
       setIsPlayingAudio(false);
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(() => {});
       setIsPlayingAudio(true);
-      // Ghi nhận telemetry lượt nghe
-      if (detail) {
+      if (poiId) {
         trackAudioListen({
-          deviceId: deviceId || 'web-guest',
+          deviceId: deviceId || 'anonymous',
           poiId: Number(poiId),
-          durationSeconds: 15,
+          durationSeconds: Math.floor(audioDuration || 30),
           completed: false,
           triggerType: 'MANUAL',
         });
@@ -174,109 +139,57 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
     }
   };
 
-  // Check-in GPS 30m
-  const handleCheckin = () => {
+  // Geolocation & Check-in
+  const executeCheckin = async (lat: number, lng: number) => {
+    if (!poiId) return;
     setCheckingIn(true);
     setCheckinError(null);
+    setCheckinResult(null);
 
-    // Ưu tiên vị trí giả lập nếu đang thử nghiệm
-    const savedSim = typeof window !== 'undefined' ? sessionStorage.getItem('sw_sim_pos') : null;
-    if (savedSim) {
-      try {
-        const parsed = JSON.parse(savedSim);
-        if (parsed.lat && parsed.lng) {
-          executeCheckin(parsed.lat, parsed.lng);
-          return;
-        }
-      } catch {
-        // ignore
+    try {
+      const res = await checkinPoi(Number(poiId), lat, lng);
+      setCheckinResult(res);
+
+      if (res.newlyUnlockedBadges && res.newlyUnlockedBadges.length > 0) {
+        setShowBadgesModal(res.newlyUnlockedBadges);
       }
+    } catch (err: any) {
+      setCheckinError(err.message || 'Lỗi check-in');
+    } finally {
+      setCheckingIn(false);
     }
+  };
 
+  const handleCheckin = () => {
     if (!navigator.geolocation) {
-      // Dùng tọa độ thực của địa điểm làm vị trí giả lập nếu máy không có GPS
-      executeCheckin(detail?.latitude || 10.7612, detail?.longitude || 106.7025);
+      setCheckinError('Thiết bị của bạn không hỗ trợ định vị GPS');
       return;
     }
+
+    setCheckingIn(true);
+    setCheckinError(null);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         executeCheckin(pos.coords.latitude, pos.coords.longitude);
       },
       () => {
-        // Fallback: Nếu từ chối GPS thì dùng tọa độ xấp xỉ gần quán để trải nghiệm tính năng
-        executeCheckin(detail?.latitude || 10.7612, detail?.longitude || 106.7025);
+        if (detail) {
+          executeCheckin(detail.latitude, detail.longitude);
+        } else {
+          setCheckinError('Không thể lấy tọa độ GPS. Vui lòng bật định vị.');
+          setCheckingIn(false);
+        }
       },
-      { timeout: 7000, enableHighAccuracy: true }
+      { timeout: 8000, enableHighAccuracy: true }
     );
-  };
-
-  const executeCheckin = async (lat: number, lng: number) => {
-    try {
-      const res = await checkinPoi(poiId, lat, lng);
-      setCheckinResult(res);
-      if (res.newlyUnlockedBadges && res.newlyUnlockedBadges.length > 0) {
-        setShowBadgesModal(res.newlyUnlockedBadges);
-      }
-    } catch (err: any) {
-      setCheckinError(err.message || 'Lỗi kiểm tra vị trí check-in');
-    } finally {
-      setCheckingIn(false);
-    }
-  };
-
-  // Gửi đánh giá
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim()) return;
-    setSubmittingReview(true);
-    try {
-      await postReview(poiId, {
-        rating: userRating,
-        comment: commentText.trim(),
-        isAnonymous: !reviewIsPublic,
-      });
-      setReviewSuccess(true);
-      setCommentText('');
-      // Reload reviews
-      const updated = await fetchPoiReviews(poiId);
-      setReviewsData(updated);
-      setTimeout(() => setReviewSuccess(false), 4000);
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi gửi đánh giá');
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
-
-  // Hỏi AI
-  const handleAskAi = async (q?: string) => {
-    const question = q || aiQuestion;
-    if (!question.trim()) return;
-    setAiLoading(true);
-    setAiAnswer(null);
-    try {
-      const res = await askAi({
-        poiId: Number(poiId),
-        question: question.trim(),
-        userLat: detail?.latitude,
-        userLng: detail?.longitude,
-      });
-      setAiAnswer(res.answer);
-      setAiFollowUps(res.suggestedFollowUps || []);
-      setAiQuestion('');
-    } catch (err: any) {
-      setAiAnswer(err.message || 'AI đang bận, bạn vui lòng hỏi lại câu khác.');
-    } finally {
-      setAiLoading(false);
-    }
   };
 
   if (!poiId || !mounted) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      {/* Audio Element ngầm */}
+      {/* Audio Element */}
       <audio
         ref={audioRef}
         src={poiId ? getAudioStreamUrl(poiId, language) : undefined}
@@ -295,6 +208,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
       <div className="relative w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         {/* Nút đóng */}
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-3 right-3 z-30 w-9 h-9 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition cursor-pointer backdrop-blur-md"
         >
@@ -344,6 +258,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shrink-0">
           {/* Nút Chỉ đường */}
           <button
+            type="button"
             onClick={() => {
               if (detail && onNavigate) {
                 onNavigate({ lat: detail.latitude, lng: detail.longitude, name: detail.name });
@@ -360,6 +275,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
 
           {/* Nút Audio Thuyết minh */}
           <button
+            type="button"
             onClick={togglePlayAudio}
             className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition shrink-0 cursor-pointer ${
               isPlayingAudio
@@ -382,6 +298,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
 
           {/* Nút Check-in GPS 30m */}
           <button
+            type="button"
             onClick={handleCheckin}
             disabled={checkingIn}
             className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs transition active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
@@ -392,6 +309,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
 
           {/* Nút Lưu yêu thích */}
           <button
+            type="button"
             onClick={handleToggleFav}
             className={`p-2 rounded-xl border transition shrink-0 cursor-pointer ${
               isFav ? 'bg-rose-50 border-rose-300 text-rose-600' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'
@@ -404,7 +322,7 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
           </button>
         </div>
 
-        {/* Thanh audio timeline nếu đang bật */}
+        {/* Thanh audio timeline */}
         {isPlayingAudio && audioDuration > 0 && (
           <div className="bg-emerald-50 px-4 py-1.5 border-b border-emerald-100 flex items-center justify-between text-[11px] text-emerald-900">
             <span className="font-semibold">{tk('poi_audio_playing')}</span>
@@ -412,23 +330,24 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
           </div>
         )}
 
-        {/* Thông báo Check-in thành công */}
+        {/* Thông báo Check-in */}
         {checkinResult && (
           <div className="bg-emerald-100 border-b border-emerald-300 text-emerald-900 px-4 py-2 text-xs flex items-center justify-between animate-fadeIn">
             <span>🎉 {checkinResult.message}</span>
-            <button onClick={() => setCheckinResult(null)} className="font-bold text-emerald-700 ml-2">✕</button>
+            <button type="button" onClick={() => setCheckinResult(null)} className="font-bold text-emerald-700 ml-2 cursor-pointer">✕</button>
           </div>
         )}
         {checkinError && (
           <div className="bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-2 text-xs flex items-center justify-between">
             <span>⚠️ {checkinError}</span>
-            <button onClick={() => setCheckinError(null)} className="font-bold text-amber-700 ml-2">✕</button>
+            <button type="button" onClick={() => setCheckinError(null)} className="font-bold text-amber-700 ml-2 cursor-pointer">✕</button>
           </div>
         )}
 
         {/* ── 3. TABS BAR ───────────────────────────────────────────── */}
         <div className="flex border-b border-slate-200 bg-white shrink-0">
           <button
+            type="button"
             onClick={() => setActiveTab('info')}
             className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer ${
               activeTab === 'info' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -436,17 +355,17 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
           >
             {tk('poi_tab_info')}
           </button>
-          {menu && menu.categories && menu.categories.length > 0 && (
-            <button
-              onClick={() => setActiveTab('menu')}
-              className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer ${
-                activeTab === 'menu' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {tk('poi_tab_menu')} ({menu.totalDishes})
-            </button>
-          )}
           <button
+            type="button"
+            onClick={() => setActiveTab('menu')}
+            className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer ${
+              activeTab === 'menu' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {tk('poi_tab_menu')} {menu ? `(${menu.categories?.reduce((acc, c) => acc + c.dishes.length, 0) || 0})` : ''}
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('reviews')}
             className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer ${
               activeTab === 'reviews' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -455,349 +374,37 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
             {tk('poi_tab_reviews')} {reviewsData ? `(${reviewsData.totalCount})` : ''}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('ai')}
-            className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer ${
+            className={`flex-1 py-3 text-xs font-bold text-center border-b-2 transition cursor-pointer flex items-center justify-center gap-1 ${
               activeTab === 'ai' ? 'border-purple-600 text-purple-600 bg-purple-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {tk('poi_tab_ai')}
+            <span>✨</span>
+            <span>{tk('poi_tab_ai')}</span>
           </button>
         </div>
 
-        {/* ── 4. TAB CONTENTS (SCROLLABLE) ─────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-6">
+        {/* ── 4. TAB CONTENTS ───────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-slate-50/50">
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs font-medium">{tk('poi_syncing')}</span>
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+              <span className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <span>{tk('poi_syncing')}</span>
             </div>
           ) : (
             <>
-              {/* TAB 1: THÔNG TIN TỔNG QUAN */}
-              {activeTab === 'info' && detail && (
-                <div className="space-y-4">
-                  {/* Mô tả */}
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{tk('poi_section_intro')}</h3>
-                    <p className="text-sm text-slate-700 leading-relaxed">
-                      {detail.description?.replace(/<!--pin:.*?-->/g, '').trim() || (language === 'en' ? 'No detailed description available for this place yet.' : 'Chưa có mô tả chi tiết cho địa điểm này.')}
-                    </p>
-                  </div>
-
-                  {/* Chi tiết hoạt động */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
-                        ⏰
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_opening_hours')}</p>
-                        <p className="text-xs font-extrabold text-slate-800">{detail.openingHours || tk('poi_opening_tbd')}</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
-                        💵
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_price')}</p>
-                        <p className="text-xs font-extrabold text-slate-800">
-                          {detail.priceRangeMin ? `${detail.priceRangeMin.toLocaleString()}đ` : tk('home_poi_free')}
-                          {detail.priceRangeMax ? ` - ${detail.priceRangeMax.toLocaleString()}đ` : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
-                        📞
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_phone')}</p>
-                        <p className="text-xs font-extrabold text-slate-800">{detail.phone || '0903 123 456'}</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg">
-                        📍
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{tk('poi_coords')}</p>
-                        <p className="text-xs font-mono font-bold text-slate-700">
-                          {detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: THỰC ĐƠN & MÓN ĂN */}
-              {activeTab === 'menu' && menu && (
-                <div className="space-y-6">
-                  {menu.categories.map((cat) => (
-                    <div key={cat.categoryId} className="space-y-3">
-                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-600" />
-                        {cat.categoryName} ({cat.dishes.length})
-                      </h3>
-
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {cat.dishes.map((dish) => (
-                          <div
-                            key={dish.id}
-                            className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3 hover:border-slate-300 transition"
-                          >
-                            {dish.thumbnailUrl ? (
-                              <img
-                                src={dish.thumbnailUrl}
-                                alt={dish.name}
-                                className="w-16 h-16 rounded-xl object-cover shrink-0"
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl shrink-0">
-                                🍲
-                              </div>
-                            )}
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <h4 className="text-xs font-extrabold text-slate-900 truncate">
-                                  {dish.name}
-                                </h4>
-                                <span className="text-xs font-black text-blue-600 shrink-0">
-                                  {dish.price.toLocaleString()}đ
-                                </span>
-                              </div>
-
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
-                                {dish.description || (language === 'en' ? 'Renowned signature dish.' : 'Món đặc sản trứ danh.')}
-                              </p>
-
-                              {/* Badges: Signature & Allergens */}
-                              <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                                {dish.isSignature && (
-                                  <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                                    ★ Best Seller
-                                  </span>
-                                )}
-                                {dish.hasPeanuts && (
-                                  <span className="bg-rose-50 text-rose-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-rose-200">
-                                    {tk('poi_dish_peanut')}
-                                  </span>
-                                )}
-                                {dish.hasSeafood && (
-                                  <span className="bg-cyan-50 text-cyan-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-cyan-200">
-                                    {tk('poi_dish_seafood')}
-                                  </span>
-                                )}
-                                {dish.hasGluten && (
-                                  <span className="bg-purple-50 text-purple-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-purple-200">
-                                    {tk('poi_dish_gluten')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* TAB 3: ĐÁNH GIÁ CỘNG ĐỒNG */}
+              {activeTab === 'info' && detail && <PoiInfoTab detail={detail} />}
+              {activeTab === 'menu' && menu && <PoiMenuTab menu={menu} />}
               {activeTab === 'reviews' && (
-                <div className="space-y-6">
-                  {/* Form viết đánh giá */}
-                  <form onSubmit={handleSubmitReview} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                    <h4 className="text-xs font-bold text-slate-800">{tk('poi_review_title')}</h4>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setUserRating(star)}
-                          className={`text-xl transition cursor-pointer ${star <= userRating ? 'text-amber-400' : 'text-slate-200'}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                      <span className="text-xs font-bold text-slate-600 ml-2">{userRating} {tk('poi_review_stars')}</span>
-                    </div>
-
-                    <textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      placeholder={tk('poi_review_placeholder')}
-                      rows={2}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 bg-slate-50"
-                    />
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-500">{tk('poi_review_mode')}</span>
-                        <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => setReviewIsPublic(true)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                              reviewIsPublic ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                          >
-                            🌐 {tk('poi_review_public')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setReviewIsPublic(false)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                              !reviewIsPublic ? 'bg-white text-purple-700 shadow-2xs' : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                          >
-                            🔒 {tk('poi_review_private')}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-2.5">
-                        <span className="text-[10px] text-slate-400">
-                          {tk('poi_review_post_as')} <b className="text-slate-600">{reviewIsPublic ? (user?.displayName || tk('poi_reviewer_default')) : tk('poi_reviewer_anon')}</b>
-                        </span>
-                        <button
-                          type="submit"
-                          disabled={submittingReview || !commentText.trim()}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer disabled:opacity-50"
-                        >
-                          {submittingReview ? tk('poi_review_submitting') : tk('poi_review_submit')}
-                        </button>
-                      </div>
-                    </div>
-
-                    {reviewSuccess && (
-                      <p className="text-[11px] text-emerald-600 font-bold">{tk('poi_review_success')}</p>
-                    )}
-                  </form>
-
-                  {/* Danh sách đánh giá */}
-                  <div className="space-y-3">
-                    {reviewsData && reviewsData.items.length > 0 ? (
-                      reviewsData.items.map((rev) => (
-                        <div key={rev.id} className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
-                                {rev.userDisplayName ? rev.userDisplayName.charAt(0).toUpperCase() : 'U'}
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-900">{rev.userDisplayName || tk('poi_reviewer_fallback')}</p>
-                                <p className="text-[10px] text-slate-400">
-                                  {new Date(rev.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN')}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex text-amber-400 text-xs">
-                              {'★'.repeat(rev.rating)}
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-700 leading-relaxed">{rev.comment}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-slate-400 text-xs">
-                        {tk('poi_review_empty')}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <PoiReviewsTab
+                  poiId={poiId}
+                  reviewsData={reviewsData}
+                  setReviewsData={setReviewsData}
+                />
               )}
-
-              {/* TAB 4: HỎI TRỢ LÝ AI */}
               {activeTab === 'ai' && (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-br from-purple-700 to-indigo-800 text-white p-4 rounded-2xl shadow-sm">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">✨</span>
-                      <h4 className="text-xs font-black uppercase tracking-wider">{tk('poi_ai_title')}</h4>
-                    </div>
-                    <p className="text-xs text-purple-100">
-                      {language === 'en'
-                        ? `Ask anything about the history, ingredients, or specialty dishes of ${detail?.name || 'this spot'}.`
-                        : `Hỏi bất cứ điều gì về lịch sử, nguồn gốc nguyên liệu, các món ăn đặc sắc nhất của quán ${detail?.name || 'này'}.`}
-                    </p>
-                  </div>
-
-                  {/* Input câu hỏi */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={aiQuestion}
-                      onChange={(e) => setAiQuestion(e.target.value)}
-                      placeholder={tk('poi_ai_placeholder')}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAskAi()}
-                      className="flex-1 text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-600 bg-white"
-                    />
-                    <button
-                      onClick={() => handleAskAi()}
-                      disabled={aiLoading || !aiQuestion.trim()}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-3 rounded-xl transition cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      {aiLoading ? tk('poi_ai_thinking') : tk('poi_ai_btn')}
-                    </button>
-                  </div>
-
-                  {/* Gợi ý câu hỏi nhanh */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {(language === 'en'
-                      ? [
-                          'Which dish is the best-seller?',
-                          'What should 2 people order?',
-                          'Any non-spicy options?',
-                        ]
-                      : [
-                          'Món nào là Best-seller?',
-                          'Đi 2 người nên gọi gì?',
-                          'Quán có món gì cho người không ăn cay?',
-                        ]
-                    ).map((chip) => (
-                      <button
-                        key={chip}
-                        onClick={() => handleAskAi(chip)}
-                        className="text-[11px] bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 px-3 py-1 rounded-full transition cursor-pointer"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Câu trả lời AI */}
-                  {aiAnswer && (
-                    <div className="bg-white p-4 rounded-2xl border border-purple-200 shadow-xs space-y-2 animate-fadeIn">
-                      <div className="flex items-center gap-2 text-purple-700 font-bold text-xs">
-                        <span>{tk('poi_ai_answer')}</span>
-                      </div>
-                      <FormattedAiText content={aiAnswer} />
-
-                      {aiFollowUps.length > 0 && (
-                        <div className="pt-2 border-t border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{tk('poi_ai_followup')}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {aiFollowUps.map((fu, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => handleAskAi(fu)}
-                                className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md transition"
-                              >
-                                {fu}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <PoiAiTab poiId={poiId} poiName={detail?.name} />
               )}
             </>
           )}
@@ -806,37 +413,12 @@ export default function PoiDetailModal({ poiId, initialTab = 'info', onClose, on
 
       {/* MODAL HUY HIỆU KHI CHECK-IN */}
       {showBadgesModal && (
-        <div className="fixed inset-0 z-[2500] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
-            <div className="text-5xl animate-bounce">🏆</div>
-            <h3 className="text-lg font-black text-slate-900">{tk('poi_badge_title')}</h3>
-            <p className="text-xs text-slate-600">{tk('poi_badge_subtitle')}</p>
-
-            <div className="space-y-3">
-              {showBadgesModal.map((b) => (
-                <div key={b.badgeCode} className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex items-center gap-3 text-left">
-                  <div className="w-12 h-12 rounded-xl bg-white p-1 shadow-xs shrink-0 flex items-center justify-center">
-                    <img src={b.iconUrl} alt={b.badgeName} className="w-10 h-10 object-contain" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-amber-900">{b.badgeName}</h4>
-                    <p className="text-[11px] text-amber-800 leading-tight">{b.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowBadgesModal(null)}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-2xl transition cursor-pointer"
-            >
-              {tk('poi_badge_continue')}
-            </button>
-          </div>
-        </div>
+        <PoiBadgeModal
+          badges={showBadgesModal}
+          onClose={() => setShowBadgesModal(null)}
+        />
       )}
     </div>,
     document.body
   );
 }
-

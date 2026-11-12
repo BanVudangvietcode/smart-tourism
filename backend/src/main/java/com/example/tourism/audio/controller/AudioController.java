@@ -83,6 +83,18 @@ public class AudioController {
     }
 
     /**
+     * POST /api/v1/audio/generate-multilingual
+     * Body JSON: { poiId, title, transcript, voice?, zone?, targetLanguages?: ["en", "zh", "ja", "ko", "fr"] }
+     * Tự động tạo audio gốc tiếng Việt và dịch bằng AI + sinh audio cho các ngôn ngữ phổ biến.
+     */
+    @PostMapping("/generate-multilingual")
+    public ResponseEntity<com.example.tourism.audio.dto.MultilingualAudioResponse> generateMultilingual(
+            @jakarta.validation.Valid @RequestBody com.example.tourism.audio.dto.MultilingualAudioRequest request) {
+        com.example.tourism.audio.dto.MultilingualAudioResponse res = audioService.generateMultilingualAudio(request);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
      * POST /api/v1/audio/upload
      * Multipart Form Data: file (MP3), poiId, title, transcript, voice?, zone?
      * Cho phép quản trị viên hoặc người dùng tự tải lên tệp âm thanh MP3 tùy chỉnh.

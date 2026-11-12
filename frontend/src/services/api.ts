@@ -426,6 +426,38 @@ export const getAudioStreamUrl = (poiId: number | string, lang?: string): string
   return `${API_V1}/audio/stream/${poiId}?lang=${currentLang}`;
 };
 
+export const getAudioMetadata = async (poiId: number | string, lang?: string): Promise<any> => {
+  const currentLang = lang || (typeof window !== 'undefined' ? (localStorage.getItem('sw_language') || 'vi') : 'vi');
+  const res = await fetch(`${API_V1}/audio/metadata/${poiId}?lang=${currentLang}`, {
+    headers: { ...getCommonHeaders() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+};
+
+export const generateMultilingualAudio = async (data: {
+  poiId: number;
+  title?: string;
+  transcript: string;
+  voice?: string;
+  zone?: string;
+  targetLanguages?: string[];
+}): Promise<any> => {
+  const res = await fetch(`${API_V1}/audio/generate-multilingual`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getCommonHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Lỗi sinh audio đa ngôn ngữ');
+  }
+  return res.json();
+};
+
 export const trackAudioListen = async (data: {
   deviceId: string;
   poiId: number;
