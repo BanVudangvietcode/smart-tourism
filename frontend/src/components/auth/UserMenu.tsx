@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage, SUPPORTED_LANGUAGES } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { loginWithGoogle } from '@/services/api';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -14,7 +14,7 @@ interface UserMenuProps {
 
 export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
   const { user, login, logout } = useAuth();
-  const { language, setLanguage, tk } = useLanguage();
+  const { tk } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -159,32 +159,6 @@ export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
               <span>⚡</span>
               <span>{tk('label_admin')}</span>
             </Link>
-
-            {/* Language Switcher */}
-            <div className="px-4 py-2.5 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-xs text-gray-500 font-medium mb-1.5">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                </svg>
-                <span>{tk('label_language')}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1">
-                {SUPPORTED_LANGUAGES.map((item) => (
-                  <button
-                    key={item.code}
-                    onClick={() => setLanguage(item.code)}
-                    className={`py-1 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition ${
-                      language === item.code
-                        ? 'bg-white text-blue-700 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-800'
-                    }`}
-                  >
-                    <span>{item.flag}</span>
-                    <span>{item.short}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <button
               onClick={() => {
