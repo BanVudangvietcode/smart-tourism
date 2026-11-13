@@ -25,7 +25,6 @@ public class DishRepository {
         c.setId(rs.getLong("id"));
         c.setPoiId((Long) rs.getObject("poi_id"));
         c.setName(rs.getString("name"));
-        try { c.setNameEn(rs.getString("name_en")); } catch (Exception ignored) {}
         c.setSortOrder(rs.getInt("sort_order"));
         c.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         return c;
@@ -38,18 +37,14 @@ public class DishRepository {
         d.setMenuCategoryId((Long) rs.getObject("menu_category_id"));
         d.setMenuCategoryName(rs.getString("category_name"));
         d.setName(rs.getString("name"));
-        try { d.setNameEn(rs.getString("name_en")); } catch (Exception ignored) {}
         d.setSlug(rs.getString("slug"));
         d.setDescription(rs.getString("description"));
-        try { d.setDescriptionEn(rs.getString("description_en")); } catch (Exception ignored) {}
         d.setPrice(rs.getInt("price"));
         d.setOriginalPrice((Integer) rs.getObject("original_price"));
         d.setUnit(rs.getString("unit"));
-        try { d.setUnitEn(rs.getString("unit_en")); } catch (Exception ignored) {}
         d.setSignature(rs.getBoolean("is_signature"));
         d.setThumbnailUrl(rs.getString("thumbnail_url"));
         d.setIngredients(rs.getString("ingredients"));
-        try { d.setIngredientsEn(rs.getString("ingredients_en")); } catch (Exception ignored) {}
         d.setAllergens(rs.getString("allergens"));
         d.setHasPeanuts(rs.getBoolean("has_peanuts"));
         d.setHasSeafood(rs.getBoolean("has_seafood"));
@@ -78,7 +73,7 @@ public class DishRepository {
 
     public List<MenuCategory> findCategoriesByPoiId(Long poiId) {
         String sql = """
-                SELECT id, poi_id, name, name_en, sort_order, created_at
+                SELECT id, poi_id, name, sort_order, created_at
                 FROM menu_categories
                 WHERE poi_id = ?
                 ORDER BY sort_order ASC, id ASC
@@ -89,9 +84,9 @@ public class DishRepository {
     public List<Dish> findDishesByPoiId(Long poiId) {
         String sql = """
                 SELECT d.id, d.poi_id, d.menu_category_id, mc.name AS category_name,
-                       d.name, d.name_en, d.slug, d.description, d.description_en,
-                       d.price, d.original_price, d.unit, d.unit_en,
-                       d.is_signature, d.thumbnail_url, d.ingredients, d.ingredients_en,
+                       d.name, d.slug, d.description,
+                       d.price, d.original_price, d.unit,
+                       d.is_signature, d.thumbnail_url, d.ingredients,
                        d.allergens, d.has_peanuts, d.has_seafood, d.has_gluten,
                        d.sort_order, d.created_at, d.updated_at
                 FROM dishes d
@@ -105,9 +100,9 @@ public class DishRepository {
     public Optional<Dish> findDishById(Long dishId) {
         String sql = """
                 SELECT d.id, d.poi_id, d.menu_category_id, mc.name AS category_name,
-                       d.name, d.name_en, d.slug, d.description, d.description_en,
-                       d.price, d.original_price, d.unit, d.unit_en,
-                       d.is_signature, d.thumbnail_url, d.ingredients, d.ingredients_en,
+                       d.name, d.slug, d.description,
+                       d.price, d.original_price, d.unit,
+                       d.is_signature, d.thumbnail_url, d.ingredients,
                        d.allergens, d.has_peanuts, d.has_seafood, d.has_gluten,
                        d.sort_order, d.created_at, d.updated_at
                 FROM dishes d
@@ -129,9 +124,9 @@ public class DishRepository {
     }
 
     public Optional<String> findPoiNameById(Long poiId, String lang) {
-        String sql = "SELECT COALESCE(CASE WHEN LOWER(?) = 'en' AND name_en IS NOT NULL AND name_en <> '' THEN name_en ELSE name END, name) AS name FROM pois WHERE id = ?";
+        String sql = "SELECT name FROM pois WHERE id = ?";
         try {
-            String name = jdbcTemplate.queryForObject(sql, String.class, lang != null ? lang : "vi", poiId);
+            String name = jdbcTemplate.queryForObject(sql, String.class, poiId);
             return Optional.ofNullable(name);
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();

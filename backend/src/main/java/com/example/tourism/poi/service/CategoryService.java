@@ -62,7 +62,7 @@ public class CategoryService {
     }
 
     private CategoryResponse toResponse(Category c, String lang) {
-        String name = com.example.tourism.common.util.I18nUtils.resolve(c.getName(), c.getNameEn(), lang);
+        String name = c.getName();
         return new CategoryResponse(c.getId(), name, c.getSlug(), c.getIconUrl(), c.getSortOrder());
     }
 

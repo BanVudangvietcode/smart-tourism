@@ -60,8 +60,8 @@ public class TourService {
         List<Tour> tours = tourRepository.findTours(theme, isPublic, userId, search);
         return tours.stream().map(t -> {
             int stopCount = tourRepository.countStopsByTourId(t.getId());
-            String name = com.example.tourism.common.util.I18nUtils.resolve(t.getName(), t.getNameEn(), lang);
-            String desc = com.example.tourism.common.util.I18nUtils.resolve(t.getDescription(), t.getDescriptionEn(), lang);
+            String name = t.getName();
+            String desc = t.getDescription();
             return new TourSummaryResponse(
                     t.getId(),
                     name,
@@ -114,8 +114,8 @@ public class TourService {
         for (TourStop s : stops) {
             Poi poi = poiRepository.findById(s.getPoiId()).orElse(null);
             PoiSummaryResponse poiSummary = poi != null ? toPoiSummary(poi, null, lang) : null;
-            String rec = com.example.tourism.common.util.I18nUtils.resolve(s.getRecommendedDishOrActivity(), s.getRecommendedDishOrActivityEn(), lang);
-            String note = com.example.tourism.common.util.I18nUtils.resolve(s.getNote(), s.getNoteEn(), lang);
+            String rec = s.getRecommendedDishOrActivity();
+            String note = s.getNote();
             stopResponses.add(new TourStopDetailResponse(
                     s.getId(),
                     s.getStopOrder(),
@@ -126,8 +126,8 @@ public class TourService {
             ));
         }
 
-        String tourName = com.example.tourism.common.util.I18nUtils.resolve(tour.getName(), tour.getNameEn(), lang);
-        String tourDesc = com.example.tourism.common.util.I18nUtils.resolve(tour.getDescription(), tour.getDescriptionEn(), lang);
+        String tourName = tour.getName();
+        String tourDesc = tour.getDescription();
 
         return new TourDetailResponse(
                 tour.getId(),
@@ -453,8 +453,8 @@ public class TourService {
 
     private PoiSummaryResponse toPoiSummary(Poi p, Double distanceMeters, String lang) {
         String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
-        String name = com.example.tourism.common.util.I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
-        String address = com.example.tourism.common.util.I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+        String name = p.getName();
+        String address = p.getAddress();
         return new PoiSummaryResponse(
                 p.getId(),
                 name,

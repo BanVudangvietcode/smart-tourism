@@ -89,7 +89,7 @@ public class DishService {
         // Group according to defined categories
         for (MenuCategory cat : categories) {
             List<DishSummaryResponse> catDishes = dishesByCategory.getOrDefault(cat.getId(), List.of());
-            String catName = I18nUtils.resolve(cat.getName(), cat.getNameEn(), effectiveLang);
+            String catName = cat.getName();
             categoryGroups.add(new MenuCategoryGroupResponse(
                     cat.getId(),
                     catName,
@@ -201,9 +201,9 @@ public class DishService {
     }
 
     private DishSummaryResponse toSummary(Dish d, String lang) {
-        String name = I18nUtils.resolve(d.getName(), d.getNameEn(), lang);
-        String description = I18nUtils.resolve(d.getDescription(), d.getDescriptionEn(), lang);
-        String unit = I18nUtils.resolve(d.getUnit(), d.getUnitEn(), lang);
+        String name = d.getName();
+        String description = d.getDescription();
+        String unit = d.getUnit();
 
         return new DishSummaryResponse(
                 d.getId(),
@@ -225,10 +225,10 @@ public class DishService {
     }
 
     private DishDetailResponse toDetail(Dish d, String poiName, List<DishImage> images, String lang) {
-        String name = I18nUtils.resolve(d.getName(), d.getNameEn(), lang);
-        String description = I18nUtils.resolve(d.getDescription(), d.getDescriptionEn(), lang);
-        String unit = I18nUtils.resolve(d.getUnit(), d.getUnitEn(), lang);
-        String ingredientsRaw = I18nUtils.resolve(d.getIngredients(), d.getIngredientsEn(), lang);
+        String name = d.getName();
+        String description = d.getDescription();
+        String unit = d.getUnit();
+        String ingredientsRaw = d.getIngredients();
 
         List<DishImageResponse> imageResponses = images.stream()
                 .map(img -> new DishImageResponse(

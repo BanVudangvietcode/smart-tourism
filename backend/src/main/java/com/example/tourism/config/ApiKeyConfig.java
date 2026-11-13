@@ -17,6 +17,31 @@ public class ApiKeyConfig {
     private String weatherKey = "";
     private String ttsKey = "";
     private String customKey = "";
+    private String aiKey = "";
+    private String aiModel = "gemini-2.5-flash";
+
+    public String getAiKey() {
+        return aiKey;
+    }
+
+    public void setAiKey(String aiKey) {
+        this.aiKey = aiKey != null ? aiKey.trim() : "";
+    }
+
+    public String getAiModel() {
+        return aiModel;
+    }
+
+    public void setAiModel(String aiModel) {
+        this.aiModel = (aiModel != null && !aiModel.isBlank()) ? aiModel.trim() : "gemini-2.5-flash";
+    }
+
+    public String getEffectiveAiKey() {
+        if (aiKey != null && !aiKey.isBlank()) return aiKey;
+        if (geminiKey != null && !geminiKey.isBlank()) return geminiKey;
+        if (customKey != null && !customKey.isBlank()) return customKey;
+        return "";
+    }
 
     public String getMapKey() {
         return mapKey;

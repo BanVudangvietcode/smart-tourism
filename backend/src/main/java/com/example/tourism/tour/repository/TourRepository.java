@@ -28,10 +28,8 @@ public class TourRepository {
         Tour t = new Tour();
         t.setId(rs.getLong("id"));
         t.setName(rs.getString("name"));
-        try { t.setNameEn(rs.getString("name_en")); } catch (Exception ignored) {}
         t.setSlug(rs.getString("slug"));
         t.setDescription(rs.getString("description"));
-        try { t.setDescriptionEn(rs.getString("description_en")); } catch (Exception ignored) {}
         t.setTheme(rs.getString("theme"));
         t.setEstimatedDurationMinutes(rs.getInt("estimated_duration_minutes"));
         t.setEstimatedCost(rs.getInt("estimated_cost"));
@@ -54,16 +52,14 @@ public class TourRepository {
         s.setStopOrder(rs.getInt("stop_order"));
         s.setEstimatedDurationMinutes(rs.getInt("estimated_duration_minutes"));
         s.setRecommendedDishOrActivity(rs.getString("recommended_dish_or_activity"));
-        try { s.setRecommendedDishOrActivityEn(rs.getString("recommended_dish_or_activity_en")); } catch (Exception ignored) {}
         s.setNote(rs.getString("note"));
-        try { s.setNoteEn(rs.getString("note_en")); } catch (Exception ignored) {}
         s.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         return s;
     };
 
     public List<Tour> findTours(String theme, Boolean isPublic, Long userId, String search) {
         StringBuilder sql = new StringBuilder("""
-                SELECT t.id, t.name, t.name_en, t.slug, t.description, t.description_en, t.theme,
+                SELECT t.id, t.name, t.slug, t.description, t.theme,
                        t.estimated_duration_minutes, t.estimated_cost, t.total_distance_meters,
                        t.thumbnail_url, t.is_public, t.creator_id, t.creator_role, t.creator_name,
                        t.created_at, t.updated_at
@@ -99,10 +95,8 @@ public class TourRepository {
         }
 
         if (search != null && !search.isBlank()) {
-            sql.append(" AND (t.name ILIKE ? OR t.description ILIKE ? OR COALESCE(t.name_en, '') ILIKE ? OR COALESCE(t.description_en, '') ILIKE ?)\n");
+            sql.append(" AND (t.name ILIKE ? OR t.description ILIKE ?)\n");
             String pattern = "%" + search.trim() + "%";
-            params.add(pattern);
-            params.add(pattern);
             params.add(pattern);
             params.add(pattern);
         }
@@ -113,7 +107,7 @@ public class TourRepository {
 
     public Optional<Tour> findById(Long id) {
         String sql = """
-                SELECT t.id, t.name, t.name_en, t.slug, t.description, t.description_en, t.theme,
+                SELECT t.id, t.name, t.slug, t.description, t.theme,
                        t.estimated_duration_minutes, t.estimated_cost, t.total_distance_meters,
                        t.thumbnail_url, t.is_public, t.creator_id, t.creator_role, t.creator_name,
                        t.created_at, t.updated_at
@@ -126,7 +120,7 @@ public class TourRepository {
 
     public Optional<Tour> findBySlug(String slug) {
         String sql = """
-                SELECT t.id, t.name, t.name_en, t.slug, t.description, t.description_en, t.theme,
+                SELECT t.id, t.name, t.slug, t.description, t.theme,
                        t.estimated_duration_minutes, t.estimated_cost, t.total_distance_meters,
                        t.thumbnail_url, t.is_public, t.creator_id, t.creator_role, t.creator_name,
                        t.created_at, t.updated_at
@@ -140,8 +134,7 @@ public class TourRepository {
     public List<TourStop> findStopsByTourId(Long tourId) {
         String sql = """
                 SELECT id, tour_id, poi_id, stop_order, estimated_duration_minutes,
-                       recommended_dish_or_activity, recommended_dish_or_activity_en,
-                       note, note_en, created_at
+                       recommended_dish_or_activity, note, created_at
                 FROM tour_stops
                 WHERE tour_id = ?
                 ORDER BY stop_order ASC

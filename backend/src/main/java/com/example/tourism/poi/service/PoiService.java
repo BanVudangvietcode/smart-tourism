@@ -149,8 +149,8 @@ public class PoiService {
 
     private GeoJsonFeature toGeoJsonFeature(Poi p, Double distanceMeters, String lang) {
         String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
-        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
-        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+        String name = p.getName();
+        String address = p.getAddress();
 
         Map<String, Object> props = new LinkedHashMap<>();
         props.put("id", p.getId());
@@ -175,8 +175,8 @@ public class PoiService {
 
     private PoiSummaryResponse toSummary(Poi p, Double distanceMeters, String lang) {
         String categoryName = poiRepository.findCategoryNameById(p.getCategoryId(), lang);
-        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
-        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+        String name = p.getName();
+        String address = p.getAddress();
 
         return new PoiSummaryResponse(
                 p.getId(), name, p.getSlug(), address,
@@ -189,9 +189,9 @@ public class PoiService {
     }
 
     private PoiDetailResponse toDetail(Poi p, String categoryName, List<PoiImage> images, String lang) {
-        String name = I18nUtils.resolve(p.getName(), p.getNameEn(), lang);
-        String description = I18nUtils.resolve(p.getDescription(), p.getDescriptionEn(), lang);
-        String address = I18nUtils.resolve(p.getAddress(), p.getAddressEn(), lang);
+        String name = p.getName();
+        String description = p.getDescription();
+        String address = p.getAddress();
 
         List<PoiImageResponse> imageResponses = images.stream()
                 .map(img -> new PoiImageResponse(img.getId(), img.getUrl(), img.getCaption(), img.getSortOrder()))

@@ -65,13 +65,16 @@ public class GeminiClient {
     }
 
     private Optional<String> callGemini(String systemInstruction, String userPrompt, byte[] audioBytes, String mimeType, boolean jsonMode) {
-        String apiKey = apiKeyConfig.getGeminiKey();
+        String apiKey = apiKeyConfig.getEffectiveAiKey();
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("Gemini API key is not configured. Falling back to local responder.");
+            log.warn("Gemini / AI API key is not configured. Falling back to local responder.");
             return Optional.empty();
         }
 
-        String url = String.format(BASE_URL, DEFAULT_MODEL, apiKey);
+        String model = (apiKeyConfig.getAiModel() != null && !apiKeyConfig.getAiModel().isBlank())
+                ? apiKeyConfig.getAiModel()
+                : DEFAULT_MODEL;
+        String url = String.format(BASE_URL, model, apiKey);
 
         try {
             Map<String, Object> requestBody = new HashMap<>();

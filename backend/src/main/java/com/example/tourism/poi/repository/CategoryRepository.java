@@ -21,7 +21,6 @@ public class CategoryRepository {
         Category c = new Category();
         c.setId(rs.getLong("id"));
         c.setName(rs.getString("name"));
-        try { c.setNameEn(rs.getString("name_en")); } catch (Exception ignored) {}
         c.setSlug(rs.getString("slug"));
         c.setIconUrl(rs.getString("icon_url"));
         c.setSortOrder(rs.getInt("sort_order"));
@@ -31,14 +30,14 @@ public class CategoryRepository {
 
     public List<Category> findAll() {
         return jdbcTemplate.query(
-                "SELECT id, name, name_en, slug, icon_url, sort_order, created_at FROM categories ORDER BY sort_order, id",
+                "SELECT id, name, slug, icon_url, sort_order, created_at FROM categories ORDER BY sort_order, id",
                 rowMapper
         );
     }
 
     public Optional<Category> findById(Long id) {
         List<Category> list = jdbcTemplate.query(
-                "SELECT id, name, name_en, slug, icon_url, sort_order, created_at FROM categories WHERE id = ?",
+                "SELECT id, name, slug, icon_url, sort_order, created_at FROM categories WHERE id = ?",
                 rowMapper,
                 id
         );

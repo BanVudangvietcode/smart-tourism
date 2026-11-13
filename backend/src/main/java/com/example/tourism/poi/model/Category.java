@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public class Category {
     private Long id;
     private String name;
-    private String nameEn;
     private String slug;
     private String iconUrl;
     private int sortOrder;
@@ -18,9 +17,6 @@ public class Category {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-
-    public String getNameEn() { return nameEn; }
-    public void setNameEn(String nameEn) { this.nameEn = nameEn; }
 
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
