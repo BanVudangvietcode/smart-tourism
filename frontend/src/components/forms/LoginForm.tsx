@@ -1,32 +1,25 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { requestOtp, verifyOtpAndLogin, loginWithGoogle } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 export default function LoginForm() {
-  const { user, login, logout } = useAuth();
+  const router = useRouter();
+  const { user, login, logout, isAuthenticated, deviceId } = useAuth();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [token, setToken] = useState<string | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem('sw_token');
-    if (savedToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setToken(savedToken);
-    }
-  }, []);
 
   // Initialize Google Sign-In
   useEffect(() => {
-    if (token || user || !GOOGLE_CLIENT_ID) return; // Already logged in or no client ID
+    if (isAuthenticated || !GOOGLE_CLIENT_ID) return; // Already logged in or no client ID
 
     const initGoogle = () => {
       if (window.google?.accounts?.id && googleBtnRef.current) {
@@ -47,16 +40,15 @@ export default function LoginForm() {
     const timer = setTimeout(initGoogle, 500);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]);
+  }, [isAuthenticated]);
 
   const handleGoogleResponse = async (response: { credential: string }) => {
     setLoading(true);
     setMessage('');
     try {
-      const authRes = await loginWithGoogle(response.credential);
-      login(authRes);
-      setToken(authRes.token);
-      localStorage.setItem('sw_token', authRes.token);
+      const authRes = await loginWithGoogle(response.credential, deviceId);
+      login(authRes); // lưu token + user vào AuthContext (và localStorage)
+      router.push('/');
     } catch (error: unknown) {
       const err = error as Error;
       setMessage(err.message || 'Lỗi đăng nhập Google.');
@@ -106,8 +98,8 @@ export default function LoginForm() {
     
     try {
       const res = await verifyOtpAndLogin(phone, otp);
-      setToken(res.token);
-      localStorage.setItem('sw_token', res.token);
+      login(res); // lưu token + user vào AuthContext (và localStorage)
+      router.push('/');
     } catch (error: unknown) {
       const err = error as Error;
       setMessage(err.message || 'Lỗi xác nhận OTP.');
@@ -116,7 +108,7 @@ export default function LoginForm() {
     }
   };
 
-  if (token || user) {
+  if (isAuthenticated) {
     return (
       <div className="w-full max-w-sm bg-white border border-[#EAEAEA] rounded-[32px] p-8 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.03)] flex flex-col text-center">
         <div className="w-16 h-16 bg-[#F9F9F8] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -129,11 +121,7 @@ export default function LoginForm() {
         )}
         
         <button 
-          onClick={() => { 
-            setToken(null);
-            logout();
-            localStorage.removeItem('sw_token');
-          }} 
+          onClick={() => logout()}
           className="w-full bg-[#F9F9F8] text-[#111111] py-4 rounded-full text-sm font-bold hover:bg-[#EAEAEA] transition-colors cursor-pointer"
         >
           Đăng xuất
