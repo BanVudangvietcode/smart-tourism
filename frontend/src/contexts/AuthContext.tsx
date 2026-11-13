@@ -16,6 +16,8 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
+  isGuest: boolean;          // đang dùng phiên khách (chưa đăng nhập thật)
+  isAuthenticated: boolean;  // đã đăng nhập thật (Google / SĐT / Admin)
   deviceId: string;
   login: (response: AuthV1Response) => void;
   logout: () => void;
@@ -26,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   isLoading: true,
+  isGuest: true,
+  isAuthenticated: false,
   deviceId: '',
   login: () => {},
   logout: () => {},
@@ -188,8 +192,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshGuestSession();
   }, [refreshGuestSession]);
 
+  const isGuest = !user || user.role === 'GUEST';
+  const isAuthenticated = !!user && user.role !== 'GUEST';
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, deviceId, login, logout, refreshGuestSession }}>
+    <AuthContext.Provider
+      value={{ user, token, isLoading, isGuest, isAuthenticated, deviceId, login, logout, refreshGuestSession }}
+    >
       {children}
     </AuthContext.Provider>
   );
