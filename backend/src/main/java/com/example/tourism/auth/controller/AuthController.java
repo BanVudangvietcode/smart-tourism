@@ -50,6 +50,24 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Gửi OTP qua Telegram (route mà frontend đang gọi).
+     */
+    @PostMapping("/api/v1/auth/telegram/request-otp")
+    public ResponseEntity<Map<String, String>> requestTelegramOtp(@Valid @RequestBody OtpRequest request) {
+        authService.generateAndSendOtp(request.getPhone());
+        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi thành công qua Telegram!"));
+    }
+
+    /**
+     * Xác thực OTP, trả về JWT đầy đủ (userId, role...) giống Google/Guest.
+     */
+    @PostMapping("/api/v1/auth/telegram/verify-otp")
+    public ResponseEntity<AuthResponse> verifyTelegramOtp(@Valid @RequestBody OtpVerifyRequest request) {
+        AuthResponse response = authService.verifyOtp(request.getPhone(), request.getOtp());
+        return ResponseEntity.ok(response);
+    }
+
     // ──────────────────────────────────────────────
     // Legacy OTP API (kept for backward compatibility)
     // ──────────────────────────────────────────────
