@@ -3,12 +3,18 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { loginWithGoogle } from '@/services/api';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
-export default function UserMenu() {
+interface UserMenuProps {
+  onOpenFavorites?: () => void;
+}
+
+export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
   const { user, login, logout, isAuthenticated, deviceId } = useAuth();
+  const { tk } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -103,7 +109,7 @@ export default function UserMenu() {
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white/80 hover:scale-105 active:scale-95 transition cursor-pointer"
-            title={user.displayName || 'Tài khoản'}
+            title={user.displayName || tk('label_user_default')}
           >
             {getInitials()}
           </button>
@@ -116,7 +122,7 @@ export default function UserMenu() {
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span className="text-[11px] sm:text-xs font-bold hidden sm:inline">Đăng nhập</span>
+            <span className="text-[11px] sm:text-xs font-bold hidden sm:inline">{tk('btn_login')}</span>
           </button>
         )}
 
@@ -124,12 +130,26 @@ export default function UserMenu() {
         {showDropdown && isAuthenticated && user && (
           <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-900 truncate">{user.displayName || 'Người dùng'}</p>
+              <p className="text-sm font-bold text-gray-900 truncate">{user.displayName || tk('label_user_default')}</p>
               <p className="text-xs text-gray-500 truncate">{user.email || `ID: ${user.userId}`}</p>
               <span className="inline-block mt-1 text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full">
-                {user.role === 'GUEST' ? 'Khách' : 'Thành viên'}
+                {user.role === 'GUEST' ? tk('label_guest') : tk('label_member')}
               </span>
             </div>
+
+            {onOpenFavorites && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenFavorites();
+                  setShowDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition flex items-center gap-2 cursor-pointer border-b border-gray-100"
+              >
+                <span>❤️</span>
+                <span>{tk('label_favorites')}</span>
+              </button>
+            )}
 
             <Link
               href="/admin"
@@ -137,7 +157,7 @@ export default function UserMenu() {
               className="w-full text-left px-4 py-2.5 text-xs font-bold text-purple-700 hover:bg-purple-50 transition flex items-center gap-2 cursor-pointer border-b border-gray-100"
             >
               <span>⚡</span>
-              <span>Trang Quản Trị (Admin CMS)</span>
+              <span>{tk('label_admin')}</span>
             </Link>
 
             <button
@@ -150,7 +170,7 @@ export default function UserMenu() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Đăng xuất
+              {tk('btn_logout')}
             </button>
           </div>
         )}
@@ -181,8 +201,8 @@ export default function UserMenu() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-extrabold text-gray-900">Đăng nhập</h2>
-              <p className="text-sm text-gray-500 mt-1">Saigon Whispers – Thì Thầm Sài Gòn</p>
+              <h2 className="text-xl font-extrabold text-gray-900">{tk('login_title')}</h2>
+              <p className="text-sm text-gray-500 mt-1">Saigon Whispers – {tk('app_subtitle')}</p>
             </div>
 
             {/* Google Sign In Button (rendered by SDK) */}
@@ -208,7 +228,7 @@ export default function UserMenu() {
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                     </svg>
                   )}
-                  <span>Đăng nhập với Google</span>
+                  <span>{tk('login_google')}</span>
                 </button>
               )}
             </div>
@@ -216,7 +236,7 @@ export default function UserMenu() {
             {/* Divider */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400 font-medium">hoặc</span>
+              <span className="text-xs text-gray-400 font-medium">{tk('login_or')}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
@@ -228,7 +248,7 @@ export default function UserMenu() {
               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
-              Đăng nhập bằng số điện thoại
+              {tk('login_phone')}
             </a>
 
             {/* Error message */}
@@ -243,15 +263,15 @@ export default function UserMenu() {
                 className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center justify-center gap-1.5"
               >
                 <span>⚡</span>
-                <span>Truy cập Hệ thống Quản trị (Admin CMS)</span>
+                <span>{tk('label_admin_access')}</span>
               </Link>
             </div>
 
             {/* Terms */}
             <p className="mt-6 text-center text-[10px] text-gray-400">
-              Khi đăng nhập, bạn đồng ý với{' '}
-              <span className="text-gray-600 font-semibold">Điều khoản sử dụng</span> và{' '}
-              <span className="text-gray-600 font-semibold">Chính sách bảo mật</span>
+              {tk('login_terms')}{' '}
+              <span className="text-gray-600 font-semibold">{tk('login_terms_link')}</span> {tk('login_and')}{' '}
+              <span className="text-gray-600 font-semibold">{tk('login_privacy_link')}</span>
             </p>
           </div>
         </div>
