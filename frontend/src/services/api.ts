@@ -536,11 +536,11 @@ export const createGuestSession = async (deviceId: string, os: 'web' | 'ios' | '
   return res.json();
 };
 
-export const loginWithGoogle = async (idToken: string): Promise<AuthV1Response> => {
+export const loginWithGoogle = async (idToken: string, deviceId?: string): Promise<AuthV1Response> => {
   const res = await fetch(`${API_V1}/auth/oauth2/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ idToken, deviceId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -13,7 +13,7 @@ interface UserMenuProps {
 }
 
 export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, isAuthenticated, deviceId } = useAuth();
   const { tk } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -63,7 +63,7 @@ export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
     setIsGoogleLoading(true);
     setError('');
     try {
-      const authRes = await loginWithGoogle(response.credential);
+      const authRes = await loginWithGoogle(response.credential, deviceId);
       login(authRes);
       setShowLoginModal(false);
     } catch (e: unknown) {
@@ -104,8 +104,8 @@ export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
     <>
       {/* ── Avatar / Login Button ── */}
       <div className="relative" ref={dropdownRef}>
-        {user ? (
-          // Logged-in: show avatar
+        {isAuthenticated && user ? (
+          // Logged-in (không tính khách): show avatar
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white/80 hover:scale-105 active:scale-95 transition cursor-pointer"
@@ -127,7 +127,7 @@ export default function UserMenu({ onOpenFavorites }: UserMenuProps = {}) {
         )}
 
         {/* Dropdown menu when logged in */}
-        {showDropdown && user && (
+        {showDropdown && isAuthenticated && user && (
           <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 border-b border-gray-100">
               <p className="text-sm font-bold text-gray-900 truncate">{user.displayName || tk('label_user_default')}</p>

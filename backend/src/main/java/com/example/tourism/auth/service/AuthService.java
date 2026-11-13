@@ -15,7 +15,7 @@ import jakarta.annotation.PostConstruct;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -31,8 +31,13 @@ public class AuthService {
 
     private GoogleIdTokenVerifier googleVerifier;
 
-    // Lưu trữ tạm thời mã OTP. Trong thực tế nên dùng Redis và set thời gian hết hạn (TTL).
-    private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
+    private static final long OTP_TTL_MS = 5 * 60 * 1000L; // OTP sống 5 phút
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    private record OtpEntry(String code, long expiresAt) {}
+
+    // Lưu tạm trong RAM (đủ cho demo). Production nên chuyển sang Redis có TTL.
+    private final Map<String, OtpEntry> otpStorage = new ConcurrentHashMap<>();
 
     public AuthService(TelegramBotService telegramBotService, JwtUtils jwtUtils,
                        UserRepository userRepository, GuestDeviceRepository guestDeviceRepository) {
@@ -187,29 +192,50 @@ public class AuthService {
     // ──────────────────────────────────────────────
 
     public void generateAndSendOtp(String phone) {
+        String normalizedPhone = phone.trim();
         // Tạo mã OTP 6 số
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
 
-        // Lưu vào bộ nhớ (ghi đè nếu SĐT đang yêu cầu lại)
-        otpStorage.put(phone, otp);
+        // Lưu vào bộ nhớ kèm thời gian hết hạn (ghi đè nếu SĐT yêu cầu lại)
+        otpStorage.put(normalizedPhone, new OtpEntry(otp, System.currentTimeMillis() + OTP_TTL_MS));
 
         // Gửi qua Telegram
-        telegramBotService.sendOtpMessage(phone, otp);
+        telegramBotService.sendOtpMessage(normalizedPhone, otp);
     }
 
+    /**
+     * Xác thực OTP rồi tìm/tạo User ứng với SĐT này, trả JWT đầy đủ (userId + role).
+     * Không cần sửa schema: dùng provider = "phone", provider_id = SĐT.
+     */
     public AuthResponse verifyOtp(String phone, String otp) {
-        String storedOtp = otpStorage.get(phone);
+        String normalizedPhone = phone.trim();
+        OtpEntry entry = otpStorage.get(normalizedPhone);
 
-        if (storedOtp == null || !storedOtp.equals(otp)) {
-            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn.");
+        if (entry == null || System.currentTimeMillis() > entry.expiresAt()
+                || !entry.code().equals(otp.trim())) {
+            throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
 
-        // Xác nhận thành công -> xoá OTP
-        otpStorage.remove(phone);
+        // Xác nhận thành công -> xoá OTP (dùng 1 lần)
+        otpStorage.remove(normalizedPhone);
 
-        // Tạo JWT Token
-        String token = jwtUtils.generateJwtToken(phone);
+        User user = userRepository.findByProviderAndProviderId("phone", normalizedPhone)
+                .orElseGet(() -> {
+                    User u = new User();
+                    u.setProvider("phone");
+                    u.setProviderId(normalizedPhone);
+                    u.setRole("USER");
+                    String tail = normalizedPhone.length() > 4
+                            ? normalizedPhone.substring(normalizedPhone.length() - 4)
+                            : normalizedPhone;
+                    u.setDisplayName("Người dùng " + tail);
+                    return userRepository.save(u);
+                });
 
-        return new AuthResponse(token, phone);
+        String token = jwtUtils.generateToken(user.getId(), user.getRole(), null);
+        AuthResponse response = new AuthResponse(token, user.getId(), user.getEmail(),
+                user.getDisplayName(), user.getRole());
+        response.setPhone(normalizedPhone);
+        return response;
     }
 }
