@@ -1,0 +1,149 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ==============================================================================
+  # PATH FILTERING: Detect changed folders to optimize CI runtime
+  # ==============================================================================
+  changes:
+    name: Detect Changed Subsystems
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Path Filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'pom.xml'
+              - '.github/workflows/ci-cd.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci-cd.yml'
+
+  # ==============================================================================
+  # BACKEND CI: Build & Test Spring Boot with Java 17 Temurin
+  # ==============================================================================
+  backend-ci:
+    name: Backend CI (Spring Boot)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile and Test-Compile (Maven)
+        run: mvn -B clean compile test-compile
+
+  # ==============================================================================
+  # FRONTEND CI: Lint, Type-Check, and Production Build with Node.js 20
+  # ==============================================================================
+  frontend-ci:
+    name: Frontend CI (Next.js)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint Check
+        run: npm run lint
+
+      - name: TypeScript Check
+        run: npm run type-check
+
+      - name: Test Build (Next.js)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://tourism-guide-api.onrender.com
+
+  # ==============================================================================
+  # CD STAGE: Trigger Cloud Deploy Hooks (Only runs on push to main when CI passes)
+  # ==============================================================================
+  continuous-deployment:
+    name: CD Deploy via Cloud Hooks
+    runs-on: ubuntu-latest
+    needs: [changes, backend-ci, frontend-ci]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      (needs.backend-ci.result == 'success' || needs.backend-ci.result == 'skipped') &&
+      (needs.frontend-ci.result == 'success' || needs.frontend-ci.result == 'skipped') &&
+      !(needs.backend-ci.result == 'skipped' && needs.frontend-ci.result == 'skipped')
+    steps:
+      - name: Trigger Render Deploy Hook (Backend)
+        if: needs.changes.outputs.backend == 'true'
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "❌ Error: RENDER_DEPLOY_HOOK_URL secret is not configured in GitHub Repository Settings."
+            exit 1
+          fi
+          echo "🚀 Triggering Render Deploy Hook for Backend..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_HOOK")
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Render deployment successfully triggered (HTTP $HTTP_STATUS)."
+          else
+            echo "❌ Failed to trigger Render deploy hook (HTTP $HTTP_STATUS)."
+            exit 1
+          fi
+
+      - name: Trigger Vercel Deploy Hook (Frontend)
+        if: needs.changes.outputs.frontend == 'true'
+        env:
+          VERCEL_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_HOOK" ]; then
+            echo "❌ Error: VERCEL_DEPLOY_HOOK_URL secret is not configured in GitHub Repository Settings."
+            exit 1
+          fi
+          echo "🚀 Triggering Vercel Deploy Hook for Frontend..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VERCEL_HOOK")
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Vercel deployment successfully triggered (HTTP $HTTP_STATUS)."
+          else
+            echo "❌ Failed to trigger Vercel deploy hook (HTTP $HTTP_STATUS)."
+            exit 1
+          fi
