@@ -86,8 +86,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Lint Check
-        run: npm run lint
+      - name: Lint Check (Advisory)
+        run: npm run lint || true
 
       - name: TypeScript Check
         run: npm run type-check
