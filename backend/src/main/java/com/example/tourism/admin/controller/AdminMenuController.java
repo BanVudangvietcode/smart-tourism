@@ -25,7 +25,9 @@ public class AdminMenuController {
     }
 
     private void requireAdmin(AuthUser user) {
-        // Cho phép chế độ quyền bình thường / khách dùng thử mà không bắt buộc đăng nhập
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.role())) {
+            throw new SecurityException("Truy cập bị từ chối: Yêu cầu quyền Quản trị viên (ADMIN).");
+        }
     }
 
     /**

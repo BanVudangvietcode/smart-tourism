@@ -87,12 +87,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<Map<String, Object>> handleSecurity(SecurityException ex) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "Bạn không có quyền truy cập tài nguyên này.";
+        boolean isUnauth = msg.toLowerCase().contains("đăng nhập") || msg.toLowerCase().contains("login") || msg.toLowerCase().contains("unauthorized");
+        HttpStatus status = isUnauth ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", msg);
-        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("status", status.value());
         body.put("timestamp", LocalDateTime.now());
 
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+        return ResponseEntity.status(status).body(body);
     }
 
     /**

@@ -42,11 +42,11 @@ public class AuthController {
     }
 
     /**
-     * Đăng nhập quyền Quản trị viên (ROLE_ADMIN) cho trang Admin CMS.
+     * Đăng nhập quyền Quản trị viên (ROLE_ADMIN) cho trang Admin CMS (yêu cầu tài khoản & mật khẩu).
      */
     @PostMapping("/api/v1/auth/admin-login")
-    public ResponseEntity<AuthResponse> loginAsAdmin() {
-        AuthResponse response = authService.loginAsAdmin();
+    public ResponseEntity<AuthResponse> loginAsAdmin(@Valid @RequestBody AdminLoginRequest request) {
+        AuthResponse response = authService.loginAsAdmin(request.getUsername(), request.getPassword());
         return ResponseEntity.ok(response);
     }
 

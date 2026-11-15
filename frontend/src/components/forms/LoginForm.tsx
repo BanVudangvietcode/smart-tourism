@@ -15,7 +15,17 @@ export default function LoginForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  // Countdown timer for OTP resend (60 seconds)
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   // Initialize Google Sign-In
   useEffect(() => {
@@ -71,15 +81,16 @@ export default function LoginForm() {
     }
   };
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone) return;
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!phone || countdown > 0) return;
 
     setLoading(true);
     setMessage('');
     
     try {
       await requestOtp(phone);
+      setCountdown(60);
       setStep(2);
     } catch (error: unknown) {
       const err = error as Error;
@@ -187,10 +198,10 @@ export default function LoginForm() {
           
           <button 
             type="submit" 
-            disabled={loading}
+            disabled={loading || countdown > 0}
             className="w-full bg-[#FF4522] text-white py-[18px] rounded-[20px] text-[13px] font-black hover:bg-[#E63E1F] active:scale-[0.98] transition-all disabled:opacity-50 mt-4 shadow-[0_4px_14px_rgba(255,69,34,0.3)] tracking-wider cursor-pointer"
           >
-            {loading ? 'ĐANG XỬ LÝ...' : 'SIGN IN 👈'}
+            {loading ? 'ĐANG XỬ LÝ...' : countdown > 0 ? `GỬI LẠI SAU (${countdown}s)` : 'SIGN IN 👈'}
           </button>
         </form>
       ) : (
@@ -218,11 +229,28 @@ export default function LoginForm() {
           >
             {loading ? 'ĐANG XÁC THỰC...' : 'VERIFY 👈'}
           </button>
+
+          <div className="text-center mt-1">
+            {countdown > 0 ? (
+              <span className="text-[12px] font-medium text-gray-400">
+                Chưa nhận được mã? Gửi lại sau <span className="text-[#FF4522] font-bold">{countdown}s</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleRequestOtp()}
+                disabled={loading}
+                className="text-[12px] font-bold text-[#FF4522] hover:underline cursor-pointer"
+              >
+                Chưa nhận được mã? Gửi lại mã OTP
+              </button>
+            )}
+          </div>
           
           <button 
             type="button" 
             onClick={() => { setStep(1); setOtp(''); setMessage(''); }} 
-            className="text-[12px] font-medium text-[#888888] hover:text-[#222222] transition-colors mt-2 cursor-pointer"
+            className="text-[12px] font-medium text-[#888888] hover:text-[#222222] transition-colors mt-1 cursor-pointer"
           >
             Đổi số điện thoại khác
           </button>

@@ -92,6 +92,14 @@ public class AdminPoiRepository {
                 RETURNING id
                 """;
 
+        String cleanPhone = (req.phone() != null && !req.phone().trim().isBlank()) ? req.phone().trim() : null;
+        Long validCategoryId = (req.categoryId() != null && req.categoryId() > 0) ? req.categoryId() : null;
+        if (validCategoryId == null) {
+            try {
+                validCategoryId = jdbcTemplate.queryForObject("SELECT id FROM categories ORDER BY sort_order ASC, id ASC LIMIT 1", Long.class);
+            } catch (Exception ignored) {}
+        }
+
         return jdbcTemplate.queryForObject(
                 sql,
                 Long.class,
@@ -101,11 +109,11 @@ public class AdminPoiRepository {
                 req.address(),
                 req.district() != null ? req.district() : "Quận 4",
                 req.ward(),
-                req.phone(),
+                cleanPhone,
                 req.openingHours(),
                 req.priceRangeMin(),
                 req.priceRangeMax(),
-                req.categoryId(),
+                validCategoryId,
                 req.poiType() != null ? req.poiType() : "FOOD",
                 req.longitude(),
                 req.latitude(),
@@ -121,11 +129,32 @@ public class AdminPoiRepository {
         if (req.address() != null) sql.append(", address = '").append(req.address().replace("'", "''")).append("'");
         if (req.district() != null) sql.append(", district = '").append(req.district().replace("'", "''")).append("'");
         if (req.ward() != null) sql.append(", ward = '").append(req.ward().replace("'", "''")).append("'");
-        if (req.phone() != null) sql.append(", phone = '").append(req.phone().replace("'", "''")).append("'");
+        if (req.phone() != null) {
+            if (req.phone().trim().isBlank()) {
+                sql.append(", phone = NULL");
+            } else {
+                sql.append(", phone = '").append(req.phone().trim().replace("'", "''")).append("'");
+            }
+        }
         if (req.openingHours() != null) sql.append(", opening_hours = '").append(req.openingHours().replace("'", "''")).append("'");
         if (req.priceRangeMin() != null) sql.append(", price_range_min = ").append(req.priceRangeMin());
         if (req.priceRangeMax() != null) sql.append(", price_range_max = ").append(req.priceRangeMax());
-        if (req.categoryId() != null) sql.append(", category_id = ").append(req.categoryId());
+        if (req.categoryId() != null) {
+            if (req.categoryId() <= 0) {
+                try {
+                    Long defaultCat = jdbcTemplate.queryForObject("SELECT id FROM categories ORDER BY sort_order ASC, id ASC LIMIT 1", Long.class);
+                    if (defaultCat != null) {
+                        sql.append(", category_id = ").append(defaultCat);
+                    } else {
+                        sql.append(", category_id = NULL");
+                    }
+                } catch (Exception ignored) {
+                    sql.append(", category_id = NULL");
+                }
+            } else {
+                sql.append(", category_id = ").append(req.categoryId());
+            }
+        }
         if (req.poiType() != null) sql.append(", poi_type = '").append(req.poiType().replace("'", "''")).append("'");
         if (req.thumbnailUrl() != null) sql.append(", thumbnail_url = '").append(req.thumbnailUrl().replace("'", "''")).append("'");
         if (req.isActive() != null) sql.append(", is_active = ").append(req.isActive());

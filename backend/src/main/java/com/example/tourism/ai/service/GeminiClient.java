@@ -28,8 +28,8 @@ public class GeminiClient {
         this.objectMapper = objectMapper;
         
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(12000);
+        factory.setConnectTimeout(8000);
+        factory.setReadTimeout(30000);
         this.restTemplate = new RestTemplate(factory);
     }
 
@@ -113,7 +113,7 @@ public class GeminiClient {
             // Generation config
             Map<String, Object> genConfig = new HashMap<>();
             genConfig.put("temperature", 0.7);
-            genConfig.put("maxOutputTokens", 1200);
+            genConfig.put("maxOutputTokens", 4096);
             if (jsonMode) {
                 genConfig.put("responseMimeType", "application/json");
             }

@@ -123,7 +123,7 @@ public class TourController {
     public ResponseEntity<TourReviewResponse> createTourReview(
             @PathVariable Long tourId,
             @Valid @RequestBody CreateTourReviewRequest request,
-            @CurrentUser AuthUser authUser) {
+            @CurrentUser(required = true) AuthUser authUser) {
 
         Long userId = authUser != null ? authUser.id() : null;
         TourReviewResponse created = tourService.createTourReview(tourId, userId, request);

@@ -143,6 +143,14 @@ public class CommunityService {
     }
 
     /**
+     * Kiểm tra trạng thái đã yêu thích địa điểm hay chưa.
+     */
+    public boolean isFavorite(Long poiId, Long userId) {
+        if (userId == null || poiId == null) return false;
+        return favoriteRepository.isFavorite(userId, poiId);
+    }
+
+    /**
      * POST /api/v1/pois/{poiId}/checkin
      * Xác thực GPS 30m để ghi nhận check-in thực tế và cấp huy hiệu thành tích.
      */

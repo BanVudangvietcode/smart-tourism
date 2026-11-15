@@ -18,7 +18,7 @@ public class ApiKeyConfig {
     private String ttsKey = "";
     private String customKey = "";
     private String aiKey = "";
-    private String aiModel = "gemini-2.5-flash";
+    private String aiModel = "gemini-3.5-flash-lite";
 
     public String getAiKey() {
         return aiKey;
@@ -33,7 +33,7 @@ public class ApiKeyConfig {
     }
 
     public void setAiModel(String aiModel) {
-        this.aiModel = (aiModel != null && !aiModel.isBlank()) ? aiModel.trim() : "gemini-2.5-flash";
+        this.aiModel = (aiModel != null && !aiModel.isBlank()) ? aiModel.trim() : "gemini-3.5-flash-lite";
     }
 
     public String getEffectiveAiKey() {

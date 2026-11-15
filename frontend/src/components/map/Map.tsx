@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents 
 import L from 'leaflet';
 
 import { MapPOI, NavStep, RouteInfo, PoiSummary, TourDetail } from '@/types';
-import { D4_CENTER, POI_LIST } from '@/lib/map-data';
+import { D4_CENTER } from '@/lib/map-data';
 import { createPoiIcon, createUserLocationIcon, createDestinationIcon, createTourStopIcon } from '@/lib/map-icons';
 import { fetchRoute, fetchMultiStopRoute, getDistance } from '@/lib/routing';
 import { fetchPois, fetchTourDetail, getAudioStreamUrl, trackAudioListen } from '@/services/api';
@@ -128,8 +128,8 @@ export default function Map({
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState(false);
 
-  // Live Backend POIs (Khởi tạo ngay từ POI_LIST chuẩn)
-  const [mapPois, setMapPois] = useState<MapPOI[]>(POI_LIST);
+  // Live Backend POIs (Nạp 100% từ Database PostgreSQL)
+  const [mapPois, setMapPois] = useState<MapPOI[]>([]);
   const [modalPoiId, setModalPoiId] = useState<number | string | null>(null);
   const [showSimPanel, setShowSimPanel] = useState(false);
 
@@ -385,87 +385,125 @@ export default function Map({
   };
 
   // Fetch POIs từ Backend PostGIS (Cập nhật realtime)
-  useEffect(() => {
-    const loadBackendPois = async () => {
-      try {
-        const livePois: PoiSummary[] = await fetchPois();
-        if (livePois && livePois.length > 0) {
-          let customPins: Record<number, { emoji?: string; color?: string }> = {};
-          try {
-            if (typeof window !== 'undefined') {
-              customPins = JSON.parse(localStorage.getItem('smart_tourism_poi_pins') || '{}');
-            }
-          } catch {}
+  const loadBackendPois = useCallback(async () => {
+    try {
+      const livePois: PoiSummary[] = await fetchPois();
+      if (livePois && livePois.length > 0) {
+        let customPins: Record<number, { emoji?: string; color?: string }> = {};
+        try {
+          if (typeof window !== 'undefined') {
+            customPins = JSON.parse(localStorage.getItem('smart_tourism_poi_pins') || '{}');
+          }
+        } catch {}
 
-          const mapped: MapPOI[] = livePois.map((p) => {
-            let color = '#2563eb';
-            let emoji = '📍';
+        // Phát hiện và phân tách các điểm trùng tọa độ (Tránh ghim đè lên nhau)
+        const coordCountMap: Record<string, number> = {};
+        livePois.forEach((p) => {
+          const key = `${p.latitude.toFixed(5)},${p.longitude.toFixed(5)}`;
+          coordCountMap[key] = (coordCountMap[key] || 0) + 1;
+        });
 
-            // 1. Kiểm tra cấu hình ghim tùy chỉnh từ localStorage
-            if (customPins[p.id]) {
-              if (customPins[p.id].emoji) emoji = customPins[p.id].emoji!;
-              if (customPins[p.id].color) color = customPins[p.id].color!;
+        const coordIndexMap: Record<string, number> = {};
+        const mapped: MapPOI[] = livePois.map((p) => {
+          let lat = p.latitude;
+          let lng = p.longitude;
+          const key = `${p.latitude.toFixed(5)},${p.longitude.toFixed(5)}`;
+
+          if (coordCountMap[key] > 1) {
+            const idx = coordIndexMap[key] || 0;
+            coordIndexMap[key] = idx + 1;
+            const angle = (idx * 2 * Math.PI) / coordCountMap[key];
+            const offset = 0.00022; // ~22 mét
+            lat += offset * Math.cos(angle);
+            lng += offset * Math.sin(angle);
+          }
+
+          let color = '#2563eb';
+          let emoji = '📍';
+
+          // 1. Kiểm tra cấu hình ghim tùy chỉnh từ localStorage
+          if (customPins[p.id]) {
+            if (customPins[p.id].emoji) emoji = customPins[p.id].emoji!;
+            if (customPins[p.id].color) color = customPins[p.id].color!;
+          } else {
+            // 2. Kiểm tra nhãn pin nhúng trong description nếu có
+            const rawDesc = (p as any).description || '';
+            const pinMatch = rawDesc.match(/<!--pin:({.*?})-->/);
+            if (pinMatch) {
+              try {
+                const parsed = JSON.parse(pinMatch[1]);
+                if (parsed.emoji) emoji = parsed.emoji;
+                if (parsed.color) color = parsed.color;
+              } catch {}
             } else {
-              // 2. Kiểm tra nhãn pin nhúng trong description nếu có
-              const rawDesc = (p as any).description || '';
-              const pinMatch = rawDesc.match(/<!--pin:({.*?})-->/);
-              if (pinMatch) {
-                try {
-                  const parsed = JSON.parse(pinMatch[1]);
-                  if (parsed.emoji) emoji = parsed.emoji;
-                  if (parsed.color) color = parsed.color;
-                } catch {}
-              } else {
-                // 3. Quy chuẩn tự động theo Danh mục & POI Type
-                const catName = p.categoryName || '';
-                if (p.poiType === 'HISTORICAL' || catName.includes('Di tích')) {
-                  color = '#e11d48';
-                  emoji = '🏛️';
-                } else if (catName.includes('Ăn vặt')) {
-                  color = '#f59e0b';
-                  emoji = '🍢';
-                } else if (catName.includes('Món nước') || catName.includes('Phở') || catName.includes('tiếu')) {
-                  color = '#ef4444';
-                  emoji = '🍜';
-                } else if (catName.includes('Cà phê') || catName.includes('phê')) {
-                  color = '#78350f';
-                  emoji = '☕';
-                } else if (p.poiType === 'FOOD' || catName.includes('Ốc') || catName.includes('Phá lấu')) {
-                  color = '#ea580c';
-                  emoji = '🍲';
-                } else if (p.poiType === 'RELIGIOUS' || catName.includes('Chùa') || catName.includes('thờ')) {
-                  color = '#8b5cf6';
-                  emoji = '⛩️';
-                } else if (p.poiType === 'LANDMARK' || catName.includes('Cầu') || catName.includes('Cảnh quan')) {
-                  color = '#0ea5e9';
-                  emoji = '🌉';
-                }
+              // 3. Quy chuẩn tự động theo Danh mục & POI Type
+              const catName = p.categoryName || '';
+              if (p.poiType === 'HISTORICAL' || catName.includes('Di tích')) {
+                color = '#e11d48';
+                emoji = '🏛️';
+              } else if (catName.includes('Ăn vặt')) {
+                color = '#f59e0b';
+                emoji = '🍢';
+              } else if (catName.includes('Món nước') || catName.includes('Phở') || catName.includes('tiếu')) {
+                color = '#ef4444';
+                emoji = '🍜';
+              } else if (catName.includes('Cà phê') || catName.includes('phê')) {
+                color = '#78350f';
+                emoji = '☕';
+              } else if (p.poiType === 'FOOD' || catName.includes('Ốc') || catName.includes('Phá lấu')) {
+                color = '#ea580c';
+                emoji = '🍲';
+              } else if (p.poiType === 'RELIGIOUS' || catName.includes('Chùa') || catName.includes('thờ')) {
+                color = '#8b5cf6';
+                emoji = '⛩️';
+              } else if (p.poiType === 'LANDMARK' || catName.includes('Cầu') || catName.includes('Cảnh quan')) {
+                color = '#0ea5e9';
+                emoji = '🌉';
               }
             }
+          }
 
-            return {
-              id: p.id,
-              name: p.name,
-              desc: p.address,
-              category: p.categoryName || 'Địa điểm',
-              lat: p.latitude,
-              lng: p.longitude,
-              color,
-              emoji,
-              thumbnailUrl: p.thumbnailUrl,
-              rating: p.avgRating,
-              poiType: p.poiType,
-              rawPoi: p,
-            };
-          });
-          setMapPois(mapped);
-        }
-      } catch (err) {
-        console.warn('Dùng POI mặc định:', err);
+          return {
+            id: p.id,
+            name: p.name,
+            desc: p.address,
+            category: p.categoryName || 'Địa điểm',
+            lat,
+            lng,
+            color,
+            emoji,
+            thumbnailUrl: p.thumbnailUrl,
+            rating: p.avgRating,
+            poiType: p.poiType,
+            rawPoi: p,
+          };
+        });
+        setMapPois(mapped);
       }
-    };
+    } catch (err) {
+      console.warn('Dùng POI mặc định:', err);
+    }
+  }, []);
+
+  // Tự động fetch POIs khi chuyển sang tab Bản đồ hoặc khi đổi ngôn ngữ
+  useEffect(() => {
     loadBackendPois();
-  }, [language]);
+  }, [language, isActive, loadBackendPois]);
+
+  // Lắng nghe cập nhật POI từ Admin (cùng tab hoặc khác tab)
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadBackendPois();
+    };
+    window.addEventListener('smart_tourism_poi_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+    return () => {
+      window.removeEventListener('smart_tourism_poi_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+    };
+  }, [loadBackendPois]);
 
   useEffect(() => {
     onNavChange?.(isNav);
@@ -697,8 +735,10 @@ export default function Map({
         <MapEventsHandler
           onDrag={() => setIsTracking(false)}
           onMapClick={(lat, lng) => {
-            // Khi bấm vào bất kỳ đâu trên bản đồ (trong chế độ thử nghiệm): di chuyển chấm GPS đến đó!
-            setSimulatedLocation(lat, lng);
+            // Chỉ khi đang mở panel [Test GPS] mới cho phép click để di chuyển vị trí giả lập
+            if (showSimPanel) {
+              setSimulatedLocation(lat, lng);
+            }
           }}
         />
         <FollowUser pos={userPos} active={isTracking && !overview} />

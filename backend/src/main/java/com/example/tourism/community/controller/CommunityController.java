@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -76,6 +77,19 @@ public class CommunityController {
 
         FavoriteResponse response = communityService.removeFavorite(poiId, authUser.id());
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/v1/pois/{poiId}/favorite/status
+     * Kiểm tra nhanh trạng thái yêu thích của người dùng đối với một POI.
+     */
+    @GetMapping("/pois/{poiId}/favorite/status")
+    public ResponseEntity<Map<String, Object>> getFavoriteStatus(
+            @PathVariable Long poiId,
+            @CurrentUser AuthUser authUser) {
+
+        boolean isFav = authUser != null && communityService.isFavorite(poiId, authUser.id());
+        return ResponseEntity.ok(Map.of("poiId", poiId, "isFavorite", isFav));
     }
 
     /**

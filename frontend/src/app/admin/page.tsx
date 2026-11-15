@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import AdminLoginGuard from '@/components/admin/AdminLoginGuard';
 import {
   fetchPois,
   fetchPoiDetail,
@@ -16,6 +19,7 @@ import {
   getHeatmap,
   adminCreatePoi,
   adminUpdatePoi,
+  adminUploadPoiImages,
   adminDeletePoi,
   adminScanMenuOcr,
   adminCreateDish,
@@ -26,6 +30,7 @@ import { PoiSummary, TourSummary, TourDetail, Category, PoiTypeItem, CreateTourI
 import { inferPoiTypeFromCategory } from '@/components/admin/constants';
 
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import AdminFooter from '@/components/admin/AdminFooter';
 import AdminDashboardView from '@/components/admin/views/AdminDashboardView';
 import AdminPoisView from '@/components/admin/views/AdminPoisView';
 import AdminMenuView from '@/components/admin/views/AdminMenuView';
@@ -43,6 +48,10 @@ import AdminDishModal from '@/components/admin/modals/AdminDishModal';
 import AdminMetricModal from '@/components/admin/modals/AdminMetricModal';
 
 export default function AdminPage() {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const router = useRouter();
+  const mainRef = useRef<HTMLDivElement>(null);
+
   // Navigation & View state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSidebar, setActiveSidebar] = useState<'dashboard' | 'pois' | 'menu' | 'tours' | 'users' | 'settings'>('dashboard');
@@ -76,7 +85,7 @@ export default function AdminPage() {
   const [showPoiTypeModal, setShowPoiTypeModal] = useState(false);
   const [showPoiModal, setShowPoiModal] = useState(false);
   const [editingPoi, setEditingPoi] = useState<PoiSummary | null>(null);
-  const [poiImageFile, setPoiImageFile] = useState<File | null>(null);
+  const [poiImageFiles, setPoiImageFiles] = useState<File[]>([]);
   const [poiAudioFile, setPoiAudioFile] = useState<File | null>(null);
   const [poiFormData, setPoiFormData] = useState<any>({
     name: '',
@@ -85,7 +94,7 @@ export default function AdminPage() {
     address: '',
     district: 'Quận 4',
     ward: 'Phường 4',
-    phone: '0901234567',
+    phone: '',
     openingHours: '15:00 - 23:00',
     priceRangeMin: 30000,
     priceRangeMax: 150000,
@@ -159,6 +168,7 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'ADMIN') return;
     const initData = async () => {
       setLoading(true);
       try {
@@ -189,7 +199,7 @@ export default function AdminPage() {
     };
 
     initData();
-  }, []);
+  }, [isAuthenticated, user?.role]);
 
   // Realtime Live Visitors SSE
   useEffect(() => {
@@ -298,10 +308,36 @@ export default function AdminPage() {
   };
 
   // POI CRUD
-  const openCreatePoiModal = () => {
+  const openCreatePoiModal = async () => {
     setEditingPoi(null);
-    const firstCat = categoriesList[0];
-    const initialPoiType = firstCat ? inferPoiTypeFromCategory(firstCat.name, firstCat.slug) : (poiTypesList[0]?.code || 'FOOD');
+    let cats = categoriesList;
+    let types = poiTypesList;
+
+    if (cats.length === 0) {
+      try {
+        const fetchedCats = await fetchCategories();
+        if (fetchedCats && fetchedCats.length > 0) {
+          cats = fetchedCats;
+          setCategoriesList(fetchedCats);
+        }
+      } catch {}
+    }
+
+    if (types.length === 0) {
+      try {
+        const fetchedTypes = await fetchPoiTypes();
+        if (fetchedTypes && fetchedTypes.length > 0) {
+          types = fetchedTypes;
+          setPoiTypesList(fetchedTypes);
+        }
+      } catch {}
+    }
+
+    const firstCat = cats[0];
+    const initialPoiType = firstCat ? inferPoiTypeFromCategory(firstCat.name, firstCat.slug) : (types[0]?.code || 'FOOD');
+    const initLat = Number((10.7615 + (Math.random() - 0.5) * 0.003).toFixed(5));
+    const initLng = Number((106.7030 + (Math.random() - 0.5) * 0.003).toFixed(5));
+
     setPoiFormData({
       name: '',
       slug: '',
@@ -309,20 +345,20 @@ export default function AdminPage() {
       address: '',
       district: 'Quận 4',
       ward: 'Phường 4',
-      phone: '0901234567',
+      phone: '',
       openingHours: '15:00 - 23:00',
       priceRangeMin: 30000,
       priceRangeMax: 150000,
       categoryId: firstCat?.id || 0,
       poiType: initialPoiType,
-      latitude: 10.7612,
-      longitude: 106.7025,
+      latitude: initLat,
+      longitude: initLng,
       audioScript: '',
       audioTitle: 'Thuyết minh Quận 4',
       pinEmoji: firstCat?.iconUrl || '📍',
       pinColor: '#ea580c',
     });
-    setPoiImageFile(null);
+    setPoiImageFiles([]);
     setPoiAudioFile(null);
     setShowPoiModal(true);
   };
@@ -388,7 +424,7 @@ export default function AdminPage() {
       pinEmoji: emoji,
       pinColor: color,
     });
-    setPoiImageFile(null);
+    setPoiImageFiles([]);
     setPoiAudioFile(null);
     setShowPoiModal(true);
   };
@@ -399,34 +435,62 @@ export default function AdminPage() {
       const cleanDesc = (poiFormData.description || '').replace(/<!--pin:.*?-->/g, '').trim();
       const fullDesc = `${cleanDesc}\n<!--pin:{"emoji":"${poiFormData.pinEmoji}","color":"${poiFormData.pinColor}"}-->`;
 
+      let validCatId = poiFormData.categoryId;
+      if (!validCatId || Number(validCatId) <= 0) {
+        if (categoriesList.length > 0) {
+          validCatId = categoriesList[0].id;
+        }
+      }
+
       const formData = new FormData();
       formData.append('name', poiFormData.name);
       formData.append('slug', poiFormData.slug || poiFormData.name.toLowerCase().replace(/\s+/g, '-'));
       formData.append('description', fullDesc);
       formData.append('address', poiFormData.address);
-      formData.append('district', poiFormData.district);
-      formData.append('ward', poiFormData.ward);
-      formData.append('phone', poiFormData.phone);
-      formData.append('openingHours', poiFormData.openingHours);
-      formData.append('priceRangeMin', poiFormData.priceRangeMin.toString());
-      formData.append('priceRangeMax', poiFormData.priceRangeMax.toString());
-      formData.append('categoryId', poiFormData.categoryId.toString());
-      formData.append('poiType', poiFormData.poiType);
+      formData.append('district', poiFormData.district || 'Quận 4');
+      formData.append('ward', poiFormData.ward || 'Phường 4');
+      if (poiFormData.phone && poiFormData.phone.trim()) {
+        formData.append('phone', poiFormData.phone.trim());
+      }
+      formData.append('openingHours', poiFormData.openingHours || '15:00 - 23:00');
+      formData.append('priceRangeMin', (poiFormData.priceRangeMin || 0).toString());
+      formData.append('priceRangeMax', (poiFormData.priceRangeMax || 0).toString());
+      if (validCatId && Number(validCatId) > 0) {
+        formData.append('categoryId', validCatId.toString());
+      }
+      formData.append('poiType', poiFormData.poiType || 'FOOD');
       formData.append('latitude', poiFormData.latitude.toString());
       formData.append('longitude', poiFormData.longitude.toString());
-      formData.append('audioScript', poiFormData.audioScript);
-      formData.append('audioTitle', poiFormData.audioTitle);
+      formData.append('audioScript', poiFormData.audioScript || '');
+      formData.append('audioTitle', poiFormData.audioTitle || '');
 
-      if (poiImageFile) formData.append('image', poiImageFile);
+      if (poiFormData.thumbnailUrl && poiFormData.thumbnailUrl.trim()) {
+        formData.append('thumbnailUrl', poiFormData.thumbnailUrl.trim());
+      }
+
+      if (poiImageFiles && poiImageFiles.length > 0) {
+        poiImageFiles.forEach((file) => {
+          formData.append('images', file);
+        });
+      }
       if (poiAudioFile) formData.append('audio', poiAudioFile);
 
       let savedId: number | null = null;
       if (editingPoi) {
         await adminUpdatePoi(editingPoi.id, {
           ...poiFormData,
+          phone: poiFormData.phone?.trim() || null,
+          categoryId: validCatId && Number(validCatId) > 0 ? Number(validCatId) : null,
           description: fullDesc,
         });
         savedId = editingPoi.id;
+        if (poiImageFiles.length > 0) {
+          try {
+            await adminUploadPoiImages(editingPoi.id, poiImageFiles);
+          } catch (uploadErr: any) {
+            console.warn('Lỗi tải ảnh khi sửa POI:', uploadErr.message);
+          }
+        }
         showNotification('success', `Đã cập nhật quán: ${poiFormData.name}`);
       } else {
         const res = await adminCreatePoi(formData);
@@ -446,6 +510,11 @@ export default function AdminPage() {
       setEditingPoi(null);
       const updated = await fetchPois();
       setPois(updated);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('smart_tourism_poi_last_updated', Date.now().toString());
+        window.dispatchEvent(new Event('smart_tourism_poi_updated'));
+      }
     } catch (err: any) {
       showNotification('error', `Lỗi lưu POI: ${err.message}`);
     }
@@ -457,6 +526,10 @@ export default function AdminPage() {
       await adminDeletePoi(poiId);
       showNotification('success', `Đã xóa quán "${poiName}"`);
       setPois((prev) => prev.filter((p) => p.id !== poiId));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('smart_tourism_poi_last_updated', Date.now().toString());
+        window.dispatchEvent(new Event('smart_tourism_poi_updated'));
+      }
     } catch (err: any) {
       showNotification('error', `Lỗi xóa: ${err.message}`);
     }
@@ -641,10 +714,25 @@ export default function AdminPage() {
     totalReviews: 0,
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 text-purple-400 text-xs font-bold">
+          <span className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <span>Đang xác thực quyền Quản trị viên...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || user?.role !== 'ADMIN') {
+    return <AdminLoginGuard />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#f4f7fa] text-slate-800 flex flex-col font-sans antialiased">
+    <div className="h-screen bg-[#f4f7fa] text-slate-800 flex flex-col font-sans antialiased overflow-hidden">
       {/* 1. TOPBAR */}
-      <header className="h-16 bg-white border-b border-slate-200/90 px-3 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-40 shadow-xs">
+      <header className="h-16 shrink-0 bg-white border-b border-slate-200/90 px-3 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-40 shadow-xs">
         {/* Left Section: Menu Toggle + Logo */}
         <div className="flex items-center gap-3">
           <button
@@ -750,7 +838,7 @@ export default function AdminPage() {
       </header>
 
       {/* 2. BODY LAYOUT */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
         <AdminSidebar
           isOpen={isSidebarOpen}
@@ -759,11 +847,17 @@ export default function AdminPage() {
           setActiveSidebar={(tab) => setActiveSidebar(tab)}
           poisCount={pois.length}
           toursCount={tours.length}
-          onLogout={() => showNotification('info', 'Đã làm mới phiên quản trị!')}
+          onLogout={() => {
+            logout();
+            router.push('/');
+          }}
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
+        <main
+          ref={mainRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full pb-16"
+        >
           {/* Quick Breadcrumb */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -884,6 +978,21 @@ export default function AdminPage() {
               showNotification={showNotification}
             />
           )}
+
+          {/* 3. FOOTER */}
+          <AdminFooter
+            poisCount={pois.length}
+            toursCount={tours.length}
+            onScrollToTop={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+            onEvictCache={async () => {
+              try {
+                await adminEvictCache('poi:*');
+                showNotification('success', 'Đã xóa nhanh cache POI!');
+              } catch (err: any) {
+                showNotification('error', `Lỗi xóa cache: ${err.message}`);
+              }
+            }}
+          />
         </main>
       </div>
 
@@ -893,8 +1002,8 @@ export default function AdminPage() {
           editingPoi={editingPoi}
           poiFormData={poiFormData}
           setPoiFormData={setPoiFormData}
-          poiImageFile={poiImageFile}
-          setPoiImageFile={setPoiImageFile}
+          poiImageFiles={poiImageFiles}
+          setPoiImageFiles={setPoiImageFiles}
           poiAudioFile={poiAudioFile}
           setPoiAudioFile={setPoiAudioFile}
           categoriesList={categoriesList}

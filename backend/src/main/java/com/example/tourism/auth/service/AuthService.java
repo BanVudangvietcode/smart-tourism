@@ -13,10 +13,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 
-import java.util.Collections;
-import java.util.Map;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Collections;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 @Service
 public class AuthService {
@@ -32,9 +37,10 @@ public class AuthService {
     private GoogleIdTokenVerifier googleVerifier;
 
     private static final long OTP_TTL_MS = 5 * 60 * 1000L; // OTP sống 5 phút
+    private static final long OTP_RESEND_COOLDOWN_MS = 60 * 1000L; // Giới hạn gửi lại sau 60s
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private record OtpEntry(String code, long expiresAt) {}
+    private record OtpEntry(String code, long expiresAt, long createdAt) {}
 
     // Lưu tạm trong RAM (đủ cho demo). Production nên chuyển sang Redis có TTL.
     private final Map<String, OtpEntry> otpStorage = new ConcurrentHashMap<>();
@@ -157,7 +163,44 @@ public class AuthService {
                 user.getDisplayName(), user.getRole());
     }
 
-    public AuthResponse loginAsAdmin() {
+    public static String hashPassword(String password) {
+        try {
+            byte[] salt = new byte[16];
+            RANDOM.nextBytes(salt);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 128);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = factory.generateSecret(spec).getEncoded();
+            return HexFormat.of().formatHex(salt) + ":" + HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi băm mật khẩu", e);
+        }
+    }
+
+    public static boolean verifyPassword(String rawPassword, String stored) {
+        if (stored == null || !stored.contains(":")) return false;
+        try {
+            String[] parts = stored.split(":");
+            byte[] salt = HexFormat.of().parseHex(parts[0]);
+            byte[] expectedHash = HexFormat.of().parseHex(parts[1]);
+
+            KeySpec spec = new PBEKeySpec(rawPassword.toCharArray(), salt, 65536, 128);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] testHash = factory.generateSecret(spec).getEncoded();
+
+            return MessageDigest.isEqual(testHash, expectedHash);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public AuthResponse loginAsAdmin(String username, String password) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập đầy đủ tài khoản và mật khẩu.");
+        }
+
+        String inputUser = username.trim();
+        String inputPass = password.trim();
+
         User adminUser = userRepository.findByEmail("admin@saigonwhispers.vn")
                 .orElseGet(() -> {
                     User u = new User();
@@ -165,8 +208,25 @@ public class AuthService {
                     u.setDisplayName("Quản Trị Viên");
                     u.setRole("ADMIN");
                     u.setProvider("local");
+                    u.setProviderId("admin");
+                    u.setPasswordHash(hashPassword("admin123"));
                     return userRepository.save(u);
                 });
+
+        if (adminUser.getPasswordHash() == null || adminUser.getPasswordHash().isBlank()) {
+            String defaultHash = hashPassword("admin123");
+            adminUser.setPasswordHash(defaultHash);
+            userRepository.updatePasswordHash(adminUser.getId(), defaultHash);
+        }
+
+        boolean validUser = inputUser.equalsIgnoreCase("admin")
+                || inputUser.equalsIgnoreCase(adminUser.getEmail())
+                || "admin".equalsIgnoreCase(adminUser.getProviderId());
+
+        if (!validUser || !verifyPassword(inputPass, adminUser.getPasswordHash())) {
+            throw new IllegalArgumentException("Tài khoản hoặc mật khẩu Quản trị viên không chính xác.");
+        }
+
         userRepository.updateRole(adminUser.getId(), "ADMIN");
         String token = jwtUtils.generateToken(adminUser.getId(), "ADMIN", null);
         return new AuthResponse(token, adminUser.getId(), adminUser.getEmail(),
@@ -193,11 +253,22 @@ public class AuthService {
 
     public void generateAndSendOtp(String phone) {
         String normalizedPhone = phone.trim();
+        long now = System.currentTimeMillis();
+
+        OtpEntry existing = otpStorage.get(normalizedPhone);
+        if (existing != null) {
+            long elapsed = now - existing.createdAt();
+            if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+                long remaining = (OTP_RESEND_COOLDOWN_MS - elapsed + 999) / 1000;
+                throw new IllegalArgumentException("Vui lòng đợi " + remaining + " giây trước khi yêu cầu gửi lại mã OTP.");
+            }
+        }
+
         // Tạo mã OTP 6 số
         String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
 
-        // Lưu vào bộ nhớ kèm thời gian hết hạn (ghi đè nếu SĐT yêu cầu lại)
-        otpStorage.put(normalizedPhone, new OtpEntry(otp, System.currentTimeMillis() + OTP_TTL_MS));
+        // Lưu vào bộ nhớ kèm thời gian hết hạn và thời điểm tạo
+        otpStorage.put(normalizedPhone, new OtpEntry(otp, now + OTP_TTL_MS, now));
 
         // Gửi qua Telegram
         telegramBotService.sendOtpMessage(normalizedPhone, otp);

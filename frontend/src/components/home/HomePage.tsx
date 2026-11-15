@@ -46,8 +46,19 @@ export default function HomePage({ onOpenMap }: HomePageProps) {
     };
 
     loadHomeData();
+
+    const handleUpdate = () => {
+      loadHomeData();
+    };
+    window.addEventListener('smart_tourism_poi_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('smart_tourism_poi_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
     };
   }, [language]);
 

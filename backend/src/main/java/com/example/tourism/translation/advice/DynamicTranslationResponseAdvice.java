@@ -115,7 +115,7 @@ public class DynamicTranslationResponseAdvice implements ResponseBodyAdvice<Obje
             if (!missingTexts.isEmpty()) {
                 log.info("Phát hiện {} chuỗi chưa có trong cache cho locale [{}]. Đang gọi dịch AI...", missingTexts.size(), targetLocale);
                 try {
-                    Map<String, Map<String, String>> batchResult = batchTranslationService.translateBatch(missingTexts, BatchTranslationService.ALL_SUPPORTED_TARGET_LOCALES);
+                    Map<String, Map<String, String>> batchResult = batchTranslationService.translateBatch(missingTexts, List.of(targetLocale));
                     for (String missing : missingTexts) {
                         Map<String, String> byLocale = batchResult.get(missing);
                         if (byLocale != null && byLocale.containsKey(targetLocale)) {

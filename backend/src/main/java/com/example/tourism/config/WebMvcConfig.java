@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
@@ -45,12 +46,26 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/v1/auth/**",
                         "/api/v1/health",
                         "/api/v1/categories/**",
+                        "/api/v1/categories",
+                        "/api/v1/poi-types/**",
+                        "/api/v1/poi-types",
                         "/api/v1/pois/**",
                         "/api/v1/tours/**",
                         "/api/v1/routing/**",
                         "/api/v1/ai/**",
+                        "/api/v1/audio/**",
                         "/api/v1/weather/**",
                         "/api/v1/analytics/realtime/**"
+                );
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations(
+                        "file:backend/src/main/resources/images/",
+                        "file:src/main/resources/images/",
+                        "classpath:/images/"
                 );
     }
 

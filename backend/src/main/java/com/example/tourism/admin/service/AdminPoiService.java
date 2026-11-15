@@ -42,6 +42,15 @@ public class AdminPoiService {
                                       MultipartFile audio,
                                       String audioScript,
                                       String audioTitle) {
+        return createPoi(req, image, null, audio, audioScript, audioTitle);
+    }
+
+    public AdminPoiResponse createPoi(CreateAdminPoiRequest req,
+                                      MultipartFile image,
+                                      List<MultipartFile> images,
+                                      MultipartFile audio,
+                                      String audioScript,
+                                      String audioTitle) {
         if (req.name() == null || req.name().trim().isBlank()) {
             throw new IllegalArgumentException("Tên địa điểm không được để trống.");
         }
@@ -57,15 +66,39 @@ public class AdminPoiService {
                 : AdminPoiRepository.toSlug(req.name());
 
         String effectiveThumbnail = req.thumbnailUrl();
+        List<String> uploadedImageUrls = new java.util.ArrayList<>();
 
-        // 1. Lưu ảnh đại diện nếu có
-        if (image != null && !image.isEmpty()) {
+        // 1. Lưu danh sách ảnh tải lên (nhiều ảnh)
+        if (images != null && !images.isEmpty()) {
+            int order = 1;
+            for (MultipartFile file : images) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String imgFileName = "poi_" + slug + "_" + System.currentTimeMillis() + "_" + order + ".jpg";
+                        saveImageBytes(imgFileName, file.getBytes());
+                        uploadedImageUrls.add("/images/pois/" + imgFileName);
+                        order++;
+                    } catch (Exception e) {
+                        log.warn("Lỗi khi lưu ảnh POI: {}", e.getMessage());
+                    }
+                }
+            }
+        }
+
+        // Tương thích ngược với ảnh đơn lẻ (nếu gửi param 'image')
+        if (image != null && !image.isEmpty() && uploadedImageUrls.isEmpty()) {
             try {
                 String imgFileName = "poi_" + slug + "_" + System.currentTimeMillis() + ".jpg";
                 saveImageBytes(imgFileName, image.getBytes());
-                effectiveThumbnail = "/images/pois/" + imgFileName;
+                uploadedImageUrls.add("/images/pois/" + imgFileName);
             } catch (Exception e) {
                 log.warn("Lỗi khi lưu ảnh POI: {}", e.getMessage());
+            }
+        }
+
+        if (effectiveThumbnail == null || effectiveThumbnail.isBlank()) {
+            if (!uploadedImageUrls.isEmpty()) {
+                effectiveThumbnail = uploadedImageUrls.get(0);
             }
         }
 
@@ -75,8 +108,12 @@ public class AdminPoiService {
             throw new RuntimeException("Không thể tạo địa điểm POI mới.");
         }
 
-        // 3. Nếu có ảnh, lưu thêm vào bảng poi_images
-        if (effectiveThumbnail != null && !effectiveThumbnail.isBlank()) {
+        // 3. Nếu có ảnh tải lên, lưu tất cả vào bảng poi_images
+        int sortOrder = 1;
+        for (String imgUrl : uploadedImageUrls) {
+            adminPoiRepository.insertPoiImage(poiId, imgUrl, req.name(), sortOrder++);
+        }
+        if (uploadedImageUrls.isEmpty() && effectiveThumbnail != null && !effectiveThumbnail.isBlank()) {
             adminPoiRepository.insertPoiImage(poiId, effectiveThumbnail, req.name(), 1);
         }
 
@@ -142,6 +179,36 @@ public class AdminPoiService {
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tải lên file âm thanh: " + e.getMessage(), e);
         }
+    }
+
+    public List<String> uploadPoiImages(Long id, List<MultipartFile> images) {
+        if (!adminPoiRepository.existsById(id)) {
+            throw new NoSuchElementException("Không tìm thấy địa điểm POI với ID: " + id);
+        }
+        var poiOpt = adminPoiRepository.findById(id);
+        String poiName = poiOpt.map(AdminPoiResponse::name).orElse("poi");
+        String slug = poiOpt.map(AdminPoiResponse::slug).orElse("poi-" + id);
+
+        List<String> savedUrls = new java.util.ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            int order = 1;
+            for (MultipartFile file : images) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String imgFileName = "poi_" + slug + "_" + System.currentTimeMillis() + "_" + order + ".jpg";
+                        saveImageBytes(imgFileName, file.getBytes());
+                        String url = "/images/pois/" + imgFileName;
+                        savedUrls.add(url);
+                        adminPoiRepository.insertPoiImage(id, url, poiName, order);
+                        order++;
+                    } catch (Exception e) {
+                        log.warn("Lỗi khi lưu ảnh POI {}: {}", id, e.getMessage());
+                    }
+                }
+            }
+        }
+        evictPoiCache(id);
+        return savedUrls;
     }
 
     private void evictPoiCache(Long poiId) {

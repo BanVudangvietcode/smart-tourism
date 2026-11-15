@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { UserFavoritePoiResponse } from '@/types';
 import { fetchMyFavorites, toggleFavorite } from '@/services/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FavoritesModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function FavoritesModal({
   onOpenPoiDetail,
 }: FavoritesModalProps) {
   const { tk, language } = useLanguage();
+  const { isAuthenticated, openLoginModal } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [favorites, setFavorites] = useState<UserFavoritePoiResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,12 @@ export default function FavoritesModal({
   // Fetch favorites whenever modal opens
   useEffect(() => {
     if (!isOpen) return;
+
+    if (!isAuthenticated) {
+      setFavorites([]);
+      setLoading(false);
+      return;
+    }
 
     let active = true;
     setLoading(true);
@@ -56,7 +64,21 @@ export default function FavoritesModal({
     return () => {
       active = false;
     };
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated]);
+
+  // Lắng nghe sự kiện yêu thích thay đổi từ Modal chi tiết POI
+  useEffect(() => {
+    const handleFavChange = () => {
+      if (!isAuthenticated) return;
+      fetchMyFavorites()
+        .then((data) => setFavorites(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    };
+    window.addEventListener('smart_tourism_favorite_changed', handleFavChange);
+    return () => {
+      window.removeEventListener('smart_tourism_favorite_changed', handleFavChange);
+    };
+  }, [isAuthenticated]);
 
   // Remove a POI from favorites
   const handleRemove = async (poiId: number, e: React.MouseEvent) => {
@@ -65,6 +87,13 @@ export default function FavoritesModal({
     try {
       await toggleFavorite(poiId, false);
       setFavorites((prev) => prev.filter((p) => p.poiId !== poiId));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('smart_tourism_favorite_changed', {
+            detail: { poiId, isFavorite: false },
+          })
+        );
+      }
       setToastMessage(tk('fav_removed'));
       setTimeout(() => setToastMessage(null), 3000);
     } catch (err) {
@@ -121,7 +150,32 @@ export default function FavoritesModal({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-slate-50/40">
-          {loading ? (
+          {!isAuthenticated ? (
+            <div className="py-12 sm:py-16 text-center space-y-4 max-w-md mx-auto">
+              <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-50 text-rose-500 text-3xl flex items-center justify-center shadow-inner">
+                ❤️
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-800">
+                  Yêu cầu đăng nhập
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
+                  Vui lòng đăng nhập để lưu trữ và xem danh sách các quán ăn, địa điểm yêu thích của bạn trên mọi thiết bị.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  openLoginModal();
+                }}
+                className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 active:scale-95 text-white font-bold text-xs px-6 py-2.5 rounded-2xl shadow-md shadow-rose-500/25 transition cursor-pointer flex items-center gap-2 mx-auto"
+              >
+                <span>🔑</span>
+                <span>Đăng nhập ngay</span>
+              </button>
+            </div>
+          ) : loading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
               <span className="w-7 h-7 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
               <span>Đang tải danh sách quán yêu thích...</span>

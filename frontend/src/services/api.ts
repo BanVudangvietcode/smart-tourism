@@ -421,6 +421,21 @@ export const fetchMyFavorites = async (): Promise<UserFavoritePoiResponse[]> => 
   return res.json();
 };
 
+export const checkFavoriteStatus = async (poiId: number | string): Promise<boolean> => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('sw_token') : null;
+  if (!token) return false;
+  try {
+    const res = await fetch(`${API_V1}/pois/${poiId}/favorite/status`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data.isFavorite);
+  } catch {
+    return false;
+  }
+};
+
 // ─── 7. Audio Guide & Streaming ─────────────────────────────────
 export const getAudioStreamUrl = (poiId: number | string, lang?: string): string => {
   const currentLang = lang || (typeof window !== 'undefined' ? (localStorage.getItem('sw_language') || 'vi') : 'vi');
@@ -589,14 +604,15 @@ export const verifyOtpAndLogin = verifyTelegramOtp;
 
 // ─── 11. Admin CMS APIs ─────────────────────────────────────────
 
-export const loginAsAdmin = async (): Promise<AuthV1Response> => {
+export const loginAsAdmin = async (username: string, password: string): Promise<AuthV1Response> => {
   const res = await fetch(`${API_V1}/auth/admin-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Lỗi đăng nhập tài khoản Quản trị');
+    throw new Error(err.message || err.error || 'Tài khoản hoặc mật khẩu Quản trị viên không chính xác');
   }
   const data: AuthV1Response = await res.json();
   if (typeof window !== 'undefined') {
@@ -630,6 +646,23 @@ export const adminUpdatePoi = async (id: number, data: any): Promise<any> => {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || err.error || 'Không thể cập nhật địa điểm');
+  }
+  return res.json();
+};
+
+export const adminUploadPoiImages = async (poiId: number, files: File[]): Promise<string[]> => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+  const res = await fetch(`${API_V1}/admin/pois/${poiId}/images`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeader(),
+    },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tải lên hình ảnh cho địa điểm');
   }
   return res.json();
 };

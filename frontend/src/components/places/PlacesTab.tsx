@@ -39,8 +39,19 @@ export default function PlacesTab({ onOpenMap }: PlacesTabProps) {
       }
     };
     load();
+
+    const handleUpdate = () => {
+      load();
+    };
+    window.addEventListener('smart_tourism_poi_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('smart_tourism_poi_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
     };
   }, [language]);
 

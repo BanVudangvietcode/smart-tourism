@@ -15,6 +15,7 @@ import {
   fetchPoiReviews,
   checkinPoi,
   toggleFavorite,
+  checkFavoriteStatus,
   getAudioStreamUrl,
   trackAudioListen,
 } from '@/services/api';
@@ -40,7 +41,7 @@ export default function PoiDetailModal({
   onClose,
   onNavigate,
 }: PoiDetailModalProps) {
-  const { user, deviceId } = useAuth();
+  const { user, deviceId, isAuthenticated, openLoginModal } = useAuth();
   const { language, tk } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'menu' | 'reviews' | 'ai'>(initialTab);
@@ -51,6 +52,14 @@ export default function PoiDetailModal({
   const [reviewsData, setReviewsData] = useState<ReviewPageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
+
+  // Đồng bộ số lượng đánh giá và điểm số hiển thị thống nhất giữa Header Badge và Tab
+  const displayReviewCount = reviewsData !== null ? reviewsData.totalCount : (detail?.reviewCount ?? 0);
+  const displayAvgRating = reviewsData && reviewsData.totalCount > 0
+    ? (reviewsData.items.length > 0
+        ? Number((reviewsData.items.reduce((acc, r) => acc + r.rating, 0) / reviewsData.items.length).toFixed(1))
+        : Number((detail?.avgRating ?? 5.0).toFixed(1)))
+    : (detail?.avgRating ? Number(detail.avgRating.toFixed(1)) : 0);
 
   // Audio Player State
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -81,23 +90,31 @@ export default function PoiDetailModal({
     setMounted(true);
   }, []);
 
-  // Fetch POI details, menu, reviews
+  // Fetch POI details, menu, reviews & favorite status
   useEffect(() => {
     if (!poiId) return;
     setLoading(true);
     setCheckinResult(null);
     setCheckinError(null);
 
-    Promise.all([
+    const fetchPromises: Promise<any>[] = [
       fetchPoiDetail(Number(poiId)),
       fetchPoiMenu(Number(poiId)).catch(() => null),
       fetchPoiReviews(Number(poiId)).catch(() => null),
-    ])
-      .then(([detailData, menuData, reviewsRes]) => {
+    ];
+
+    if (isAuthenticated) {
+      fetchPromises.push(checkFavoriteStatus(Number(poiId)).catch(() => false));
+    } else {
+      fetchPromises.push(Promise.resolve(false));
+    }
+
+    Promise.all(fetchPromises)
+      .then(([detailData, menuData, reviewsRes, favStatus]) => {
         setDetail(detailData);
         setMenu(menuData);
         setReviewsData(reviewsRes);
-        setIsFav(Boolean((detailData as any)?.isFavorite));
+        setIsFav(Boolean(favStatus));
       })
       .catch((err) => {
         console.error('Failed to load POI details:', err);
@@ -105,16 +122,29 @@ export default function PoiDetailModal({
       .finally(() => {
         setLoading(false);
       });
-  }, [poiId]);
+  }, [poiId, isAuthenticated]);
 
   // Toggle favorite
   const handleToggleFav = async () => {
     if (!poiId) return;
+    if (!isAuthenticated) {
+      openLoginModal();
+      return;
+    }
+    const targetState = !isFav;
+    setIsFav(targetState);
     try {
-      const res = await toggleFavorite(Number(poiId), !isFav);
+      const res = await toggleFavorite(Number(poiId), targetState);
       setIsFav(res.isFavorite);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('smart_tourism_favorite_changed', {
+            detail: { poiId: Number(poiId), isFavorite: res.isFavorite },
+          })
+        );
+      }
     } catch {
-      setIsFav(!isFav);
+      setIsFav(!targetState);
     }
   };
 
@@ -238,12 +268,16 @@ export default function PoiDetailModal({
               <span className="bg-blue-600/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 {detail?.categoryName || 'Địa điểm'}
               </span>
-              {detail?.avgRating ? (
+              {displayReviewCount > 0 && displayAvgRating > 0 ? (
                 <span className="bg-amber-400 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-                  ★ {detail.avgRating.toFixed(1)}
-                  <span className="text-[10px] font-medium text-slate-800">({detail.reviewCount})</span>
+                  ★ {displayAvgRating.toFixed(1)}
+                  <span className="text-[10px] font-medium text-slate-800">({displayReviewCount})</span>
                 </span>
-              ) : null}
+              ) : (
+                <span className="bg-slate-900/60 backdrop-blur-md text-amber-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
+                  ★ Mới (Chưa có đánh giá)
+                </span>
+              )}
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
               {detail?.name || 'Đang tải...'}
@@ -371,7 +405,7 @@ export default function PoiDetailModal({
               activeTab === 'reviews' ? 'border-blue-600 text-blue-600 bg-blue-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {tk('poi_tab_reviews')} {reviewsData ? `(${reviewsData.totalCount})` : ''}
+            {tk('poi_tab_reviews')} ({displayReviewCount})
           </button>
           <button
             type="button"

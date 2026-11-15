@@ -19,6 +19,9 @@ interface AuthContextType {
   isGuest: boolean;          // đang dùng phiên khách (chưa đăng nhập thật)
   isAuthenticated: boolean;  // đã đăng nhập thật (Google / SĐT / Admin)
   deviceId: string;
+  isLoginModalOpen: boolean;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
   login: (response: AuthV1Response) => void;
   logout: () => void;
   refreshGuestSession: () => Promise<void>;
@@ -31,6 +34,9 @@ const AuthContext = createContext<AuthContextType>({
   isGuest: true,
   isAuthenticated: false,
   deviceId: '',
+  isLoginModalOpen: false,
+  openLoginModal: () => {},
+  closeLoginModal: () => {},
   login: () => {},
   logout: () => {},
   refreshGuestSession: async () => {},
@@ -41,6 +47,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deviceId, setDeviceId] = useState('');
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const openLoginModal = useCallback(() => setIsLoginModalOpen(true), []);
+  const closeLoginModal = useCallback(() => setIsLoginModalOpen(false), []);
 
   // Lấy hoặc tạo mới deviceId cho trình duyệt
   const getOrCreateDeviceId = (): string => {
@@ -197,7 +207,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, isGuest, isAuthenticated, deviceId, login, logout, refreshGuestSession }}
+      value={{
+        user,
+        token,
+        isLoading,
+        isGuest,
+        isAuthenticated,
+        deviceId,
+        isLoginModalOpen,
+        openLoginModal,
+        closeLoginModal,
+        login,
+        logout,
+        refreshGuestSession,
+      }}
     >
       {children}
     </AuthContext.Provider>

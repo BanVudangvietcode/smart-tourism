@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,
     email           VARCHAR(255) UNIQUE,
+    password_hash   VARCHAR(255),
     display_name    VARCHAR(100),
     avatar_url      TEXT,
     provider        VARCHAR(20) NOT NULL DEFAULT 'local',   -- 'local', 'google', 'guest'
@@ -13,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at      TIMESTAMP NOT NULL DEFAULT now(),
     updated_at      TIMESTAMP NOT NULL DEFAULT now()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 -- Guest devices table: maps anonymous devices to guest user records
 CREATE TABLE IF NOT EXISTS guest_devices (

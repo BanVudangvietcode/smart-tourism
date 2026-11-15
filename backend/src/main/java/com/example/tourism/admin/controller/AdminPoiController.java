@@ -28,7 +28,9 @@ public class AdminPoiController {
     }
 
     private void requireAdmin(AuthUser user) {
-        // Cho phép chế độ quyền bình thường / khách dùng thử mà không bắt buộc đăng nhập
+        if (user == null || !"ADMIN".equalsIgnoreCase(user.role())) {
+            throw new SecurityException("Truy cập bị từ chối: Yêu cầu quyền Quản trị viên (ADMIN).");
+        }
     }
 
     /**
@@ -55,6 +57,7 @@ public class AdminPoiController {
             @RequestParam("longitude") Double longitude,
             @RequestParam(value = "thumbnailUrl", required = false) String thumbnailUrl,
             @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestParam(value = "images", required = false) java.util.List<MultipartFile> images,
             @RequestParam(value = "audio", required = false) MultipartFile audio,
             @RequestParam(value = "audioScript", required = false) String audioScript,
             @RequestParam(value = "audioTitle", required = false) String audioTitle) {
@@ -67,8 +70,22 @@ public class AdminPoiController {
                 latitude, longitude, thumbnailUrl
         );
 
-        AdminPoiResponse response = adminPoiService.createPoi(req, image, audio, audioScript, audioTitle);
+        AdminPoiResponse response = adminPoiService.createPoi(req, image, images, audio, audioScript, audioTitle);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * POST /api/v1/admin/pois/{id}/images
+     * Tải lên một hoặc nhiều hình ảnh cho địa điểm
+     */
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<java.util.List<String>> uploadPoiImages(
+            @CurrentUser AuthUser user,
+            @PathVariable Long id,
+            @RequestParam("images") java.util.List<MultipartFile> images) {
+        requireAdmin(user);
+        java.util.List<String> urls = adminPoiService.uploadPoiImages(id, images);
+        return ResponseEntity.ok(urls);
     }
 
     /**
