@@ -568,6 +568,7 @@ export interface RequestOtpResponse {
   status: 'SENT' | 'WAITING_TELEGRAM';
   message: string;
   telegramBotUrl?: string;
+  telegramWebUrl?: string;
 }
 
 export const requestTelegramOtp = async (phone: string): Promise<RequestOtpResponse> => {

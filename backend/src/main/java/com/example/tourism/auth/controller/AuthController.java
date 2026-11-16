@@ -62,6 +62,9 @@ public class AuthController {
         if (result.telegramBotUrl() != null) {
             response.put("telegramBotUrl", result.telegramBotUrl());
         }
+        if (result.telegramWebUrl() != null) {
+            response.put("telegramWebUrl", result.telegramWebUrl());
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -86,6 +89,9 @@ public class AuthController {
         response.put("message", result.message());
         if (result.telegramBotUrl() != null) {
             response.put("telegramBotUrl", result.telegramBotUrl());
+        }
+        if (result.telegramWebUrl() != null) {
+            response.put("telegramWebUrl", result.telegramWebUrl());
         }
         return ResponseEntity.ok(response);
     }

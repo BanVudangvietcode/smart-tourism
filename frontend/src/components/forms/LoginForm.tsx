@@ -16,6 +16,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [telegramBotUrl, setTelegramBotUrl] = useState('');
+  const [telegramWebUrl, setTelegramWebUrl] = useState('');
   const [countdown, setCountdown] = useState(0);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +94,7 @@ export default function LoginForm() {
       const res = await requestOtp(phone);
       setMessage(res.message || 'Mã OTP đã được gửi vào Telegram.');
       setTelegramBotUrl(res.telegramBotUrl || '');
+      setTelegramWebUrl(res.telegramWebUrl || '');
       setCountdown(60);
       setStep(2);
     } catch (error: unknown) {
@@ -215,19 +217,31 @@ export default function LoginForm() {
 
           {telegramBotUrl && (
             <div className="bg-[#EBF7FD] p-4 rounded-[20px] border border-[#D0EEFB] flex flex-col gap-2">
-              <a
-                href={telegramBotUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-bold text-xs rounded-xl shadow-md transition transform active:scale-98 cursor-pointer"
-              >
-                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                </svg>
-                <span>Mở Telegram nhận mã OTP ngay</span>
-              </a>
+              <div className="flex flex-col gap-1.5">
+                {telegramWebUrl && (
+                  <a
+                    href={telegramWebUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-bold text-xs rounded-xl shadow-md transition transform active:scale-98 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                    </svg>
+                    <span>Mở trên Telegram Web (Trình duyệt)</span>
+                  </a>
+                )}
+                <a
+                  href={telegramBotUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-white hover:bg-sky-50 text-[#229ED9] border border-[#229ED9]/30 font-bold text-[11px] rounded-xl transition cursor-pointer"
+                >
+                  <span>Mở bằng ứng dụng Telegram App</span>
+                </a>
+              </div>
               <p className="text-[11px] text-[#558CA5] text-center leading-tight">
-                👉 Bấm <b>Bắt đầu (Start)</b> trên Telegram để Bot gửi mã 6 số về cho bạn.
+                💡 Hoặc mở Telegram tìm bot <b className="text-sky-800">@smart_tourism_sts_bot</b> và gửi tin nhắn: <b className="text-slate-900 font-mono">{phone}</b> để nhận mã ngay!
               </p>
             </div>
           )}

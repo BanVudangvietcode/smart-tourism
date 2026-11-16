@@ -103,6 +103,11 @@ public class TelegramBotService {
         return "https://t.me/" + botUsername + "?start=otp_" + cleanPhone;
     }
 
+    public String getWebTelegramUrl(String phone) {
+        String cleanPhone = normalizePhone(phone);
+        return "https://web.telegram.org/k/#?tgaddr=tg%3A%2F%2Fresolve%3Fdomain%3D" + botUsername + "%26start%3Dotp_" + cleanPhone;
+    }
+
     public String getChatId(String phone) {
         String cleanPhone = normalizePhone(phone);
         if (cleanPhone.isEmpty()) return null;
@@ -226,8 +231,27 @@ public class TelegramBotService {
                     long chatId = message.path("chat").path("id").asLong();
                     String firstName = message.path("chat").path("first_name").asText("bạn");
 
+                    // 1. Nếu người dùng chia sẻ danh bạ (Share Contact)
+                    JsonNode contact = message.path("contact");
+                    if (!contact.isMissingNode()) {
+                        String contactPhone = contact.path("phone_number").asText("").trim();
+                        handlePhoneReceived(String.valueOf(chatId), firstName, contactPhone);
+                        continue;
+                    }
+
+                    // 2. Nếu là lệnh /start
                     if (text.startsWith("/start")) {
                         handleStartCommand(String.valueOf(chatId), firstName, text);
+                    } else if (!text.isBlank()) {
+                        // 3. Nếu người dùng gõ thẳng số điện thoại vào chat bot (ví dụ: 0964603676)
+                        String clean = normalizePhone(text);
+                        if (clean.length() >= 9 && clean.length() <= 11) {
+                            handlePhoneReceived(String.valueOf(chatId), firstName, clean);
+                        } else {
+                            String reply = "Xin chào " + firstName + "! 👋\n\n"
+                                    + "Để nhận mã OTP xác thực, bạn chỉ cần gửi tin nhắn là *Số điện thoại* (ví dụ: `0964603676`) vào đây nhé!";
+                            sendMessage(String.valueOf(chatId), reply, "Markdown");
+                        }
                     }
                 }
             }
@@ -237,36 +261,45 @@ public class TelegramBotService {
     }
 
     private void handleStartCommand(String chatId, String firstName, String fullText) {
-        // Ví dụ: "/start otp_0912345678" hoặc "/start"
+        // Ví dụ: "/start otp_0964603676" hoặc "/start 0964603676" hoặc "/start"
         String payload = fullText.replace("/start", "").trim();
 
         if (payload.startsWith("otp_")) {
-            String phone = payload.substring(4).trim();
-            String cleanPhone = normalizePhone(phone);
+            payload = payload.substring(4).trim();
+        }
 
-            // 1. Lưu liên kết phone -> chatId
-            savePhoneChatMapping(cleanPhone, chatId);
-
-            // 2. Lấy hoặc sinh mã OTP
-            String otp = null;
-            if (otpHandler != null) {
-                otp = otpHandler.apply(cleanPhone);
-            }
-
-            if (otp != null && !otp.isBlank()) {
-                String reply = "🎉 *Chào mừng " + firstName + " đến với Smart Tourism!*\n\n"
-                        + "🔐 Mã xác thực OTP cho số *" + cleanPhone + "* của bạn là: `" + otp + "`\n\n"
-                        + "⏱ Mã có hiệu lực trong *5 phút*.\n"
-                        + "👉 Hãy quay lại trình duyệt web để nhập mã này nhé!";
-                sendMessage(chatId, reply, "Markdown");
-            } else {
-                sendMessage(chatId, "✅ Đã kết nối thành công tài khoản Telegram với số *" + cleanPhone + "*!\n\nVui lòng quay lại web và bấm nhận mã OTP.", "Markdown");
-            }
+        String cleanPhone = normalizePhone(payload);
+        if (cleanPhone.length() >= 9 && cleanPhone.length() <= 11) {
+            handlePhoneReceived(chatId, firstName, cleanPhone);
         } else {
             String reply = "Xin chào " + firstName + "! 👋\n\n"
                     + "Đây là Bot hỗ trợ nhận mã OTP tự động của *Smart Tourism Guide* (Quận 4 - TP.HCM).\n\n"
-                    + "💡 *Cách sử dụng:* Khi bạn đăng nhập trên trang web bằng Số Điện Thoại, hệ thống sẽ mở liên kết vào bot này và gửi mã OTP cho bạn ngay lập tức!";
+                    + "💡 *Cách nhận mã:* Bạn chỉ cần gửi tin nhắn là *Số điện thoại của bạn* (ví dụ: `0964603676`) vào đây để nhận mã OTP ngay lập tức!";
             sendMessage(chatId, reply, "Markdown");
+        }
+    }
+
+    private void handlePhoneReceived(String chatId, String firstName, String rawPhone) {
+        String cleanPhone = normalizePhone(rawPhone);
+        if (cleanPhone.length() < 9) return;
+
+        // 1. Lưu liên kết phone -> chatId
+        savePhoneChatMapping(cleanPhone, chatId);
+
+        // 2. Lấy hoặc sinh mã OTP
+        String otp = null;
+        if (otpHandler != null) {
+            otp = otpHandler.apply(cleanPhone);
+        }
+
+        if (otp != null && !otp.isBlank()) {
+            String reply = "🎉 *Chào mừng " + firstName + " đến với Smart Tourism!*\n\n"
+                    + "🔐 Mã xác thực OTP cho số *" + cleanPhone + "* của bạn là: `" + otp + "`\n\n"
+                    + "⏱ Mã có hiệu lực trong *5 phút*.\n"
+                    + "👉 Hãy quay lại trình duyệt web để nhập mã này nhé!";
+            sendMessage(chatId, reply, "Markdown");
+        } else {
+            sendMessage(chatId, "✅ Đã kết nối thành công tài khoản Telegram với số *" + cleanPhone + "*!\n\nVui lòng quay lại web và bấm nhận mã OTP.", "Markdown");
         }
     }
 }

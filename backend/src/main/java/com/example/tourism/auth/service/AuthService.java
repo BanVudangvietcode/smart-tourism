@@ -53,7 +53,7 @@ public class AuthService {
         this.guestDeviceRepository = guestDeviceRepository;
     }
 
-    public record OtpRequestResult(String status, String message, String telegramBotUrl) {}
+    public record OtpRequestResult(String status, String message, String telegramBotUrl, String telegramWebUrl) {}
 
     @PostConstruct
     public void init() {
@@ -292,11 +292,12 @@ public class AuthService {
         if (chatId != null && !chatId.isBlank()) {
             // Đã biết chatId của người dùng -> Gửi thẳng
             telegramBotService.sendOtpMessageToChat(chatId, normalizedPhone, otp);
-            return new OtpRequestResult("SENT", "Mã OTP đã được gửi về Telegram của bạn.", null);
+            return new OtpRequestResult("SENT", "Mã OTP đã được gửi về Telegram của bạn.", null, null);
         } else {
-            // Chưa biết chatId -> Trả về deep link Telegram
+            // Chưa biết chatId -> Trả về deep link Telegram (cả App và Web)
             String botUrl = telegramBotService.getDeepLinkUrl(normalizedPhone);
-            return new OtpRequestResult("WAITING_TELEGRAM", "Vui lòng mở Telegram và bấm Bắt đầu để nhận mã OTP.", botUrl);
+            String webUrl = telegramBotService.getWebTelegramUrl(normalizedPhone);
+            return new OtpRequestResult("WAITING_TELEGRAM", "Vui lòng mở Telegram để nhận mã OTP.", botUrl, webUrl);
         }
     }
 
