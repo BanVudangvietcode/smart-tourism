@@ -728,9 +728,8 @@ export default function Map({
       {/* ── BẢN ĐỒ MAP CONTAINER ────────────────────────────── */}
       <MapContainer ref={mapRef} center={userPos} zoom={16} zoomControl={false} className="w-full h-full border-none absolute inset-0 z-0 bg-[#f4f7f6]">
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          attribution='&copy; <a href="https://maps.google.com/">Google Maps</a>'
+          url="https://mt1.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}&apistyle=s.t:3%7Cp.v:off"
           maxZoom={20}
         />
         <MapEventsHandler
