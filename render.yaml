@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: smart-tourism-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: SERVER_PORT
+        value: 8080
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: POSTGRES_DB
+        value: postgres
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_CHAT_ID
+        sync: false

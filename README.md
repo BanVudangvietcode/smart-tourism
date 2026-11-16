@@ -205,9 +205,22 @@ smart-tourism/
 │   │   ├── i18n/                          # Từ điển dịch tĩnh đa ngôn ngữ (6 ngôn ngữ)
 │   │   └── services/                      # Cầu nối gọi API backend
 ├── docker-compose.yml                     # Cấu hình container PostGIS & Redis
+├── render.yaml                            # Cấu hình Blueprint Deploy Backend Render
+├── DEPLOY_FREE_GUIDE.md                   # Hướng dẫn chi tiết Deploy & CI/CD 100% Free
 ├── .env.example                           # Mẫu cấu hình môi trường
 └── README.md                              # Tài liệu hướng dẫn sử dụng dự án
 ```
+
+---
+
+## 8. Triển khai Đám mây (Deploy) & CI/CD Miễn phí 100%
+
+Hệ thống hỗ trợ quy trình CI/CD tự động cập nhật khi push code lên GitHub và hoàn toàn miễn phí:
+* **Frontend:** Triển khai trên **Vercel** (Next.js 16 Edge CDN).
+* **Backend:** Triển khai trên **Render** (chạy Dockerfile Java 17).
+* **Database & Cache:** Sử dụng **Supabase** (PostGIS) và **Upstash** (Redis).
+
+👉 **Xem hướng dẫn chi tiết từng bước tại:** [DEPLOY_FREE_GUIDE.md](file:///e:/smart-tourism/DEPLOY_FREE_GUIDE.md)
 
 ---
 *Chúc bạn có trải nghiệm tuyệt vời cùng Saigon Whispers! Mọi đóng góp và phản hồi xin vui lòng tạo Issue hoặc Pull Request.* 🚀

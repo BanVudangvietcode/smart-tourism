@@ -1,3 +1,6 @@
+-- Enable PostGIS extension for spatial queries (ST_DWithin, ST_MakePoint, GEOGRAPHY)
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 -- Users table: supports guest, email/password, and OAuth2 accounts
 CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,

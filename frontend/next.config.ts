@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
         source: '/api/v1/:path*',
         destination: `${BACKEND_URL.replace(/\/api\/v1\/?$/, '')}/api/v1/:path*`,
       },
+      {
+        source: '/images/:path*',
+        destination: `${BACKEND_URL.replace(/\/api\/v1\/?$/, '')}/images/:path*`,
+      },
     ];
   },
 };
