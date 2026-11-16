@@ -564,7 +564,13 @@ export const loginWithGoogle = async (idToken: string, deviceId?: string): Promi
   return res.json();
 };
 
-export const requestTelegramOtp = async (phone: string): Promise<boolean> => {
+export interface RequestOtpResponse {
+  status: 'SENT' | 'WAITING_TELEGRAM';
+  message: string;
+  telegramBotUrl?: string;
+}
+
+export const requestTelegramOtp = async (phone: string): Promise<RequestOtpResponse> => {
   const res = await fetch(`${API_V1}/auth/telegram/request-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -572,9 +578,9 @@ export const requestTelegramOtp = async (phone: string): Promise<boolean> => {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Lỗi gửi mã OTP Telegram');
+    throw new Error(err.message || err.error || 'Lỗi gửi mã OTP Telegram');
   }
-  return true;
+  return res.json();
 };
 
 export const verifyTelegramOtp = async (phone: string, otp: string): Promise<AuthV1Response> => {

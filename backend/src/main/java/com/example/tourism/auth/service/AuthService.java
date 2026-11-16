@@ -53,12 +53,17 @@ public class AuthService {
         this.guestDeviceRepository = guestDeviceRepository;
     }
 
+    public record OtpRequestResult(String status, String message, String telegramBotUrl) {}
+
     @PostConstruct
-    public void initGoogleVerifier() {
+    public void init() {
         this.googleVerifier = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(googleClientId))
                 .build();
+
+        // Kết nối callback xử lý khi người dùng ấn /start trên Telegram Bot
+        this.telegramBotService.setOtpHandler(this::getOrCreateOtpForTelegram);
     }
 
     // ──────────────────────────────────────────────
@@ -248,13 +253,28 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────
-    // Legacy OTP (kept for backward compatibility)
+    // Telegram OTP Authentication Flow
     // ──────────────────────────────────────────────
 
-    public void generateAndSendOtp(String phone) {
-        String normalizedPhone = phone.trim();
+    public String getOrCreateOtpForTelegram(String phone) {
+        String normalizedPhone = TelegramBotService.normalizePhone(phone);
         long now = System.currentTimeMillis();
+        OtpEntry existing = otpStorage.get(normalizedPhone);
+        if (existing != null && now < existing.expiresAt()) {
+            return existing.code();
+        }
+        String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
+        otpStorage.put(normalizedPhone, new OtpEntry(otp, now + OTP_TTL_MS, now));
+        return otp;
+    }
 
+    public OtpRequestResult requestOtp(String phone) {
+        String normalizedPhone = TelegramBotService.normalizePhone(phone);
+        if (normalizedPhone.length() < 9) {
+            throw new IllegalArgumentException("Số điện thoại không hợp lệ (cần ít nhất 9 chữ số).");
+        }
+
+        long now = System.currentTimeMillis();
         OtpEntry existing = otpStorage.get(normalizedPhone);
         if (existing != null) {
             long elapsed = now - existing.createdAt();
@@ -266,20 +286,30 @@ public class AuthService {
 
         // Tạo mã OTP 6 số
         String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
-
-        // Lưu vào bộ nhớ kèm thời gian hết hạn và thời điểm tạo
         otpStorage.put(normalizedPhone, new OtpEntry(otp, now + OTP_TTL_MS, now));
 
-        // Gửi qua Telegram
-        telegramBotService.sendOtpMessage(normalizedPhone, otp);
+        String chatId = telegramBotService.getChatId(normalizedPhone);
+        if (chatId != null && !chatId.isBlank()) {
+            // Đã biết chatId của người dùng -> Gửi thẳng
+            telegramBotService.sendOtpMessageToChat(chatId, normalizedPhone, otp);
+            return new OtpRequestResult("SENT", "Mã OTP đã được gửi về Telegram của bạn.", null);
+        } else {
+            // Chưa biết chatId -> Trả về deep link Telegram
+            String botUrl = telegramBotService.getDeepLinkUrl(normalizedPhone);
+            return new OtpRequestResult("WAITING_TELEGRAM", "Vui lòng mở Telegram và bấm Bắt đầu để nhận mã OTP.", botUrl);
+        }
+    }
+
+    public void generateAndSendOtp(String phone) {
+        requestOtp(phone);
     }
 
     /**
      * Xác thực OTP rồi tìm/tạo User ứng với SĐT này, trả JWT đầy đủ (userId + role).
-     * Không cần sửa schema: dùng provider = "phone", provider_id = SĐT.
+     * Dùng provider = "phone", provider_id = SĐT.
      */
     public AuthResponse verifyOtp(String phone, String otp) {
-        String normalizedPhone = phone.trim();
+        String normalizedPhone = TelegramBotService.normalizePhone(phone);
         OtpEntry entry = otpStorage.get(normalizedPhone);
 
         if (entry == null || System.currentTimeMillis() > entry.expiresAt()

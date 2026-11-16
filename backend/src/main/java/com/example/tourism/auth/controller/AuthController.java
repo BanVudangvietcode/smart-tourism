@@ -51,12 +51,18 @@ public class AuthController {
     }
 
     /**
-     * Gửi OTP qua Telegram (route mà frontend đang gọi).
+     * Gửi OTP qua Telegram (hỗ trợ Deep Link và tự động gửi nếu đã liên kết).
      */
     @PostMapping("/api/v1/auth/telegram/request-otp")
-    public ResponseEntity<Map<String, String>> requestTelegramOtp(@Valid @RequestBody OtpRequest request) {
-        authService.generateAndSendOtp(request.getPhone());
-        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi thành công qua Telegram!"));
+    public ResponseEntity<Map<String, Object>> requestTelegramOtp(@Valid @RequestBody OtpRequest request) {
+        AuthService.OtpRequestResult result = authService.requestOtp(request.getPhone());
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("status", result.status());
+        response.put("message", result.message());
+        if (result.telegramBotUrl() != null) {
+            response.put("telegramBotUrl", result.telegramBotUrl());
+        }
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -73,9 +79,15 @@ public class AuthController {
     // ──────────────────────────────────────────────
 
     @PostMapping("/api/auth/request-otp")
-    public ResponseEntity<Map<String, String>> requestOtp(@Valid @RequestBody OtpRequest request) {
-        authService.generateAndSendOtp(request.getPhone());
-        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi thành công qua Telegram!"));
+    public ResponseEntity<Map<String, Object>> requestOtp(@Valid @RequestBody OtpRequest request) {
+        AuthService.OtpRequestResult result = authService.requestOtp(request.getPhone());
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("status", result.status());
+        response.put("message", result.message());
+        if (result.telegramBotUrl() != null) {
+            response.put("telegramBotUrl", result.telegramBotUrl());
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/api/auth/verify-otp")
