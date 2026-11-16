@@ -728,8 +728,8 @@ export default function Map({
       {/* ── BẢN ĐỒ MAP CONTAINER ────────────────────────────── */}
       <MapContainer ref={mapRef} center={userPos} zoom={16} zoomControl={false} className="w-full h-full border-none absolute inset-0 z-0 bg-[#f4f7f6]">
         <TileLayer
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="http://openstreetmap.org">OSM</a>'
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://maps.google.com/">Google Maps</a>'
+          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
           maxZoom={20}
         />
         <MapEventsHandler

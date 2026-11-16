@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
+-- Seed initial demo user for reviews and check-ins
+INSERT INTO users (id, email, password_hash, display_name, provider, role)
+VALUES (1, 'demo@smart-tourism.vn', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.82MepC9.iZ5e4sJ2Qy8Pq.87N1eMKy', 'Khách Du Lịch', 'local', 'USER')
+ON CONFLICT (id) DO NOTHING;
+
 -- Guest devices table: maps anonymous devices to guest user records
 CREATE TABLE IF NOT EXISTS guest_devices (
     id          BIGSERIAL PRIMARY KEY,
