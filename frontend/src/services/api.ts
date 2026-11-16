@@ -18,6 +18,7 @@ import {
   AuthV1Response,
   UserProfile,
   UserFavoritePoiResponse,
+  AdminUserItem,
 } from '@/types';
 
 const isServer = typeof window === 'undefined';
@@ -800,6 +801,17 @@ export const getHeatmap = async (minDwellSeconds = 30, limit = 500): Promise<any
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Không thể tải bản đồ nhiệt');
+  }
+  return res.json();
+};
+
+export const adminGetUsers = async (): Promise<AdminUserItem[]> => {
+  const res = await fetch(`${API_V1}/admin/users`, {
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể tải danh sách người dùng');
   }
   return res.json();
 };

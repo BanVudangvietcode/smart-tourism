@@ -340,6 +340,19 @@ export interface UserProfile {
   createdAt: string;
 }
 
+export interface AdminUserItem {
+  id: number;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  provider: string;
+  providerId: string | null;
+  role: string;
+  listenCount: number;
+  checkinCount: number;
+  createdAt: string | null;
+}
+
 // Bản đồ & Dẫn đường
 export interface MapPOI {
   id: string | number;

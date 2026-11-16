@@ -1,5 +1,6 @@
 package com.example.tourism.user.repository;
 
+import com.example.tourism.admin.dto.AdminUserResponse;
 import com.example.tourism.user.model.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -8,6 +9,8 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -115,5 +118,84 @@ public class UserRepository {
                 user.getEmail(), user.getDisplayName(), user.getAvatarUrl(),
                 user.isSpicy(), user.isVegetarian(), user.isNoSeafood(), user.getId());
         return findById(user.getId()).orElse(user);
+    }
+
+    public List<AdminUserResponse> findAdminUsersWithStats() {
+        try {
+            String sql = """
+                SELECT 
+                    u.id,
+                    u.email,
+                    u.display_name,
+                    u.avatar_url,
+                    u.provider,
+                    u.provider_id,
+                    u.role,
+                    u.created_at,
+                    (SELECT COUNT(*) FROM audio_listen_logs a WHERE a.user_id = u.id) AS listen_count,
+                    (SELECT COUNT(*) FROM checkins c WHERE c.user_id = u.id) AS checkin_count
+                FROM users u
+                WHERE LOWER(u.provider) IN ('phone', 'google')
+                ORDER BY u.id DESC
+                """;
+            return jdbcTemplate.query(sql, (rs, rowNum) -> mapAdminUserResponse(rs, true));
+        } catch (Exception e) {
+            String fallbackSql = """
+                SELECT 
+                    u.id,
+                    u.email,
+                    u.display_name,
+                    u.avatar_url,
+                    u.provider,
+                    u.provider_id,
+                    u.role,
+                    u.created_at
+                FROM users u
+                WHERE LOWER(u.provider) IN ('phone', 'google')
+                ORDER BY u.id DESC
+                """;
+            return jdbcTemplate.query(fallbackSql, (rs, rowNum) -> mapAdminUserResponse(rs, false));
+        }
+    }
+
+    private AdminUserResponse mapAdminUserResponse(ResultSet rs, boolean hasStats) throws SQLException {
+        String rawRole = null;
+        try {
+            rawRole = rs.getString("role");
+        } catch (Exception ignored) {}
+
+        String role = "ROLE_USER";
+        if (rawRole != null && !rawRole.isBlank()) {
+            String upper = rawRole.trim().toUpperCase();
+            role = upper.startsWith("ROLE_") ? upper : "ROLE_" + upper;
+        }
+
+        Timestamp createdAtTs = null;
+        try {
+            createdAtTs = rs.getTimestamp("created_at");
+        } catch (Exception ignored) {}
+        LocalDateTime createdAt = createdAtTs != null ? createdAtTs.toLocalDateTime() : null;
+
+        long listenCount = 0;
+        long checkinCount = 0;
+        if (hasStats) {
+            try {
+                listenCount = rs.getLong("listen_count");
+                checkinCount = rs.getLong("checkin_count");
+            } catch (Exception ignored) {}
+        }
+
+        return new AdminUserResponse(
+                rs.getLong("id"),
+                rs.getString("email"),
+                rs.getString("display_name"),
+                rs.getString("avatar_url"),
+                rs.getString("provider"),
+                rs.getString("provider_id"),
+                role,
+                listenCount,
+                checkinCount,
+                createdAt
+        );
     }
 }
