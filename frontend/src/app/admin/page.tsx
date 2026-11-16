@@ -812,27 +812,48 @@ export default function AdminPage() {
 
           <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
             <div className="relative">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                👤
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-purple-500/20">
+                {user?.displayName
+                  ? (() => {
+                      const words = user.displayName.trim().split(' ').filter(Boolean);
+                      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+                      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+                    })()
+                  : 'AD'}
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
             </div>
             <div className="hidden lg:block text-left">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-slate-800 leading-none">Quyền Bình Thường</p>
-                <span className="text-[9px] bg-slate-100 text-slate-600 px-1 rounded font-semibold border border-slate-200">
-                  Khách
+                <p className="text-xs font-bold text-slate-800 leading-none">
+                  {user?.displayName || 'Quản Trị Viên'}
+                </p>
+                <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-black border border-purple-200">
+                  {user?.role === 'ADMIN' ? '⚡ Admin' : 'Thành viên'}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Không yêu cầu đăng nhập</p>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-medium truncate max-w-[150px]">
+                {user?.email || 'admin@saigonwhispers.vn'}
+              </p>
             </div>
             <Link
               href="/"
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition text-xs font-bold"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition text-xs font-bold cursor-pointer"
               title="Về ứng dụng du khách"
             >
               🌐
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                router.push('/');
+              }}
+              className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 transition text-xs font-bold cursor-pointer"
+              title="Đăng xuất quản trị viên"
+            >
+              🚪
+            </button>
           </div>
         </div>
       </header>
