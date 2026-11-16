@@ -348,6 +348,7 @@ export interface AdminUserItem {
   provider: string;
   providerId: string | null;
   role: string;
+  locked: boolean;
   listenCount: number;
   checkinCount: number;
   createdAt: string | null;

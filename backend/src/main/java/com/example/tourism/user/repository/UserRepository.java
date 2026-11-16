@@ -2,11 +2,13 @@ package com.example.tourism.user.repository;
 
 import com.example.tourism.admin.dto.AdminUserResponse;
 import com.example.tourism.user.model.User;
+import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,6 +39,9 @@ public class UserRepository {
         user.setVegetarian(rs.getBoolean("vegetarian"));
         user.setNoSeafood(rs.getBoolean("no_seafood"));
         user.setRole(rs.getString("role"));
+        try {
+            user.setLocked(rs.getBoolean("is_locked"));
+        } catch (Exception ignored) {}
         user.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         user.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
         return user;
@@ -44,6 +49,13 @@ public class UserRepository {
 
     public UserRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false");
+        } catch (Exception ignored) {}
     }
 
     public Optional<User> findById(Long id) {
@@ -131,6 +143,7 @@ public class UserRepository {
                     u.provider,
                     u.provider_id,
                     u.role,
+                    COALESCE(u.is_locked, false) AS is_locked,
                     u.created_at,
                     (SELECT COUNT(*) FROM audio_listen_logs a WHERE a.user_id = u.id) AS listen_count,
                     (SELECT COUNT(*) FROM checkins c WHERE c.user_id = u.id) AS checkin_count
@@ -149,6 +162,7 @@ public class UserRepository {
                     u.provider,
                     u.provider_id,
                     u.role,
+                    COALESCE(u.is_locked, false) AS is_locked,
                     u.created_at
                 FROM users u
                 WHERE LOWER(u.provider) IN ('phone', 'google')
@@ -169,6 +183,11 @@ public class UserRepository {
             String upper = rawRole.trim().toUpperCase();
             role = upper.startsWith("ROLE_") ? upper : "ROLE_" + upper;
         }
+
+        boolean locked = false;
+        try {
+            locked = rs.getBoolean("is_locked");
+        } catch (Exception ignored) {}
 
         Timestamp createdAtTs = null;
         try {
@@ -193,9 +212,27 @@ public class UserRepository {
                 rs.getString("provider"),
                 rs.getString("provider_id"),
                 role,
+                locked,
                 listenCount,
                 checkinCount,
                 createdAt
         );
+    }
+
+    public void updateUserLockStatus(Long userId, boolean locked) {
+        jdbcTemplate.update("UPDATE users SET is_locked = ?, updated_at = now() WHERE id = ?", locked, userId);
+    }
+
+    @Transactional
+    public void deleteUser(Long userId) {
+        jdbcTemplate.update("DELETE FROM guest_devices WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM favorites WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM checkins WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM user_badges WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM reviews WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM tour_reviews WHERE user_id = ?", userId);
+        jdbcTemplate.update("UPDATE audio_listen_logs SET user_id = NULL WHERE user_id = ?", userId);
+        jdbcTemplate.update("UPDATE dwell_logs SET user_id = NULL WHERE user_id = ?", userId);
+        jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
     }
 }

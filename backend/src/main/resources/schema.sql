@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
 
 -- Seed initial demo user for reviews and check-ins
 INSERT INTO users (id, email, password_hash, display_name, provider, role)
