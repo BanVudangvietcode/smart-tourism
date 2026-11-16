@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { requestOtp, verifyOtpAndLogin, loginWithGoogle } from '@/services/api';
+import { loginWithGoogle } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -10,28 +10,13 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 export default function LoginForm() {
   const router = useRouter();
   const { user, login, logout, isAuthenticated, deviceId } = useAuth();
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [telegramBotUrl, setTelegramBotUrl] = useState('');
-  const [telegramWebUrl, setTelegramWebUrl] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const googleBtnRef = useRef<HTMLDivElement>(null);
-
-  // Countdown timer for OTP resend (60 seconds)
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
 
   // Initialize Google Sign-In
   useEffect(() => {
-    if (isAuthenticated || !GOOGLE_CLIENT_ID) return; // Already logged in or no client ID
+    if (isAuthenticated || !GOOGLE_CLIENT_ID) return;
 
     const initGoogle = () => {
       if (window.google?.accounts?.id && googleBtnRef.current) {
@@ -44,12 +29,12 @@ export default function LoginForm() {
           size: 'large',
           text: 'signin_with',
           shape: 'pill',
-          width: 320,
+          width: 280,
         });
       }
     };
 
-    const timer = setTimeout(initGoogle, 500);
+    const timer = setTimeout(initGoogle, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -59,7 +44,7 @@ export default function LoginForm() {
     setMessage('');
     try {
       const authRes = await loginWithGoogle(response.credential, deviceId);
-      login(authRes); // lưu token + user vào AuthContext (và localStorage)
+      login(authRes);
       router.push('/');
     } catch (error: unknown) {
       const err = error as Error;
@@ -71,7 +56,7 @@ export default function LoginForm() {
 
   const handleGoogleOneTap = () => {
     if (!GOOGLE_CLIENT_ID) {
-      setMessage('Google Client ID chưa được cấu hình. Vui lòng đặt NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
+      setMessage('Google Client ID chưa được cấu hình.');
       return;
     }
     if (window.google?.accounts?.id) {
@@ -80,47 +65,6 @@ export default function LoginForm() {
         callback: handleGoogleResponse,
       });
       window.google.accounts.id.prompt();
-    }
-  };
-
-  const handleRequestOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!phone || countdown > 0) return;
-
-    setLoading(true);
-    setMessage('');
-    
-    try {
-      const res = await requestOtp(phone);
-      setMessage(res.message || 'Mã OTP đã được gửi vào Telegram.');
-      setTelegramBotUrl(res.telegramBotUrl || '');
-      setTelegramWebUrl(res.telegramWebUrl || '');
-      setCountdown(60);
-      setStep(2);
-    } catch (error: unknown) {
-      const err = error as Error;
-      setMessage(err.message || 'Lỗi khi gửi yêu cầu OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp) return;
-
-    setLoading(true);
-    setMessage('');
-    
-    try {
-      const res = await verifyOtpAndLogin(phone, otp);
-      login(res); // lưu token + user vào AuthContext (và localStorage)
-      router.push('/');
-    } catch (error: unknown) {
-      const err = error as Error;
-      setMessage(err.message || 'Lỗi xác nhận OTP.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -150,19 +94,28 @@ export default function LoginForm() {
     <div className="w-full max-w-sm bg-white border border-[#EAEAEA] rounded-[32px] p-8 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.03)] flex flex-col">
       <div className="mb-8 text-center sm:text-left">
         <h3 className="text-[24px] leading-tight font-extrabold text-[#222222] tracking-tight">
-          🙌 Welcome in<br />Saigon Whispers
+          🙌 Welcome to<br />Smart Tourism
         </h3>
+        <p className="text-xs text-[#787774] mt-2">
+          Đăng nhập 1-chạm bằng tài khoản Google để lưu địa điểm yêu thích và viết đánh giá.
+        </p>
       </div>
 
+      {message && (
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl">
+          {message}
+        </div>
+      )}
+
       {/* ── Google Sign In ── */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col items-center justify-center min-h-[50px]">
         {GOOGLE_CLIENT_ID ? (
           <div ref={googleBtnRef} className="flex justify-center" />
         ) : (
           <button
             onClick={handleGoogleOneTap}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-[13px] py-[16px] px-4 rounded-[20px] transition disabled:opacity-50 cursor-pointer"
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-[13px] py-[14px] px-4 rounded-[20px] transition disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
@@ -179,136 +132,14 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* ── Divider ── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-[11px] text-gray-400 font-medium">hoặc đăng nhập bằng SĐT</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-      
-      {step === 1 ? (
-        <form onSubmit={handleRequestOtp} className="flex flex-col gap-4">
-          <div className="relative">
-            <input 
-              type="tel" 
-              className="w-full px-6 py-[18px] bg-[#FAF9F6] border-none rounded-[20px] text-[#222222] text-[13px] font-medium placeholder-[#888888] focus:outline-none focus:ring-2 focus:ring-[#FF5722]/20 transition-all" 
-              placeholder="Nhập số điện thoại"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              disabled={loading}
-              required
-            />
-            <div className="absolute right-5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#FBE4B9]"></div>
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading || countdown > 0}
-            className="w-full bg-[#FF4522] text-white py-[18px] rounded-[20px] text-[13px] font-black hover:bg-[#E63E1F] active:scale-[0.98] transition-all disabled:opacity-50 mt-4 shadow-[0_4px_14px_rgba(255,69,34,0.3)] tracking-wider cursor-pointer"
-          >
-            {loading ? 'ĐANG XỬ LÝ...' : countdown > 0 ? `GỬI LẠI SAU (${countdown}s)` : 'SIGN IN 👈'}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 animate-in fade-in duration-500">
-          <p className="text-[13px] text-[#787774] mb-1 font-medium text-left">
-            {message || 'Mã OTP đã được gửi vào Telegram.'}
-          </p>
-
-          {telegramBotUrl && (
-            <div className="bg-[#EBF7FD] p-4 rounded-[20px] border border-[#D0EEFB] flex flex-col gap-2">
-              <div className="flex flex-col gap-1.5">
-                {telegramWebUrl && (
-                  <a
-                    href={telegramWebUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-bold text-xs rounded-xl shadow-md transition transform active:scale-98 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                    </svg>
-                    <span>Mở trên Telegram Web (Trình duyệt)</span>
-                  </a>
-                )}
-                <a
-                  href={telegramBotUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-white hover:bg-sky-50 text-[#229ED9] border border-[#229ED9]/30 font-bold text-[11px] rounded-xl transition cursor-pointer"
-                >
-                  <span>Mở bằng ứng dụng Telegram App</span>
-                </a>
-              </div>
-              <p className="text-[11px] text-[#558CA5] text-center leading-tight">
-                💡 Hoặc mở Telegram tìm bot <b className="text-sky-800">@smart_tourism_sts_bot</b> và gửi tin nhắn: <b className="text-slate-900 font-mono">{phone}</b> để nhận mã ngay!
-              </p>
-            </div>
-          )}
-
-          <div className="relative">
-            <input 
-              type="text" 
-              className="w-full px-6 py-[18px] bg-[#FAF9F6] border-none rounded-[20px] text-[#222222] text-xl text-center font-bold placeholder-[#D1D1D1] focus:outline-none focus:ring-2 focus:ring-[#FF5722]/20 transition-all tracking-[0.4em]" 
-              placeholder="••••••"
-              value={otp}
-              onChange={e => setOtp(e.target.value)}
-              disabled={loading}
-              required
-              autoFocus
-              maxLength={6}
-            />
-            <div className="absolute right-5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#FBE4B9]"></div>
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-[#FF4522] text-white py-[18px] rounded-[20px] text-[13px] font-black hover:bg-[#E63E1F] active:scale-[0.98] transition-all disabled:opacity-50 mt-4 shadow-[0_4px_14px_rgba(255,69,34,0.3)] tracking-wider cursor-pointer"
-          >
-            {loading ? 'ĐANG XÁC THỰC...' : 'VERIFY 👈'}
-          </button>
-
-          <div className="text-center mt-1">
-            {countdown > 0 ? (
-              <span className="text-[12px] font-medium text-gray-400">
-                Chưa nhận được mã? Gửi lại sau <span className="text-[#FF4522] font-bold">{countdown}s</span>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleRequestOtp()}
-                disabled={loading}
-                className="text-[12px] font-bold text-[#FF4522] hover:underline cursor-pointer"
-              >
-                Chưa nhận được mã? Gửi lại mã OTP
-              </button>
-            )}
-          </div>
-          
-          <button 
-            type="button" 
-            onClick={() => { setStep(1); setOtp(''); setMessage(''); }} 
-            className="text-[12px] font-medium text-[#888888] hover:text-[#222222] transition-colors mt-1 cursor-pointer"
-          >
-            Đổi số điện thoại khác
-          </button>
-        </form>
-      )}
-
-      {message && (
-        <div className="mt-4 text-center">
-          <span className={`text-[12px] font-medium ${message.includes('Lỗi') ? 'text-[#FF3B30]' : 'text-[#34C759]'}`}>
-            {message}
-          </span>
-        </div>
-      )}
-
-      <div className="mt-8 text-center">
-        <p className="text-[10px] text-[#A1A1A1] font-medium tracking-wide">
-          By signing up, you confirm our<br />
-          <span className="text-[#333333] font-bold">Terms of Use</span> and <span className="text-[#333333] font-bold">Privacy policy</span>
-        </p>
+      <div className="pt-4 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="w-full py-3.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold text-xs rounded-2xl transition cursor-pointer"
+        >
+          Tiếp tục khám phá với tư cách Khách 👉
+        </button>
       </div>
     </div>
   );

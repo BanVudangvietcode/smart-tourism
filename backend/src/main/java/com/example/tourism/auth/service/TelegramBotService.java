@@ -69,16 +69,7 @@ public class TelegramBotService {
 
     @PostConstruct
     public void init() {
-        if (botToken == null || botToken.isBlank()) {
-            log.warn("Telegram bot token chưa được cấu hình. Tính năng OTP Telegram sẽ bị tắt.");
-            return;
-        }
-
-        // Khởi động thread lắng nghe getUpdates từ Telegram
-        pollingThread = new Thread(this::pollUpdatesLoop, "telegram-bot-poller");
-        pollingThread.setDaemon(true);
-        pollingThread.start();
-        log.info("Telegram Bot Polling đã khởi chạy cho bot: @{}", botUsername);
+        log.info("Telegram Bot Polling đã tắt theo cấu hình.");
     }
 
     @PreDestroy
