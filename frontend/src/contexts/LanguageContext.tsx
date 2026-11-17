@@ -20,6 +20,7 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'ja', label: 'Japanese', nativeLabel: '日本語', flag: '🇯🇵', short: 'JA' },
   { code: 'ko', label: 'Korean', nativeLabel: '한국어', flag: '🇰🇷', short: 'KO' },
   { code: 'fr', label: 'French', nativeLabel: 'Français', flag: '🇫🇷', short: 'FR' },
+  { code: 'ha', label: 'binh', nativeLabel: 'b', flag: 'b', short: 'b' },
 ];
 
 interface LanguageContextValue {

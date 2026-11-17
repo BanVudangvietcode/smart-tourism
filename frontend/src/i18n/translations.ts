@@ -5,11 +5,11 @@
 export const translations = {
 
   // ─── Navigation ────────────────────────────────────────────────
-  nav_home:       { vi: 'Trang chủ', en: 'Home', zh: '首页', ja: 'ホーム', ko: '홈', fr: 'Accueil' },
-  nav_places:     { vi: 'Địa điểm',  en: 'Places', zh: '景点', ja: '名所', ko: '명소', fr: 'Lieux' },
-  nav_map:        { vi: 'Bản đồ',    en: 'Map', zh: '地图', ja: '地図', ko: '지도', fr: 'Carte' },
-  nav_food:       { vi: 'Ẩm thực',   en: 'Food', zh: '美食', ja: 'グルメ', ko: '음식', fr: 'Gastronomie' },
-  nav_tours:      { vi: 'Tuyến',     en: 'Tours', zh: '路线', ja: 'ツアー', ko: '투어', fr: 'Circuits' },
+  nav_home:       { vi: 'Trang chủ', en: 'Home', zh: '首页', ja: 'ホーム', ko: '홈', fr: 'Accueil', ha: 'as' },
+  nav_places:     { vi: 'Địa điểm',  en: 'Places', zh: '景点', ja: '名所', ko: '명소', fr: 'Lieux',ha: 'as'    },
+  nav_map:        { vi: 'Bản đồ',    en: 'Map', zh: '地图', ja: '地図', ko: '지도', fr: 'Carte',ha: 'as'  },
+  nav_food:       { vi: 'Ẩm thực',   en: 'Food', zh: '美食', ja: 'グルメ', ko: '음식', fr: 'Gastronomie',ha: 'as'  },
+  nav_tours:      { vi: 'Tuyến',     en: 'Tours', zh: '路线', ja: 'ツアー', ko: '투어', fr: 'Circuits',ha: 'as'  },
 
   // ─── Header / App bar ──────────────────────────────────────────
   app_subtitle:        { vi: 'Thì Thầm Sài Gòn',              en: 'Saigon Whispers', zh: '西贡耳语', ja: 'サイゴンの囁き', ko: '사이공의 속삭임', fr: 'Murmures de Saïgon' },
