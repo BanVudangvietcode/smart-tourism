@@ -152,6 +152,10 @@ public class AuthService {
                     return userRepository.save(newUser);
                 });
 
+        if (user.isLocked()) {
+            throw new IllegalArgumentException("Tài khoản của bạn đã bị khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ.");
+        }
+
         // Migrate guest device data to Google user if deviceId is provided
         if (deviceId != null && !deviceId.isBlank()) {
             Long guestUserId = guestDeviceRepository.findUserIdByDeviceId(deviceId);
@@ -230,6 +234,10 @@ public class AuthService {
 
         if (!validUser || !verifyPassword(inputPass, adminUser.getPasswordHash())) {
             throw new IllegalArgumentException("Tài khoản hoặc mật khẩu Quản trị viên không chính xác.");
+        }
+
+        if (adminUser.isLocked()) {
+            throw new IllegalArgumentException("Tài khoản Quản trị viên này đã bị khóa.");
         }
 
         userRepository.updateRole(adminUser.getId(), "ADMIN");
@@ -333,6 +341,10 @@ public class AuthService {
                     u.setDisplayName("Người dùng " + tail);
                     return userRepository.save(u);
                 });
+
+        if (user.isLocked()) {
+            throw new IllegalArgumentException("Tài khoản của bạn đã bị khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ.");
+        }
 
         String token = jwtUtils.generateToken(user.getId(), user.getRole(), null);
         AuthResponse response = new AuthResponse(token, user.getId(), user.getEmail(),

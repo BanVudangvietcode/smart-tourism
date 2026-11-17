@@ -18,6 +18,7 @@ public class User {
     private boolean vegetarian;
     private boolean noSeafood;
     private String role;          // "USER", "ADMIN", "GUEST"
+    private boolean locked;       // true if account is locked by admin
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -58,6 +59,9 @@ public class User {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public boolean isLocked() { return locked; }
+    public void setLocked(boolean locked) { this.locked = locked; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -10,6 +10,7 @@ public record AdminUserResponse(
         String provider,
         String providerId,
         String role,
+        boolean locked,
         long listenCount,
         long checkinCount,
         LocalDateTime createdAt

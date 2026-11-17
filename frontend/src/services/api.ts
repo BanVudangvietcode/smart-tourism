@@ -822,3 +822,47 @@ export const adminGetUsers = async (): Promise<AdminUserItem[]> => {
   }
   return res.json();
 };
+
+export const adminUpdateUserRole = async (userId: number, role: string): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/users/${userId}/role`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể cập nhật vai trò người dùng');
+  }
+  return res.json();
+};
+
+export const adminUpdateUserLockStatus = async (userId: number, locked: boolean): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/users/${userId}/lock`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify({ locked }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể thay đổi trạng thái khóa người dùng');
+  }
+  return res.json();
+};
+
+export const adminDeleteUser = async (userId: number): Promise<any> => {
+  const res = await fetch(`${API_V1}/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeader() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Không thể xóa người dùng');
+  }
+  return res.json();
+};

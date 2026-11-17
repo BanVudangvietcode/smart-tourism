@@ -8,6 +8,10 @@ public record AuthUser(
         Long id,
         String role
 ) {
+    public Long userId() {
+        return id;
+    }
+
     public boolean isAuthenticated() {
         return id != null;
     }

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -64,6 +65,7 @@ class AdminUserControllerTest {
                 "google",
                 "google-sub-123",
                 "ROLE_USER",
+                false,
                 5L,
                 2L,
                 LocalDateTime.now()
@@ -77,6 +79,7 @@ class AdminUserControllerTest {
                 "phone",
                 "0901237890",
                 "ROLE_USER",
+                false,
                 12L,
                 4L,
                 LocalDateTime.now()
@@ -100,6 +103,60 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$[1].checkinCount").value(4));
 
         verify(adminUserService, times(1)).getAdminUsers();
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/admin/users/{id}/role - đổi quyền thành công")
+    void updateUserRole_success() throws Exception {
+        String token = "valid-admin-token";
+        when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.getUserIdFromToken(token)).thenReturn(1L);
+        when(jwtUtils.getRoleFromToken(token)).thenReturn("ADMIN");
+
+        mockMvc.perform(put("/api/v1/admin/users/10/role")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"role\":\"ROLE_ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(10))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
+
+        verify(adminUserService, times(1)).updateUserRole(1L, 10L, "ROLE_ADMIN");
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/admin/users/{id}/lock - khóa tài khoản thành công")
+    void updateUserLockStatus_success() throws Exception {
+        String token = "valid-admin-token";
+        when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.getUserIdFromToken(token)).thenReturn(1L);
+        when(jwtUtils.getRoleFromToken(token)).thenReturn("ADMIN");
+
+        mockMvc.perform(put("/api/v1/admin/users/10/lock")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"locked\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(10))
+                .andExpect(jsonPath("$.locked").value(true));
+
+        verify(adminUserService, times(1)).updateUserLockStatus(1L, 10L, true);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/admin/users/{id} - xóa tài khoản thành công")
+    void deleteUser_success() throws Exception {
+        String token = "valid-admin-token";
+        when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.getUserIdFromToken(token)).thenReturn(1L);
+        when(jwtUtils.getRoleFromToken(token)).thenReturn("ADMIN");
+
+        mockMvc.perform(delete("/api/v1/admin/users/10")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(10));
+
+        verify(adminUserService, times(1)).deleteUser(1L, 10L);
     }
 
     @Test
